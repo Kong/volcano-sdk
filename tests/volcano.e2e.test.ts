@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { agent, llmOpenAI, mcp } from '../dist/volcano-sdk.js';
+import { agent, mcp } from '../dist/volcano-sdk.js';
 
 function waitForOutput(proc: any, match: RegExp, timeoutMs = 8000) {
   return new Promise<void>((resolve, reject) => {
@@ -53,13 +53,8 @@ describe('volcano-sdk e2e with mock MCP servers', () => {
   });
 
   it('chains sign lookup to favorites', async () => {
-    // Use explicit tool calls to be deterministic in test
-    const astro = mcp('astro', 'http://localhost:3201/mcp');
-    const favorites = mcp('favorites', 'http://localhost:3202/mcp');
-
-    // For LLM usage we can stub with a minimal handle to avoid network
-    const llm = llmOpenAI('noop', { apiKey: 'sk-test' });
-    // But avoid calling OpenAI in the test by not using llm steps
+    const astro = mcp('http://localhost:3201/mcp');
+    const favorites = mcp('http://localhost:3202/mcp');
 
     const birthdate = '1993-07-11'; // Cancer
 
@@ -74,7 +69,6 @@ describe('volcano-sdk e2e with mock MCP servers', () => {
     expect(first.mcp?.tool).toBe('get_sign');
     expect(typeof first.mcp?.result).toBe('object');
 
-    // favorites returns JSON string in text content, but SDK returns raw result
     expect(second.mcp?.tool).toBe('get_preferences');
     expect(typeof second.mcp?.result).toBe('object');
   }, 20000);
@@ -82,13 +76,13 @@ describe('volcano-sdk e2e with mock MCP servers', () => {
 
 // Run with: npx vitest run -t "default LLM"
 
-import { describe, it, expect } from "vitest";
+import { describe as d2, it as it2, expect as e2 } from "vitest";
 
-describe("agent default LLM", () => {
-  it("uses default LLM when step.llm is omitted", async () => {
+d2("agent default LLM", () => {
+  it2("uses default LLM when step.llm is omitted", async () => {
     const captured: string[] = [];
     const fake: any = {
-      id: "fake",
+      id: "OpenAI-mock",
       model: "test",
       client: {},
       gen: async (p: string) => { captured.push(p); return "OK"; },
@@ -101,15 +95,15 @@ describe("agent default LLM", () => {
       .then({ prompt: "hello" })
       .run();
 
-    expect(captured[0]).toBe("hello");
-    expect(res[0].llmOutput).toBe("OK");
+    e2(captured[0]).toBe("hello");
+    e2(res[0].llmOutput).toBe("OK");
   });
 
-  it("overrides default with per-step llm", async () => {
+  it2("overrides default with per-step llm", async () => {
     const callsA: string[] = [];
     const callsB: string[] = [];
-    const A: any = { id: "A", model: "A", client: {}, gen: async (p: string) => { callsA.push(p); return "A"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
-    const B: any = { id: "B", model: "B", client: {}, gen: async (p: string) => { callsB.push(p); return "B"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
+    const A: any = { id: "OpenAI-A", model: "A", client: {}, gen: async (p: string) => { callsA.push(p); return "A"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
+    const B: any = { id: "OpenAI-B", model: "B", client: {}, gen: async (p: string) => { callsB.push(p); return "B"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
 
     const res = await agent()
       .llm(A)
@@ -117,9 +111,9 @@ describe("agent default LLM", () => {
       .then({ prompt: "two", llm: B })
       .run();
 
-    expect(callsA).toEqual(["one"]);
-    expect(callsB).toEqual(["two"]);
-    expect(res[0].llmOutput).toBe("A");
-    expect(res[1].llmOutput).toBe("B");
+    e2(callsA).toEqual(["one"]);
+    e2(callsB).toEqual(["two"]);
+    e2(res[0].llmOutput).toBe("A");
+    e2(res[1].llmOutput).toBe("B");
   });
 });

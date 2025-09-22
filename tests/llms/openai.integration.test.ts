@@ -6,7 +6,7 @@ describe('OpenAI provider (integration)', () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
-    const llm = llmOpenAI('openai-int', { apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL });
+    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL });
     const tools: any = [{
       name: 'astro.get_sign',
       description: 'Return sign for birthdate',

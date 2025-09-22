@@ -1,9 +1,13 @@
 import OpenAI from "openai";
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types";
 
-export function llmOpenAI(id: string, cfg: { apiKey: string; model?: string; baseURL?: string }): LLMHandle {
+type Cfg = { apiKey: string; model?: string; baseURL?: string };
+
+export function llmOpenAI(cfg: Cfg): LLMHandle {
+  const model = cfg.model ?? "gpt-5-mini";
+  const id = `OpenAI-${model}`;
   const client = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
-  const model = cfg.model ?? "gpt-4o-mini";
+
   return {
     id,
     client,

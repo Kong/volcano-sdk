@@ -4,13 +4,13 @@ import { agent, llmOpenAI, mcp, discoverTools } from "../dist/volcano-sdk.js";
 // This example demonstrates the new automatic tool selection feature
 
 (async () => {
-  const llm = llmOpenAI("smart-agent", { apiKey: process.env.OPENAI_API_KEY! });
+  const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   
   // Set up multiple MCP services
-  const weather = mcp("weather", "http://localhost:3000/mcp");
-  const calendar = mcp("calendar", "http://localhost:4000/mcp");
-  const email = mcp("email", "http://localhost:5000/mcp");
-  const notifications = mcp("notifications", "http://localhost:6000/mcp");
+  const weather = mcp("http://localhost:3000/mcp");
+  const calendar = mcp("http://localhost:4000/mcp");
+  const email = mcp("http://localhost:5000/mcp");
+  const notifications = mcp("http://localhost:6000/mcp");
 
   console.log("=== DISCOVERING AVAILABLE TOOLS ===");
   const availableTools = await discoverTools([weather, calendar, email, notifications]);

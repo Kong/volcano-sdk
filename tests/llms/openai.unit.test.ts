@@ -33,7 +33,7 @@ describe('OpenAI provider (unit)', () => {
   beforeEach(() => { calls.length = 0; });
 
   it('sanitizes tool names and maps back to dotted names', async () => {
-    const llm: any = llmOpenAI('test', { apiKey: 'sk-test' });
+    const llm: any = llmOpenAI({ apiKey: 'sk-test' });
     const tools = [
       {
         name: 'astro.get_sign',

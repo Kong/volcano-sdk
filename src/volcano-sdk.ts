@@ -10,7 +10,17 @@ export const llmOpenAI = llmOpenAIProvider;
 
 /* ---------- MCP (Streamable HTTP) ---------- */
 export type MCPHandle = { id: string; url: string };
-export function mcp(id: string, url: string): MCPHandle { return { id, url }; }
+export function mcp(idOrUrl: string, urlMaybe?: string): MCPHandle {
+  if (urlMaybe) {
+    return { id: idOrUrl, url: urlMaybe };
+  }
+  const u = new URL(idOrUrl);
+  const host = (u.hostname || 'host').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const port = u.port || (u.protocol === 'https:' ? '443' : '80');
+  const path = (u.pathname || '/').replace(/\//g, '_').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const id = `${host}_${port}${path}`.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  return { id, url: idOrUrl };
+}
 
 async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>): Promise<T> {
   const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });

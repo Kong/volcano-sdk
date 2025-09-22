@@ -1,4 +1,4 @@
-[![CI](https://github.com/Kong/volcano-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Kong/volcano-sdk/actions/workflows/ci.yml)
+[![CI](https://github.com/your-org/volcano-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/volcano-sdk/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/volcano-sdk.svg)](https://www.npmjs.com/package/volcano-sdk)
 
@@ -26,26 +26,30 @@ npm install @modelcontextprotocol/sdk openai
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-// 1) Create an LLM handle (set OPENAI_API_KEY in your env)
-const llm = llmOpenAI("default", { apiKey: process.env.OPENAI_API_KEY! });
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
 
-// 2) Point to your MCP services (Streamable HTTP)
-const astro = mcp("astro", "http://localhost:3211/mcp");
-const favorites = mcp("favorites", "http://localhost:3212/mcp");
+const astro = mcp("http://localhost:3211/mcp");
+const favorites = mcp("http://localhost:3212/mcp");
 
-// 3) One‑liner: The LLM discovers & calls the right tools automatically
+// Set a default LLM once with agent().llm(llm)
 const results = await agent()
+  .llm(llm)
   .then({
     prompt: "For birthdate 1993-07-11, determine the sign and then my favorite food and drink.",
-    llm,
     mcps: [astro, favorites]
   })
   .run();
-
-console.log(results[0]);
 ```
 
-Tip: You can run your own MCP services or use the mock servers in this repo (see tests under `mcp/`).
+Per‑step override:
+
+```ts
+await agent()
+  .llm(llm)
+  .then({ prompt: "Use default LLM" })
+  .then({ prompt: "Use a different LLM for this step", llm: llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" }) })
+  .run();
+```
 
 ## Examples You’ll Want to Try
 
@@ -54,14 +58,14 @@ Tip: You can run your own MCP services or use the mock servers in this repo (see
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI("default", { apiKey: process.env.OPENAI_API_KEY! });
-const weather = mcp("weather", "http://localhost:3000/mcp");
-const notifications = mcp("notifications", "http://localhost:4000/mcp");
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const weather = mcp("http://localhost:3000/mcp");
+const notifications = mcp("http://localhost:4000/mcp");
 
 await agent()
+  .llm(llm)
   .then({
     prompt: "Check SF weather for tomorrow and send me a friendly notification.",
-    llm,
     mcps: [weather, notifications]
   })
   .run(console.log);
@@ -72,19 +76,18 @@ await agent()
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI("default", { apiKey: process.env.OPENAI_API_KEY! });
-const astro = mcp("astro", "http://localhost:3211/mcp");
-const favorites = mcp("favorites", "http://localhost:3212/mcp");
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const astro = mcp("http://localhost:3211/mcp");
+const favorites = mcp("http://localhost:3212/mcp");
 
 await agent()
+  .llm(llm)
   .then({
     prompt: "Find the astrological sign for 1993-07-11.",
-    llm,
     mcps: [astro]
   })
   .then({
     prompt: "Based on the sign Cancer, what are my favorite food and drink?",
-    llm,
     mcps: [favorites]
   })
   .run(console.log);
@@ -95,24 +98,25 @@ await agent()
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI("default", { apiKey: process.env.OPENAI_API_KEY! });
-const cafe = mcp("cafe", "http://localhost:3000/mcp");
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const cafe = mcp("http://localhost:3000/mcp");
 
 await agent()
-  .then({ prompt: "Recommend a coffee for Ava Rossi from Naples", llm })
+  .llm(llm)
+  .then({ prompt: "Recommend a coffee for Ava Rossi from Naples" })
   .then({ mcp: cafe, tool: "order_item", args: { item_id: "espresso" } })
   .run(console.log);
 ```
 
 ## API (tiny and familiar)
 
-- `llmOpenAI(id, { apiKey, model?, baseURL? }) => LLMHandle`
-- `mcp(id, url) => MCPHandle`
-- `agent() => { then(step), run(log?) }`
+- `llmOpenAI({ apiKey, model?, baseURL? }) => LLMHandle`
+- `mcp(url) => MCPHandle`
+- `agent() => { llm(handle), then(step), run(log?) }`
   - Steps:
-    - `{ prompt, llm }` (LLM only)
+    - `{ prompt, llm? }` (LLM only; uses default unless overridden)
     - `{ mcp, tool, args? }` (MCP tool only)
-    - `{ prompt, llm, mcps: MCPHandle[] }` (automatic tool selection)
+    - `{ prompt, llm?, mcps: MCPHandle[] }` (automatic tool selection; uses default unless overridden)
 
 Each step returns:
 
@@ -129,7 +133,7 @@ type StepResult = {
 
 - OpenAI is provided out of the box (`llmOpenAI`).
 - Providers live under `src/llms/` and are re‑exported from the SDK entry.
-- Add your own provider by returning an `LLMHandle` that supports `gen()` and `genWithTools()`.
+- Add your own provider by returning an `LLMHandle` that supports `gen()`, `genWithTools()`, and (optionally) `genStream()`.
 
 ## Requirements
 

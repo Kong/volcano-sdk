@@ -55,27 +55,22 @@ describe('volcano-sdk flow (automatic tool selection, real OpenAI)', () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
-
-    const astro = mcp('astro', 'http://localhost:3211/mcp');
-    const favorites = mcp('favorites', 'http://localhost:3212/mcp');
+    const astro = mcp('http://localhost:3211/mcp');
+    const favorites = mcp('http://localhost:3212/mcp');
 
     const apiKey = process.env.OPENAI_API_KEY!;
-    const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
+    const model = process.env.OPENAI_MODEL || undefined;
 
-    const llm = llmOpenAI('openai', { apiKey, model });
+    const llm = llmOpenAI({ apiKey, model });
 
     const results = await agent()
+      .llm(llm)
       .then({
-        // Step 1: Determine the sign for this birthdate using available tools
-        prompt: "Determine the astrological sign for the birthdate 1993-07-11 using available tools.",
-        llm,
+        prompt: 'Determine the astrological sign for the birthdate 1993-07-11 using available tools.',
         mcps: [astro]
       })
       .then({
-        // Step 2: Based on the sign Cancer, determine my favorite food and drink using available tools
-        // (We avoid naming tools; we provide the sign context directly.)
-        prompt: "Based on the astrological sign Cancer, determine my favorite food and drink using available tools.",
-        llm,
+        prompt: 'Based on the astrological sign Cancer, determine my favorite food and drink using available tools.',
         mcps: [favorites]
       })
       .run();
@@ -98,21 +93,19 @@ describe('volcano-sdk flow (automatic tool selection, real OpenAI)', () => {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
 
-    const astro = mcp('astro', 'http://localhost:3211/mcp');
-    const favorites = mcp('favorites', 'http://localhost:3212/mcp');
+    const astro = mcp('http://localhost:3211/mcp');
+    const favorites = mcp('http://localhost:3212/mcp');
 
     const apiKey = process.env.OPENAI_API_KEY!;
-    const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
+    const model = process.env.OPENAI_MODEL || undefined;
 
-    const llm = llmOpenAI('openai', { apiKey, model });
+    const llm = llmOpenAI({ apiKey, model });
 
     const results = await agent()
+      .llm(llm)
       .then({
-        // Generic one-liner: instruct the model to complete the task with two tool calls
-        // without naming specific tools or endpoints.
         prompt:
           "For birthdate 1993-07-11, determine the astrological sign and then my favorite food and drink based on that sign. You must use the available tools to perform exactly two tool calls: first determine the sign, then determine the favorites using that sign. Do not fabricate results; do not respond until after both tool calls are completed. Provide a brief summary at the end.",
-        llm,
         mcps: [astro, favorites]
       })
       .run();
