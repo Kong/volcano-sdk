@@ -79,3 +79,47 @@ describe('volcano-sdk e2e with mock MCP servers', () => {
     expect(typeof second.mcp?.result).toBe('object');
   }, 20000);
 });
+
+// Run with: npx vitest run -t "default LLM"
+
+import { describe, it, expect } from "vitest";
+
+describe("agent default LLM", () => {
+  it("uses default LLM when step.llm is omitted", async () => {
+    const captured: string[] = [];
+    const fake: any = {
+      id: "fake",
+      model: "test",
+      client: {},
+      gen: async (p: string) => { captured.push(p); return "OK"; },
+      genWithTools: async () => ({ content: "", toolCalls: [] }),
+      genStream: async function* () {}
+    };
+
+    const res = await agent()
+      .llm(fake)
+      .then({ prompt: "hello" })
+      .run();
+
+    expect(captured[0]).toBe("hello");
+    expect(res[0].llmOutput).toBe("OK");
+  });
+
+  it("overrides default with per-step llm", async () => {
+    const callsA: string[] = [];
+    const callsB: string[] = [];
+    const A: any = { id: "A", model: "A", client: {}, gen: async (p: string) => { callsA.push(p); return "A"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
+    const B: any = { id: "B", model: "B", client: {}, gen: async (p: string) => { callsB.push(p); return "B"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
+
+    const res = await agent()
+      .llm(A)
+      .then({ prompt: "one" })
+      .then({ prompt: "two", llm: B })
+      .run();
+
+    expect(callsA).toEqual(["one"]);
+    expect(callsB).toEqual(["two"]);
+    expect(res[0].llmOutput).toBe("A");
+    expect(res[1].llmOutput).toBe("B");
+  });
+});

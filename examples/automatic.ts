@@ -20,19 +20,17 @@ import { agent, llmOpenAI, mcp, discoverTools } from "../dist/volcano-sdk.js";
   
   // The LLM will automatically choose which tools to use based on the request
   const results = await agent()
+    .llm(llm)
     .then({
       prompt: "Check the weather for tomorrow in San Francisco and if it's going to rain, send me an email reminder to bring an umbrella",
-      llm,
       mcps: [weather, email]
     })
     .then({
       prompt: "Schedule a meeting for next Tuesday at 2pm with the team, and send notifications to all participants",
-      llm,
       mcps: [calendar, email, notifications]
     })
     .then({
       prompt: "What's my schedule looking like for the rest of the week?",
-      llm,
       mcps: [calendar]
     })
     .run((step) => {

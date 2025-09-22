@@ -58,5 +58,18 @@ export function llmOpenAI(id: string, cfg: { apiKey: string; model?: string; bas
         toolCalls,
       };
     },
+    genStream: async function* (prompt: string) {
+      const stream = await client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        stream: true,
+      });
+      for await (const chunk of stream as any) {
+        const delta = chunk?.choices?.[0]?.delta?.content;
+        if (typeof delta === "string" && delta.length > 0) {
+          yield delta;
+        }
+      }
+    }
   };
 }

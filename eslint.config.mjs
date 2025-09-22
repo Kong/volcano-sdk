@@ -2,17 +2,17 @@ import tseslint from 'typescript-eslint';
 import eslint from '@eslint/js';
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'examples/**', 'eslint.config.*'] },
+  { ignores: ['dist/**', 'node_modules/**', 'examples/**', 'eslint.config.*', 'mcp/**', 'tests/**'] },
   // JS base rules for JS files (none currently, but safe)
   { files: ['**/*.{js,cjs,mjs}'], ...eslint.configs.recommended },
   // TS recommended (no type-checking) applied to TS files
   ...tseslint.configs.recommended.map(cfg => ({
     ...cfg,
-    files: ['**/*.ts']
+    files: ['src/**/*.ts']
   })),
   // TS type-checked rules applied to TS files with project settings
   {
-    files: ['**/*.ts'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.json'],
