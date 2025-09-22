@@ -1,4 +1,4 @@
-[![CI](https://github.com/your-org/volcano-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/volcano-sdk/actions/workflows/ci.yml)
+[![CI](https://github.com/Kong/volcano-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Kong/volcano-sdk/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/volcano-sdk.svg)](https://www.npmjs.com/package/volcano-sdk)
 
