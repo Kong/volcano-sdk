@@ -80,12 +80,12 @@ describe('volcano-sdk flow (automatic tool selection, real OpenAI)', () => {
     const step1 = results[0];
     expect(step1.toolCalls && step1.toolCalls.length).toBeGreaterThanOrEqual(1);
     const step1Names = (step1.toolCalls || []).map(c => c.name);
-    expect(step1Names).toContain('astro.get_sign');
+    expect(step1Names).toContain('localhost_3211_mcp.get_sign');
 
     const step2 = results[1];
     expect(step2.toolCalls && step2.toolCalls.length).toBeGreaterThanOrEqual(1);
     const step2Names = (step2.toolCalls || []).map(c => c.name);
-    expect(step2Names).toContain('favorites.get_preferences');
+    expect(step2Names).toContain('localhost_3212_mcp.get_preferences');
   }, 60000);
 
   it('runs a one-step automatic flow using both MCP servers (OpenAI one-liner)', async () => {
@@ -114,7 +114,7 @@ describe('volcano-sdk flow (automatic tool selection, real OpenAI)', () => {
     const step = results[0];
     expect(step.toolCalls && step.toolCalls.length).toBeGreaterThanOrEqual(2);
     const names = (step.toolCalls || []).map(c => c.name);
-    expect(names).toContain('astro.get_sign');
-    expect(names).toContain('favorites.get_preferences');
+    expect(names).toContain('localhost_3211_mcp.get_sign');
+    expect(names).toContain('localhost_3212_mcp.get_preferences');
   }, 60000);
 });
