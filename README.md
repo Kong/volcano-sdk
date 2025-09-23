@@ -14,6 +14,66 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 - 🧩 **Pluggable LLM providers**: Providers live in `src/llms/` (OpenAI included)
 - 🛡 **TypeScript-first**: Strong types with minimal ceremony
 
+## Concurrency & performance
+
+- **Agent lifecycle**: Calling `run()` concurrently on the same agent instance throws. Create separate `agent()` instances to run in parallel.
+- **MCP connection pooling**: TCP sessions are pooled per MCP endpoint and reused across steps. Idle connections are evicted automatically.
+- **Tool discovery cache**: `listTools()` results are cached per endpoint with a short TTL and invalidated on failures.
+- **Validation & safety**: When MCP tools expose JSON Schemas for their inputs, Volcano SDK validates tool arguments before calling the tool and rejects invalid payloads early.
+- **Context size limits (tunable)**: To avoid oversized prompts, history context is compacted.
+  - Defaults: `contextMaxChars = 20480`, `contextMaxToolResults = 8` (most recent tool results).
+  - Override at agent level:
+```ts
+agent({ llm, contextMaxChars: 40000, contextMaxToolResults: 12 })
+```
+  - Override per step:
+```ts
+.then({ prompt: "...", contextMaxChars: 12000, contextMaxToolResults: 4 })
+```
+
+## Errors & diagnostics
+
+Volcano surfaces typed errors with rich metadata to help you debug quickly.
+
+- Base type: `VolcanoError` with `meta: { stepId?, provider?, requestId?, retryable? }`
+- Common subclasses:
+  - `AgentConcurrencyError` (run() called twice)
+  - `TimeoutError` (per-step timeout)
+  - `ValidationError` (tool args schema failure)
+  - `RetryExhaustedError` (final failure after retries)
+  - `LLMError` (e.g., OpenAI error)
+  - `MCPToolError`, `MCPConnectionError`
+
+Metadata fields:
+- `stepId`: 0-based index of the failing step
+- `provider`: `llm:<id|model>` or `mcp:<host>`
+- `requestId`: upstream provider request id when available
+- `retryable`: Volcano’s opinionated hint (true for 429/5xx/timeouts; false for validation/4xx)
+
+Example:
+```ts
+try {
+  await agent({ llm, retry: { backoff: 2, retries: 4 }, timeout: 30 })
+    .then({ prompt: 'auto', mcps: [mcp('http://localhost:3211/mcp')] })
+    .run();
+} catch (err) {
+  if (err && typeof err === 'object' && 'meta' in err) {
+    const e = err as any; // VolcanoError
+    console.error(e.name, e.message, e.meta);
+    if (e.meta?.retryable) {
+      // maybe enqueue for retry later
+    }
+  } else {
+    console.error(err);
+  }
+}
+```
+
+Retry semantics:
+- Immediate (default), delayed, and exponential backoff are supported.
+- Non‑retryable errors (like `ValidationError`) abort immediately.
+- On retry exhaustion, the last error is thrown (e.g., `LLMError`).
+
 ## Install
 
 ```bash

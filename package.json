@@ -40,6 +40,7 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
+    "ajv": "^8.17.1",
     "openai": "^5.22.0"
   },
   "devDependencies": {
@@ -65,5 +66,8 @@
     "ai",
     "volcano"
   ],
-  "author": "Marco Palladino <marco@konghq.com>"
+  "author": "Marco Palladino <marco@konghq.com>",
+  "dependencies": {
+    "ajv": "^8.17.1"
+  }
 }

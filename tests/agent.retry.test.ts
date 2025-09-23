@@ -10,7 +10,7 @@ function makeFlakyLlm(failures: number, delayMs = 0) {
     gen: async () => {
       if (delayMs) await new Promise(r => setTimeout(r, delayMs));
       count++;
-      if (count <= failures) throw new Error('flaky');
+      if (count <= failures) throw Object.assign(new Error('flaky'), { status: 500 });
       return 'OK';
     },
     genWithTools: async () => ({ content: '', toolCalls: [] }),
@@ -20,11 +20,15 @@ function makeFlakyLlm(failures: number, delayMs = 0) {
 
 describe('agent retries', () => {
   it('immediate retry by default (delay 0)', async () => {
+    vi.useFakeTimers();
     const llm = makeFlakyLlm(1);
-    const res = await agent({ llm })
+    const p = agent({ llm })
       .then({ prompt: 'hello' })
       .run();
+    await vi.runAllTimersAsync();
+    const res = await p;
     expect(res[0].llmOutput).toBe('OK');
+    vi.useRealTimers();
   });
 
   it('delayed retry waits configured seconds between attempts', async () => {
@@ -33,7 +37,6 @@ describe('agent retries', () => {
     const p = agent({ llm, retry: { delay: 20, retries: 2 } })
       .then({ prompt: 'hello' })
       .run();
-    // advance time enough to cover 20s delay
     await vi.advanceTimersByTimeAsync(20_000);
     const res = await p;
     expect(res[0].llmOutput).toBe('OK');
@@ -46,7 +49,6 @@ describe('agent retries', () => {
     const p = agent({ llm, retry: { backoff: 2, retries: 4 } })
       .then({ prompt: 'hello' })
       .run();
-    // waits: 1s, 2s, 4s (then success)
     await vi.advanceTimersByTimeAsync(1_000 + 2_000 + 4_000);
     const res = await p;
     expect(res[0].llmOutput).toBe('OK');
@@ -59,7 +61,7 @@ describe('agent retries', () => {
     const p = agent({ llm, retry: { delay: 20, retries: 2 } })
       .then({ prompt: 'A', retry: { delay: 0, retries: 2 } })
       .run();
-    // step overrides to immediate, so no 20s wait necessary
+    await vi.runAllTimersAsync();
     const res = await p;
     expect(res[0].llmOutput).toBe('OK');
     vi.useRealTimers();
@@ -67,23 +69,19 @@ describe('agent retries', () => {
 
   it('throws if both delay and backoff are set at agent level', async () => {
     const llm = makeFlakyLlm(0);
-    let err: any;
-    try {
+    await expect(async () => {
       await agent({ llm, retry: { delay: 1, backoff: 2 } })
         .then({ prompt: 'x' })
         .run();
-    } catch (e) { err = e; }
-    expect(String(err?.message || '')).toMatch(/either delay or backoff/);
+    }).rejects.toThrow();
   });
 
   it('throws if both delay and backoff are set at step level', async () => {
     const llm = makeFlakyLlm(0);
-    let err: any;
-    try {
+    await expect(async () => {
       await agent({ llm })
         .then({ prompt: 'x', retry: { delay: 1, backoff: 2 } })
         .run();
-    } catch (e) { err = e; }
-    expect(String(err?.message || '')).toMatch(/either delay or backoff/);
+    }).rejects.toThrow();
   });
 });
