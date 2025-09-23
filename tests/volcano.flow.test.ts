@@ -63,8 +63,7 @@ describe('volcano-sdk flow (automatic tool selection, real OpenAI)', () => {
 
     const llm = llmOpenAI({ apiKey, model });
 
-    const results = await agent()
-      .llm(llm)
+    const results = await agent({ llm })
       .then({
         prompt: 'Determine the astrological sign for the birthdate 1993-07-11 using available tools.',
         mcps: [astro]
@@ -101,8 +100,7 @@ describe('volcano-sdk flow (automatic tool selection, real OpenAI)', () => {
 
     const llm = llmOpenAI({ apiKey, model });
 
-    const results = await agent()
-      .llm(llm)
+    const results = await agent({ llm })
       .then({
         prompt:
           "For birthdate 1993-07-11, determine the astrological sign and then my favorite food and drink based on that sign. You must use the available tools to perform exactly two tool calls: first determine the sign, then determine the favorites using that sign. Do not fabricate results; do not respond until after both tool calls are completed. Provide a brief summary at the end.",

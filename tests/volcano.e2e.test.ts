@@ -90,8 +90,7 @@ d2("agent default LLM", () => {
       genStream: async function* () {}
     };
 
-    const res = await agent()
-      .llm(fake)
+    const res = await agent({ llm: fake })
       .then({ prompt: "hello" })
       .run();
 
@@ -105,14 +104,15 @@ d2("agent default LLM", () => {
     const A: any = { id: "OpenAI-A", model: "A", client: {}, gen: async (p: string) => { callsA.push(p); return "A"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
     const B: any = { id: "OpenAI-B", model: "B", client: {}, gen: async (p: string) => { callsB.push(p); return "B"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
 
-    const res = await agent()
-      .llm(A)
+    const res = await agent({ llm: A })
       .then({ prompt: "one" })
       .then({ prompt: "two", llm: B })
       .run();
 
     e2(callsA).toEqual(["one"]);
-    e2(callsB).toEqual(["two"]);
+    e2(callsB[0].startsWith("two")).toBe(true);
+    e2(callsB[0]).toContain('[Context from previous steps]');
+    e2(callsB[0]).toContain('Previous LLM answer');
     e2(res[0].llmOutput).toBe("A");
     e2(res[1].llmOutput).toBe("B");
   });

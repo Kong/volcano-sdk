@@ -19,8 +19,7 @@ import { agent, llmOpenAI, mcp, discoverTools } from "../dist/volcano-sdk.js";
   console.log("\n=== AUTOMATIC AGENT WORKFLOW ===");
   
   // The LLM will automatically choose which tools to use based on the request
-  const results = await agent()
-    .llm(llm)
+  const results = await agent({ llm, instructions: "You are a helpful assistant that chooses the right tools." })
     .then({
       prompt: "Check the weather for tomorrow in San Francisco and if it's going to rain, send me an email reminder to bring an umbrella",
       mcps: [weather, email]
