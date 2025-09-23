@@ -30,10 +30,15 @@ describe('tool argument validation', () => {
       { name: 'do_thing', inputSchema: { type: 'object', properties: { x: { type: 'number' } }, required: ['x'], additionalProperties: false } }
     ]);
     const llm = {
-      id: 'OpenAI-mock', model: 'mock', client: {
-        chat: { completions: { create: async () => ({ choices: [{ message: { content: '', tool_calls: [ { id: '1', function: { name: 'localhost_3996_mcp_do_thing', arguments: JSON.stringify({ x: 'NaN' }) } } ] } }] }) } }
+      id: 'OpenAI-mock', model: 'mock', client: {},
+      gen: async () => 'OK',
+      genWithTools: async (_p: string, tools: any[]) => {
+        // pick our tool and emit invalid args
+        const dotted = `${svc.id}.do_thing`;
+        const found = tools.find(t => t.name === dotted);
+        return { content: '', toolCalls: [{ name: found.name, arguments: { x: 'NaN' }, mcpHandle: svc }] };
       },
-      gen: async () => 'OK', genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){}
+      genStream: async function*(){}
     } as any;
     let err: any;
     try {
