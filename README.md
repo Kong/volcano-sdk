@@ -6,6 +6,49 @@
 
 Build AI agents that seamlessly combine LLM reasoning with real-world actions via MCP tools — in just a few lines of TypeScript.
 
+## Install
+
+```bash
+npm install volcano-sdk
+npm install @modelcontextprotocol/sdk openai
+```
+
+## Quick start (hello world)
+
+```ts
+import { agent, llmOpenAI } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+
+const results = await agent({ llm })
+  .then({ prompt: "Say hello to Marco in one short sentence." })
+  .run();
+
+console.log(results[0].llmOutput);
+```
+
+Two-step with a sample MCP tool (automatic selection):
+
+```ts
+import { agent, llmOpenAI, mcp } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const astro = mcp("http://localhost:3211/mcp");
+
+const steps = await agent({ llm })
+  .then({
+    prompt: "Determine the astrological sign for the birthdate 1993-07-11 using available tools.",
+    mcps: [astro]
+  })
+  .then({
+    prompt: "Based on that sign, write a friendly one-line fortune.",
+  })
+  .run();
+
+console.log(steps[0].toolCalls); // shows tool calls like localhost_3211_mcp.get_sign
+console.log(steps[1].llmOutput); // fortune that uses prior step context
+```
+
 ## Why Volcano SDK
 
 - ⚡️ **Tiny, modern API**: Chain steps with `.then()` and `.run()`
@@ -73,13 +116,6 @@ Retry semantics:
 - Immediate (default), delayed, and exponential backoff are supported.
 - Non‑retryable errors (like `ValidationError`) abort immediately.
 - On retry exhaustion, the last error is thrown (e.g., `LLMError`).
-
-## Install
-
-```bash
-npm install volcano-sdk
-npm install @modelcontextprotocol/sdk openai
-```
 
 ## 60‑Second Quickstart
 

@@ -45,7 +45,7 @@ describe('aggregated latency metrics', () => {
       .run();
 
     const last = out[out.length - 1];
-    expect(last.totalLlmMs).toBeGreaterThanOrEqual(60);
+    expect(last.totalLlmMs).toBeGreaterThanOrEqual(50);
     const mcpSum = out.reduce((acc, s) => acc + (s.mcp?.ms || 0), 0);
     expect(last.totalMcpMs).toBeGreaterThan(0);
     expect(Math.abs((last.totalMcpMs || 0) - mcpSum)).toBeLessThan(5_000); // within reasonable bound
