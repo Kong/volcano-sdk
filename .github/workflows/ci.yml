@@ -30,26 +30,81 @@ jobs:
         run: npm run build
 
       - name: Cache Ollama models
+        id: cache-ollama
         uses: actions/cache@v4
         with:
-          path: ${{ env.OLLAMA_MODELS }}
-          key: ollama-models-${{ runner.os }}-llama3.2-3b
+          path: ${{ github.workspace }}/.cache/ollama-models
+          key: ollama-models-${{ runner.os }}-llama3.2-3b-v3
           restore-keys: |
+            ollama-models-${{ runner.os }}-llama3.2-3b-
             ollama-models-${{ runner.os }}-
 
       - name: Install Ollama
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
 
-      - name: Start Ollama
+      - name: Setup Ollama with cached models
         run: |
           mkdir -p "$OLLAMA_MODELS"
-          nohup env OLLAMA_MODELS="$OLLAMA_MODELS" ollama serve > /dev/null 2>&1 &
-          sleep 5
-
-      - name: Pull Llama model (3.2:3b)
-        run: |
-          env OLLAMA_MODELS="$OLLAMA_MODELS" ollama pull llama3.2:3b
+          echo "Cache hit: ${{ steps.cache-ollama.outputs.cache-hit }}"
+          
+          # Start Ollama with custom model directory
+          echo "Starting Ollama server..."
+          nohup env OLLAMA_MODELS="$OLLAMA_MODELS" ollama serve > ollama.log 2>&1 &
+          
+          # Wait for Ollama to start
+          echo "Waiting for Ollama to start..."
+          for i in {1..15}; do
+            if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+              echo "✅ Ollama server started successfully"
+              break
+            fi
+            echo "Waiting for Ollama... ($i/15)"
+            sleep 2
+          done
+          
+          # Check if server started
+          if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+            echo "❌ Ollama failed to start. Server logs:"
+            cat ollama.log || echo "No logs available"
+            exit 1
+          fi
+          
+          # List available models for debugging
+          echo "Available models in Ollama:"
+          env OLLAMA_MODELS="$OLLAMA_MODELS" ollama list || echo "No models found"
+          
+          # Check if model exists or download it
+          echo "Checking for llama3.2:3b model..."
+          if env OLLAMA_MODELS="$OLLAMA_MODELS" ollama show llama3.2:3b >/dev/null 2>&1; then
+            echo "✅ Model llama3.2:3b found!"
+          else
+            echo "📥 Model not found, downloading llama3.2:3b..."
+            echo "This will take 2-3 minutes on first run, but will be cached for future runs."
+            env OLLAMA_MODELS="$OLLAMA_MODELS" ollama pull llama3.2:3b
+            echo "✅ Model download complete!"
+          fi
+          
+          # Verify model is available
+          echo "Final model verification:"
+          env OLLAMA_MODELS="$OLLAMA_MODELS" ollama list
+          
+          # Verify model is working
+          echo "Testing Ollama functionality..."
+          test_response=$(curl -s http://127.0.0.1:11434/api/generate -d '{
+            "model": "llama3.2:3b",
+            "prompt": "Say OK",
+            "stream": false
+          }' -H "Content-Type: application/json")
+          
+          if echo "$test_response" | grep -q '"response"'; then
+            echo "✅ Ollama is working correctly"
+            echo "Test response: $test_response"
+          else
+            echo "❌ Ollama test failed"
+            echo "Response: $test_response"
+            exit 1
+          fi
 
       - name: Run tests (unit/e2e)
         run: npm test

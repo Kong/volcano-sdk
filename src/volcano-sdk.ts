@@ -389,68 +389,53 @@ export function agent(opts?: AgentOptions) {
               if (availableTools.length === 0) {
                 r.llmOutput = "No tools available for this request.";
               } else {
-                const client = usedLlm.client as any;
-                const model = usedLlm.model;
-                const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-                const openaiTools = availableTools.map((tool) => {
-                  const dottedName = tool.name;
-                  const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
-                  nameMap.set(sanitized, { dottedName, def: tool });
-                  return { type: "function" as const, function: { name: sanitized, description: tool.description, parameters: tool.parameters } };
-                });
-  
-                const messages: any[] = [];
-                if (stepInstructions) messages.push({ role: 'system', content: stepInstructions });
-                messages.push({ role: "user", content: promptWithHistory });
                 const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
                 const maxIterations = 4;
+                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
                 for (let i = 0; i < maxIterations; i++) {
                   const llmStart = Date.now();
-                  let resp: any;
+                  let toolPlan: LLMToolResult;
                   try {
-                    resp = await client.chat.completions.create({ model, messages, tools: openaiTools, tool_choice: "auto" });
+                    toolPlan = await usedLlm.genWithTools(workingPrompt, availableTools);
                   } catch (e) {
                     const provider = classifyProviderFromLlm(usedLlm);
                     throw normalizeError(e, 'llm', { stepId: out.length, provider });
                   }
                   llmTotalMs += Date.now() - llmStart;
-                  const msg: any = resp.choices?.[0]?.message as any;
-                  r.llmOutput = msg?.content || r.llmOutput;
-                  const toolCalls: any[] = (msg?.tool_calls ?? []) as any[];
-                  if (!toolCalls.length) break;
-                  messages.push(msg);
-                  const toolMessages: any[] = [];
-                  for (const call of toolCalls) {
-                    const sanitized = call?.function?.name ?? call?.name ?? "";
-                    const mapped = nameMap.get(sanitized);
-                    const argsJson: string = call?.function?.arguments ?? call?.arguments ?? "{}";
-                    const args = (() => { try { return JSON.parse(argsJson); } catch { return {}; } })();
-                    const handle = mapped?.def.mcpHandle;
-                    if (!handle) continue;
-                  // Validate args against schema when available
-                  try {
-                    validateWithSchema((mapped as any)?.def?.parameters, args, `Tool ${mapped?.dottedName}`);
-                  } catch (e) {
-                    throw e;
+                  if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
+                    // finish with final content
+                    r.llmOutput = toolPlan?.content || r.llmOutput;
+                    break;
                   }
-                    const idx = (mapped?.dottedName || sanitized).indexOf('.');
-                    const actualToolName = idx >= 0 ? (mapped?.dottedName || sanitized).slice(idx + 1) : (mapped?.dottedName || sanitized);
+                  // Execute tools sequentially and append results to prompt for the next iteration
+                  let toolResultsAppend = "\n\n[Tool results]\n";
+                  for (const call of toolPlan.toolCalls) {
+                    const mapped = call;
+                    const handle = mapped?.mcpHandle;
+                    if (!handle) continue;
+                    // Validate args when schema known
+                    try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
+                    const idx = mapped.name.indexOf('.');
+                    const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
                     const mcpStart = Date.now();
                     let result: any;
                     try {
-                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: args }));
+                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }));
                     } catch (e) {
                       const provider = classifyProviderFromMcp(handle);
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
                     }
                     const mcpMs = Date.now() - mcpStart;
-                    aggregated.push({ name: mapped?.dottedName || sanitized, endpoint: handle.url, result, ms: mcpMs });
-                    toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+                    aggregated.push({ name: mapped.name, endpoint: handle.url, result, ms: mcpMs });
+                    toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
                   }
-                  if (!toolMessages.length) break;
-                  messages.push(...toolMessages);
+                  if (aggregated.length) r.toolCalls = aggregated;
+                  // Prepare next prompt with appended tool results
+                  workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + toolResultsAppend;
+                  // On next iteration, model can produce final answer or ask for more tools
                 }
-                if (aggregated.length) r.toolCalls = aggregated;
+                // Ensure toolCalls is always set for automatic tool selection steps
+                if (!r.toolCalls) r.toolCalls = [];
               }
             }
             // LLM-only steps

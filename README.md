@@ -6,6 +6,37 @@
 
 Build AI agents that seamlessly combine LLM reasoning with real-world actions via MCP tools — in just a few lines of TypeScript.
 
+## Table of Contents
+
+- [Install](#install)
+- [Quick Start](#quick-start-hello-world)
+- [Supported Providers](#supported-providers)
+- [Why Volcano SDK](#why-volcano-sdk)
+- [API Reference](#api-tiny-and-familiar)
+- [LLM Providers](#llm-providers)
+- [Concurrency & Performance](#concurrency--performance)
+- [Errors & Diagnostics](#errors--diagnostics)
+- [Examples](#examples-youll-want-to-try)
+- [Timeouts](#timeouts)
+- [Retries](#retries)
+- [Requirements](#requirements)
+
+## Supported Providers
+
+Volcano SDK supports **4 major LLM providers** with full function calling and MCP integration:
+
+✅ OpenAI
+✅ Anthropic
+✅ Mistral
+✅ Llama
+
+All providers support:
+
+- Automatic tool selection
+- Multi-step workflows with context
+- Schema validation
+- Retries and error handling
+
 ## Install
 
 ```bash
@@ -135,12 +166,23 @@ const results = await agent({ llm })
   .run();
 ```
 
-Per‑step override:
+Multi-provider workflow:
 
 ```ts
-await agent({ llm })
-  .then({ prompt: "Use default LLM" })
-  .then({ prompt: "Use a different LLM for this step", llm: llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" }) })
+import { agent, llmOpenAI, llmAnthropic, llmMistral, llmLlama, mcp } from "volcano-sdk";
+
+const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY! });
+const llama = llmLlama({ baseURL: "http://127.0.0.1:11434" });
+
+const astro = mcp("http://localhost:3211/mcp");
+
+await agent()
+  .then({ llm: openai, prompt: "Get astrological sign for 1993-07-11", mcps: [astro] })
+  .then({ llm: claude, prompt: "Analyze the personality traits of that sign" })
+  .then({ llm: mistral, prompt: "Write a creative horoscope in French" })
+  .then({ llm: llama, prompt: "Translate back to English" })
   .run();
 ```
 
@@ -229,7 +271,27 @@ await agent({ llm })
   .run(console.log);
 ```
 
-### C. Explicit control (when you need it)
+### C. Multi-provider workflow
+
+```ts
+import { agent, llmOpenAI, llmAnthropic, llmMistral, llmLlama, mcp } from "volcano-sdk";
+
+const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY! });
+const llama = llmLlama({ baseURL: "http://127.0.0.1:11434" });
+
+const astro = mcp("http://localhost:3211/mcp");
+
+await agent()
+  .then({ llm: openai, prompt: "Get astrological sign for 1993-07-11", mcps: [astro] })
+  .then({ llm: claude, prompt: "Analyze the personality traits of that sign" })
+  .then({ llm: mistral, prompt: "Write a creative horoscope in French" })
+  .then({ llm: llama, prompt: "Translate back to English" })
+  .run(console.log);
+```
+
+### D. Explicit control (when you need it)
 
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
@@ -277,9 +339,9 @@ await agent({ llm, instructions: "GLOBAL INSTR" })
 
 ## API (tiny and familiar)
 
-- `llmOpenAI({ apiKey, model?, baseURL? }) => LLMHandle`
-- `mcp(url) => MCPHandle`
-- `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?) }`
+- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`
+- **MCP Tools**: `mcp(url) => MCPHandle`
+- **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?) }`
   - Steps:
     - `{ prompt, llm?, instructions?, timeout?, retry? }` (LLM only)
     - `{ mcp, tool, args?, timeout?, retry? }` (MCP tool only)
@@ -300,9 +362,26 @@ type StepResult = {
 
 Providers live under `src/llms/` and are re‑exported from the SDK entry. Each provider returns an `LLMHandle` with:
 
-- `gen(prompt): Promise<string>`
-- `genWithTools(prompt, tools): Promise<{ content?, toolCalls[] }>` (OpenAI only)
-- `genStream(prompt): AsyncGenerator<string>` (OpenAI only)
+- `gen(prompt): Promise<string>` - Basic text generation
+- `genWithTools(prompt, tools): Promise<{ content?, toolCalls[] }>` - Function calling with tools
+- `genStream(prompt): AsyncGenerator<string>` - Streaming text generation
+
+### Provider Support Matrix
+
+| Provider | Basic Generation | Function Calling | Streaming | MCP Integration |
+|----------|------------------|------------------|-----------|-----------------|
+| **OpenAI** | ✅ Full | ✅ Native | ✅ Native | ✅ Complete |
+| **Anthropic** | ✅ Full | ✅ Native (tool_use) | ✅ Native | ✅ Complete |
+| **Mistral** | ✅ Full | ✅ Native | ✅ Native | ✅ Complete |
+| **Llama** | ✅ Full | ✅ Via Ollama | ✅ Native | ✅ Complete |
+
+**All providers support automatic tool selection and multi-step workflows.**
+
+### Provider Notes:
+- **OpenAI**: Industry standard, most reliable for production
+- **Anthropic**: Excellent for analytical and safety-critical tasks
+- **Mistral**: Great for multilingual and European compliance needs
+- **Llama**: Perfect for local/private deployments via Ollama
 
 ### OpenAI
 

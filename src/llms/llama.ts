@@ -1,7 +1,7 @@
-import type { LLMHandle } from "./types.js";
+import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 
 type OpenAILikeClient = {
-  chat: { completions: { create: (args: { model: string; messages: Array<{ role: string; content: string }> }) => Promise<any> } };
+  chat: { completions: { create: (args: any) => Promise<any> } };
 };
 
 export type LlamaConfig = {
@@ -21,14 +21,14 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
     client = {
       chat: {
         completions: {
-          create: async ({ model, messages }) => {
+          create: async (params) => {
             const res = await fetch(`${base}/v1/chat/completions`, {
               method: "POST",
               headers: {
                 "content-type": "application/json",
                 ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
               },
-              body: JSON.stringify({ model, messages }),
+              body: JSON.stringify(params),
             });
             if (!res.ok) {
               const text = await res.text();
@@ -37,6 +37,12 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
               err.body = text;
               throw err;
             }
+            
+            // Handle streaming responses
+            if (params.stream) {
+              return res; // Return the response object for streaming
+            }
+            
             return await res.json();
           },
         },
@@ -57,11 +63,92 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
     },
-    async genWithTools(): Promise<any> {
-      throw new Error("llmLlama: tool calling is not yet supported in Volcano SDK");
+    async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
+      const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
+      const openaiTools = tools.map((tool) => {
+        const dottedName = tool.name;
+        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
+        nameMap.set(sanitized, { dottedName, def: tool });
+        return {
+          type: "function" as const,
+          function: {
+            name: sanitized,
+            description: tool.description,
+            parameters: tool.parameters,
+          },
+        };
+      });
+      const resp = await client!.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        tools: openaiTools as any,
+        tool_choice: "auto" as any,
+      } as any);
+      const message: any = resp?.choices?.[0]?.message ?? {};
+      const rawCalls: any[] = (message?.tool_calls ?? []) as any[];
+      const toolCalls = rawCalls.map((call: any) => {
+        const sanitizedName: string = call?.function?.name ?? call?.name ?? "";
+        const mapped = nameMap.get(sanitizedName);
+        const argsJson: string = call?.function?.arguments ?? call?.arguments ?? "{}";
+        const parsedArgs = (() => { try { return JSON.parse(argsJson); } catch { return {}; } })();
+        const mcpHandle = mapped?.def.mcpHandle;
+        return {
+          name: mapped?.dottedName ?? sanitizedName,
+          arguments: parsedArgs,
+          mcpHandle,
+        };
+      });
+      return { content: message?.content || undefined, toolCalls };
     },
-    async *genStream(): AsyncGenerator<string, void, unknown> {
-      throw new Error("llmLlama: streaming not yet implemented");
+    async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
+      const streamResponse: any = await client!.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        stream: true,
+      });
+      
+      // Handle Server-Sent Events streaming
+      if (streamResponse && streamResponse.body) {
+        const reader = streamResponse.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+            
+            for (const line of lines) {
+              if (line.trim() === '' || line.startsWith(':')) continue;
+              if (line === 'data: [DONE]') return;
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = line.slice(6); // Remove 'data: ' prefix
+                  const parsed = JSON.parse(jsonData);
+                  const delta = parsed?.choices?.[0]?.delta?.content;
+                  if (typeof delta === 'string' && delta.length > 0) {
+                    yield delta;
+                  }
+                } catch {
+                  // Skip malformed JSON lines
+                  continue;
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        return;
+      }
+      
+      // Fallback to non-streaming if streaming not available
+      const full = await this.gen(prompt);
+      if (full) yield full;
     },
   };
 }

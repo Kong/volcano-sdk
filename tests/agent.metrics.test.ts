@@ -64,9 +64,14 @@ describe('latency metrics', () => {
     it('captures toolCalls[i].ms for automatic tool selection', async () => {
       const astro = mcp(`http://localhost:${PORT}/mcp`);
       const llm: any = {
-        id: 'OpenAI-mock', model: 'mock',
-        client: { chat: { completions: { create: async () => ({ choices: [{ message: { content: '', tool_calls: [ { id: '1', function: { name: `localhost_${PORT}_mcp_get_sign`, arguments: JSON.stringify({ birthdate: '1993-07-11' }) } } ] } }] }) } } },
-        gen: async () => 'OK', genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){}
+        id: 'OpenAI-mock', model: 'mock', client: {},
+        gen: async () => 'OK',
+        genWithTools: async (_p: string, tools: any[]) => {
+          const dotted = `localhost_${PORT}_mcp.get_sign`;
+          const found = tools.find(t => t.name === dotted);
+          return { content: '', toolCalls: [{ name: found.name, arguments: { birthdate: '1993-07-11' }, mcpHandle: astro }] };
+        },
+        genStream: async function*(){}
       };
       const out = await agent({ llm })
         .then({ prompt: 'auto', mcps: [astro] })
