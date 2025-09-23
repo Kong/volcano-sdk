@@ -1,4 +1,4 @@
-import type { LLMHandle } from "./types.js";
+import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 
 type AnthropicLikeClient = {
   messages: {
@@ -45,6 +45,38 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
           return await res.json();
         },
       },
+      // Provide an OpenAI-compatible shim so generic agent flows can use tool selection
+      chat: {
+        completions: {
+          create: async (args: any) => {
+            const { model, messages, tools, tool_choice } = args || {};
+            const mappedTools = (tools || []).map((t: any) => ({
+              name: t?.function?.name,
+              description: t?.function?.description,
+              input_schema: t?.function?.parameters,
+            }));
+            const payload: any = {
+              model,
+              max_tokens: 512,
+              messages,
+              ...(mappedTools.length ? { tools: mappedTools } : {}),
+              ...(tool_choice ? { tool_choice } : {}),
+            };
+            const resp: any = await (client as any).messages.create(payload);
+            const blocks: any[] = resp?.content || resp?.message?.content || [];
+            const text = blocks.filter(b => b?.type === 'text').map(b => b?.text || '').join('');
+            const toolCalls = blocks.filter(b => b?.type === 'tool_use').map((b: any) => ({
+              id: b?.id,
+              type: 'function',
+              function: {
+                name: b?.name,
+                arguments: JSON.stringify(b?.input || {}),
+              },
+            }));
+            return { choices: [{ message: { content: text, tool_calls: toolCalls } }] };
+          },
+        },
+      },
     } as AnthropicLikeClient;
   }
 
@@ -61,11 +93,53 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
       const text = resp?.content?.[0]?.text ?? resp?.content ?? "";
       return typeof text === "string" ? text : JSON.stringify(text);
     },
-    async genWithTools(): Promise<any> {
-      throw new Error("llmAnthropic: tool calling is not yet supported in Volcano SDK");
+    async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
+      const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
+      const anthropicTools = tools.map((tool) => {
+        const dottedName = tool.name;
+        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
+        nameMap.set(sanitized, { dottedName, def: tool });
+        return {
+          name: sanitized,
+          description: tool.description,
+          input_schema: tool.parameters,
+        } as any;
+      });
+      const payload: any = { model, max_tokens: 256, messages: [{ role: "user", content: prompt }], tools: anthropicTools, tool_choice: "auto" };
+      const resp = await client!.messages.create(payload);
+      const content = resp?.content || resp?.message?.content || [];
+      const toolCalls: any[] = [];
+      for (const block of content) {
+        if (block?.type === 'tool_use') {
+          const sanitizedName: string = block?.name || '';
+          const mapped = nameMap.get(sanitizedName);
+          toolCalls.push({
+            name: mapped?.dottedName ?? sanitizedName,
+            arguments: block?.input || {},
+            mcpHandle: mapped?.def?.mcpHandle,
+          });
+        }
+      }
+      const text = (() => {
+        const t = content.find((c: any) => c?.type === 'text')?.text;
+        return typeof t === 'string' ? t : undefined;
+      })();
+      return { content: text, toolCalls };
     },
-    async *genStream(): AsyncGenerator<string, void, unknown> {
-      throw new Error("llmAnthropic: streaming not yet implemented");
+    async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
+      // Native streaming using messages.create with stream: true
+      const streamResp: any = await (client as any).messages.create({ model, max_tokens: 256, messages: [{ role: "user", content: prompt }], stream: true });
+      // The official Anthropic SDK exposes an async iterator on streamResp
+      if (streamResp && typeof streamResp[Symbol.asyncIterator] === 'function') {
+        for await (const event of streamResp) {
+          const delta = event?.delta?.text || event?.delta || event?.text;
+          if (typeof delta === 'string' && delta.length > 0) yield delta;
+        }
+        return;
+      }
+      // Fallback to single-shot if streaming not available
+      const text = await this.gen(prompt);
+      if (text) yield text;
     },
   };
 }
