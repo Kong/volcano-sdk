@@ -2,6 +2,9 @@
 import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { llmOpenAI as llmOpenAIProvider } from "./llms/openai.js";
+export { llmAnthropic } from "./llms/anthropic.js";
+export { llmLlama } from "./llms/llama.js";
+export { llmMistral } from "./llms/mistral.js";
 import type { LLMConfig, LLMHandle, ToolDefinition, LLMToolResult } from "./llms/types.js";
 import Ajv from "ajv";
 

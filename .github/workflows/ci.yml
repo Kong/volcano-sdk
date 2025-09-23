@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +29,34 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OLLAMA_MODELS }}
+          key: ollama-models-${{ runner.os }}-llama3.2-3b
+          restore-keys: |
+            ollama-models-${{ runner.os }}-
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama
+        run: |
+          mkdir -p "$OLLAMA_MODELS"
+          nohup env OLLAMA_MODELS="$OLLAMA_MODELS" ollama serve > /dev/null 2>&1 &
+          sleep 5
+
+      - name: Pull Llama model (3.2:3b)
+        run: |
+          env OLLAMA_MODELS="$OLLAMA_MODELS" ollama pull llama3.2:3b
+
       - name: Run tests (unit/e2e)
         run: npm test
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: https://api.openai.com/v1
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          LLAMA_BASE_URL: http://127.0.0.1:11434
+          LLAMA_MODEL: llama3.2:3b

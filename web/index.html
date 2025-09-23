@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Volcano SDK — Build MCP-powered AI agents in minutes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="container">
+        <div class="brand">🌋 Volcano SDK</div>
+        <nav>
+          <a href="#get-started">Get Started</a>
+          <a href="#demo">Demo</a>
+          <a href="#features">Features</a>
+          <a href="../README.md">Docs</a>
+          <a class="cta" href="https://www.npmjs.com/package/volcano-sdk">npm install</a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <h1>Build MCP‑powered AI agents in minutes</h1>
+        <p class="sub">TypeScript SDK that unifies LLM reasoning with real‑world actions via MCP tools. Automatic tool selection, streaming, retries, timeouts, and typed errors — out of the box.</p>
+        <div class="actions">
+          <a class="btn primary" href="#get-started">Get Started</a>
+          <a class="btn" href="#demo">See a 2‑step demo</a>
+        </div>
+        <div class="code install">
+          <pre><code class="language-bash">🌋 npm install volcano</code></pre>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="lavaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ff6a00" stop-opacity="0.55"/>
+              <stop offset="100%" stop-color="#ff1e56" stop-opacity="0.15"/>
+            </linearGradient>
+            <radialGradient id="glow" cx="50%" cy="20%" r="60%">
+              <stop offset="0%" stop-color="#ff8a00" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="1200" height="600" fill="url(#glow)"/>
+          <!-- Volcano silhouette -->
+          <path d="M200,580 L520,300 L680,300 L1000,580 Z" fill="#0e1426" opacity="0.92"/>
+          <path d="M520,300 L560,260 L640,260 L680,300 Z" fill="#1a223a"/>
+          <!-- Lava flow -->
+          <path d="M565,260 C570,310 560,360 575,410 C590,460 610,520 600,580 L570,580 C560,520 545,460 555,410 C565,360 555,310 560,260 Z" fill="url(#lavaGrad)"/>
+          <!-- Sparks -->
+          <circle cx="600" cy="210" r="3" fill="#ffb700"/>
+          <circle cx="580" cy="200" r="2" fill="#ffd27a"/>
+          <circle cx="620" cy="195" r="2.5" fill="#ffc04d"/>
+        </svg>
+      </div>
+      <div class="lava"></div>
+      <div class="sparkfield" aria-hidden="true"></div>
+    </section>
+
+    <section class="panel marquee">
+      <div class="container">
+        <div class="belt-track">
+          <div class="belt belt-a">
+            <span><code>.think()</code></span>
+            <span><code>.agent()</code></span>
+            <span><code>.then()</code></span>
+            <span><code>.then()</code></span>
+            <span><code>.then()</code></span>
+            <span><code>.run()</code></span>
+          </div>
+          <div class="belt belt-b">
+            <span><code>.think()</code></span>
+            <span><code>.agent()</code></span>
+            <span><code>.then()</code></span>
+            <span><code>.then()</code></span>
+            <span><code>.then()</code></span>
+            <span><code>.run()</code></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="get-started" class="panel">
+      <div class="container grid two">
+        <div>
+          <h2>Get started (60 seconds)</h2>
+          <p>Drop this in your app and you’re live.</p>
+          <div class="code">
+<pre><code class="language-ts">import { agent, llmOpenAI } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+
+const steps = await agent({ llm })
+  .then({ prompt: "Say hello to Marco in one short sentence." })
+  .run();
+
+console.log(steps[0].llmOutput);
+</code></pre>
+          </div>
+        </div>
+        <div>
+          <h3>Instant value</h3>
+          <ul class="checklist icons">
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m12.5-5.5-2.8 7.4-7.4 2.8 2.8-7.4 7.4-2.8Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              Automatic tool selection across MCP servers
+            </li>
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg>
+              </span>
+              Retries (immediate/delayed/backoff) and timeouts
+            </li>
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/><path d="M12 3l9 6v6l-9 6-9-6V9l9-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+              </span>
+              Typed errors with rich metadata
+            </li>
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h5l2 4 4-8 2 4h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              Per‑step and aggregated latency metrics
+            </li>
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 8h16M6 12h12M8 16h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/></svg>
+              </span>
+              Zero‑copy style context compaction
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="panel alt">
+      <div class="container grid two">
+        <div>
+          <h2>Two‑step MCP demo</h2>
+          <p>The agent finds the astrological sign via an MCP tool, then crafts a one‑line fortune using the previous step’s context.</p>
+          <div class="code">
+<pre><code class="language-ts">import { agent, llmOpenAI, mcp } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const astro = mcp("http://localhost:3211/mcp");
+
+const out = await agent({ llm })
+  .then({
+    prompt: "Determine the astrological sign for 1993-07-11.",
+    mcps: [astro]
+  })
+  .then({ prompt: "Now write a one-line fortune for that sign." })
+  .run();
+
+console.log(out[0].toolCalls);  // which tools were used
+console.log(out[1].llmOutput);   // fortune using step context
+</code></pre>
+          </div>
+        </div>
+        <div class="card facts">
+          <h3>What’s happening</h3>
+          <ul class="facts-list">
+            <li>
+              <span class="dot">1</span>
+              <div>
+                <div class="t">Dynamic tool discovery</div>
+                <div class="s">Volcano fetches available MCP tools and names, caching with TTL for speed.</div>
+              </div>
+            </li>
+            <li>
+              <span class="dot">2</span>
+              <div>
+                <div class="t">Schema‑safe execution</div>
+                <div class="s">Arguments are validated against JSON Schema (Ajv) <em>before</em> the tool runs.</div>
+              </div>
+            </li>
+            <li>
+              <span class="dot">3</span>
+              <div>
+                <div class="t">Step context</div>
+                <div class="s">The second step receives a compact summary of the prior answer + recent tool results.</div>
+              </div>
+            </li>
+            <li>
+              <span class="dot">4</span>
+              <div>
+                <div class="t">Observability built‑in</div>
+                <div class="s">Each step records <strong>llmMs</strong>, <strong>mcp.ms</strong>, and a final run includes totals.</div>
+              </div>
+            </li>
+          </ul>
+          <div class="mini code">
+<pre><code class="language-ts">// Example error (typed)
+{
+  name: 'ValidationError',
+  meta: { stepId: 0, provider: 'mcp:localhost:3211', retryable: false },
+  message: 'arguments failed schema validation: ...'
+}
+
+// A recorded tool call
+{
+  name: 'localhost_3211_mcp.get_sign',
+  endpoint: 'http://localhost:3211/mcp',
+  ms: 12,
+  result: { sign: 'Cancer' }
+}
+</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="panel">
+      <div class="container">
+        <h2>Why developers choose Volcano</h2>
+        <div class="features">
+          <div class="feature">
+            <h3>MCP‑first orchestration</h3>
+            <p>Native MCP client, connection pooling, discovery cache/TTL, and automatic tool selection. Built for real tools, not just chat.</p>
+          </div>
+          <div class="feature">
+            <h3>Production controls</h3>
+            <p>Per‑step timeouts, retries, and non‑retryable aborts. Tunable context caps. Streaming‑ready loops.</p>
+          </div>
+          <div class="feature">
+            <h3>Safety & observability</h3>
+            <p>JSON Schema validation, typed errors with metadata, and first‑class latency metrics (LLM vs MCP).</p>
+          </div>
+          <div class="feature">
+            <h3>Ergonomic pipeline</h3>
+            <p>Fluent `.then()` steps, `resetHistory()`, per‑step overrides (`instructions`, `llm`, `timeout`, `retry`).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel system">
+      <div class="container">
+        <h2>Complete, configurable agent system</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="num">01</div>
+            <h3>Discover</h3>
+            <p>Pull live tools from MCP servers with discovery cache/TTL and safe schemas.</p>
+          </div>
+          <div class="step">
+            <div class="num">02</div>
+            <h3>Plan</h3>
+            <p>Guide behavior via global/step instructions, tunable context limits, and history.</p>
+          </div>
+          <div class="step">
+            <div class="num">03</div>
+            <h3>Execute</h3>
+            <p>Automatic tool selection, per‑step timeouts, retries, and streaming loops.</p>
+          </div>
+          <div class="step">
+            <div class="num">04</div>
+            <h3>Observe</h3>
+            <p>Typed errors with metadata and first‑class latency metrics for LLM/MCP.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel stats alt">
+      <div class="container kpis">
+        <div class="kpi"><div class="v">60s</div><div class="l">to first agent</div></div>
+        <div class="kpi"><div class="v">4</div><div class="l">retry modes</div></div>
+        <div class="kpi"><div class="v">2</div><div class="l">latency streams</div></div>
+        <div class="kpi"><div class="v">∞</div><div class="l">MCP tools</div></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container">
+        <div>🌋 Volcano SDK — Apache 2.0 • <a href="../README.md">Documentation</a></div>
+        <div class="small">© 2025 Volcano. Built with ❤️ for developers.</div>
+      </div>
+    </footer>
+    <script src="script.js"></script>
+  </body>
+  </html>
+
+
