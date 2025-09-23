@@ -296,11 +296,122 @@ type StepResult = {
 };
 ```
 
-## Providers
+## LLM Providers
 
-- OpenAI is provided out of the box (`llmOpenAI`).
-- Providers live under `src/llms/` and are re‑exported from the SDK entry.
-- Add your own provider by returning an `LLMHandle` that supports `gen()`, `genWithTools()`, and (optionally) `genStream()`.
+Providers live under `src/llms/` and are re‑exported from the SDK entry. Each provider returns an `LLMHandle` with:
+
+- `gen(prompt): Promise<string>`
+- `genWithTools(prompt, tools): Promise<{ content?, toolCalls[] }>` (OpenAI only)
+- `genStream(prompt): AsyncGenerator<string>` (OpenAI only)
+
+### OpenAI
+
+- Factory: `llmOpenAI({ apiKey, model?, baseURL? })`
+- Defaults: `model: "gpt-5-mini"`, `baseURL: https://api.openai.com/v1`
+- Supports: `gen`, `genWithTools` (function/tool calling), `genStream`
+
+```ts
+import { agent, llmOpenAI } from "volcano-sdk";
+
+const openai = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: process.env.OPENAI_MODEL || "gpt-5-mini",
+});
+
+// Basic
+const [{ llmOutput }] = await agent({ llm: openai })
+  .then({ prompt: "Say hello in five words." })
+  .run();
+
+// Streaming
+let text = "";
+for await (const chunk of openai.genStream("Reply ONLY with STREAM_OK")) text += chunk;
+
+// Tool calling
+const tools = [{
+  name: "localhost_3211_mcp.get_sign",
+  description: "Lookup astrological sign by birthdate",
+  parameters: { type: "object", properties: { birthdate: { type: "string" } }, required: ["birthdate"] },
+}];
+const toolRes = await openai.genWithTools("Find sign for 1993-07-11", tools);
+```
+
+Environment:
+- `OPENAI_API_KEY` (required)
+- Optional: `OPENAI_MODEL`, `OPENAI_BASE_URL`
+
+### Anthropic (Claude)
+
+- Factory: `llmAnthropic({ apiKey?, client?, model?, baseURL?, version? })`
+- Defaults: `model: "claude-4-sonnet"`, `baseURL: https://api.anthropic.com`, `version: 2023-06-01`
+- Supports: `gen`
+- Notes: The `anthropic-version` request header is required by the API.
+
+```ts
+import { agent, llmAnthropic } from "volcano-sdk";
+
+// Use built-in fetch client
+const claude = llmAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: process.env.ANTHROPIC_MODEL || "claude-3-haiku-20240307",
+});
+
+const [{ llmOutput }] = await agent({ llm: claude })
+  .then({ prompt: "Reply ONLY with ANTHROPIC_OK" })
+  .run();
+```
+
+Environment:
+- `ANTHROPIC_API_KEY` (required for built-in client)
+- Optional: `ANTHROPIC_MODEL`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_VERSION` (defaults to `2023-06-01`)
+
+### Llama (OpenAI‑compatible)
+
+- Factory: `llmLlama({ baseURL?, apiKey?, model?, client? })`
+- Defaults: `baseURL: http://localhost:11434` (Ollama), `model: "llama3-8b-instruct"`
+- Supports: `gen`
+- Notes: Works with OpenAI‑compatible servers (Ollama/OpenRouter/etc.). Tool calling and streaming not yet implemented.
+
+```ts
+import { agent, llmLlama } from "volcano-sdk";
+
+// Local Ollama quickstart
+// $ ollama serve &
+// $ ollama pull llama3.2:3b
+const llama = llmLlama({ baseURL: process.env.LLAMA_BASE_URL || "http://127.0.0.1:11434", model: process.env.LLAMA_MODEL || "llama3.2:3b" });
+
+const [{ llmOutput }] = await agent({ llm: llama })
+  .then({ prompt: "Reply ONLY with LLAMA_OK" })
+  .run();
+```
+
+Environment:
+- Optional: `LLAMA_BASE_URL` (e.g., `http://127.0.0.1:11434`), `LLAMA_MODEL`, `LLAMA_API_KEY` (if your endpoint requires it)
+
+### Mistral (Cloud)
+
+- Factory: `llmMistral({ baseURL?, apiKey?, model?, client? })`
+- Defaults: `baseURL: https://api.mistral.ai`, `model: "mistral-small-latest"`
+- Supports: `gen`
+- Notes: Uses Mistral’s OpenAI‑compatible chat completions endpoint (`/v1/chat/completions`).
+
+```ts
+import { agent, llmMistral } from "volcano-sdk";
+
+const mistral = llmMistral({
+  apiKey: process.env.MISTRAL_API_KEY!,
+  baseURL: process.env.MISTRAL_BASE_URL || "https://api.mistral.ai",
+  model: process.env.MISTRAL_MODEL || "mistral-small-latest"
+});
+
+const [{ llmOutput }] = await agent({ llm: mistral })
+  .then({ prompt: "Reply ONLY with MISTRAL_OK" })
+  .run();
+```
+
+Environment:
+- `MISTRAL_API_KEY` (required)
+- Optional: `MISTRAL_MODEL`, `MISTRAL_BASE_URL`
 
 ## Requirements
 
