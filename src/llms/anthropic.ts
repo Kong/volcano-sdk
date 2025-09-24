@@ -2,7 +2,7 @@ import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 
 type AnthropicLikeClient = {
   messages: {
-    create: (args: { model: string; max_tokens?: number; messages: Array<{ role: "user" | "assistant"; content: string }>; tools?: any[]; tool_choice?: any }) => Promise<any>;
+    create: (args: { model: string; max_tokens?: number; messages: Array<{ role: "user" | "assistant"; content: string }>; tools?: any[]; tool_choice?: any; stream?: boolean }) => Promise<any>;
   };
 };
 
@@ -25,13 +25,16 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
   if (!client && apiKey) {
     client = {
       messages: {
-        create: async ({ model, max_tokens = 512, messages, tools, tool_choice }) => {
+        create: async ({ model, max_tokens = 512, messages, tools, tool_choice, stream }) => {
           const payload: any = { model, max_tokens, messages };
           if (tools && tools.length > 0) {
             payload.tools = tools;
           }
           if (tool_choice) {
             payload.tool_choice = tool_choice;
+          }
+          if (stream) {
+            payload.stream = true;
           }
           
           const res = await fetch(`${baseURL}/v1/messages`, {
@@ -50,6 +53,50 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
             err.body = text;
             throw err;
           }
+          
+          // Handle streaming responses
+          if (stream) {
+            return {
+              body: res.body,
+              [Symbol.asyncIterator]: async function* () {
+                if (!res.body) return;
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                try {
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                      if (line.trim() === '' || line.startsWith(':')) continue;
+                      if (line === 'data: [DONE]') return;
+                      if (line.startsWith('data: ')) {
+                        try {
+                          const jsonData = line.slice(6);
+                          const parsed = JSON.parse(jsonData);
+                          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+                            yield { delta: { text: parsed.delta.text } };
+                          }
+                        } catch {
+                          continue;
+                        }
+                      }
+                    }
+                  }
+                } finally {
+                  reader.releaseLock();
+                }
+              }
+            };
+          }
+          
           return await res.json();
         },
       },
