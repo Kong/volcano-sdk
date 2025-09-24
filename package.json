@@ -39,6 +39,8 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.895.0",
+    "@aws-sdk/credential-providers": "^3.895.0",
     "@modelcontextprotocol/sdk": "^1.18.1",
     "ajv": "^8.17.1",
     "openai": "^5.22.0"

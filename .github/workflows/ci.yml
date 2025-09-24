@@ -115,3 +115,6 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           LLAMA_BASE_URL: http://127.0.0.1:11434
           LLAMA_MODEL: llama3.2:3b
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+          AWS_REGION: us-east-1
+          BEDROCK_MODEL: amazon.nova-micro-v1:0

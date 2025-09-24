@@ -24,12 +24,13 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 
 ## Supported Providers
 
-Volcano SDK supports **4 major LLM providers** with full function calling and MCP integration:
+Volcano SDK supports **5 major LLM providers** with full function calling and MCP integration:
 
 ✅ OpenAI
-✅ Anthropic
+✅ Anthropic  
 ✅ Mistral
 ✅ Llama
+✅ AWS Bedrock
 
 All providers support:
 
@@ -43,6 +44,9 @@ All providers support:
 ```bash
 npm install volcano-sdk
 npm install @modelcontextprotocol/sdk openai
+
+# For AWS Bedrock support (optional)
+npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 ```
 
 ## Quick start (hello world)
@@ -170,12 +174,17 @@ const results = await agent({ llm })
 Multi-provider workflow:
 
 ```ts
-import { agent, llmOpenAI, llmAnthropic, llmMistral, llmLlama, mcp } from "volcano-sdk";
+import { agent, llmOpenAI, llmAnthropic, llmMistral, llmLlama, llmBedrock, mcp } from "volcano-sdk";
 
 const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY! });
 const llama = llmLlama({ baseURL: "http://127.0.0.1:11434" });
+const bedrock = llmBedrock({ 
+  model: "anthropic.claude-sonnet-4-20250514-v1:0",
+  region: "us-east-1", 
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID! 
+});
 
 const astro = mcp("http://localhost:3211/mcp");
 
@@ -183,6 +192,7 @@ await agent()
   .then({ llm: openai, prompt: "Get astrological sign for 1993-07-11", mcps: [astro] })
   .then({ llm: claude, prompt: "Analyze the personality traits of that sign" })
   .then({ llm: mistral, prompt: "Write a creative horoscope in French" })
+  .then({ llm: bedrock, prompt: "Translate to Spanish and add cultural context" })
   .then({ llm: llama, prompt: "Translate back to English" })
   .run();
 ```
@@ -374,7 +384,7 @@ await agent({ llm, instructions: "GLOBAL INSTR" })
 
 ## API (tiny and familiar)
 
-- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`
+- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`
 - **MCP Tools**: `mcp(url) => MCPHandle`
 - **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?) }`
   - Steps:
@@ -409,14 +419,9 @@ Providers live under `src/llms/` and are re‑exported from the SDK entry. Each 
 | **Anthropic** | ✅ Full | ✅ Native (tool_use) | ✅ Native | ✅ Complete |
 | **Mistral** | ✅ Full | ✅ Native | ✅ Native | ✅ Complete |
 | **Llama** | ✅ Full | ✅ Via Ollama | ✅ Native | ✅ Complete |
+| **AWS Bedrock** | ✅ Full | ✅ Native (Converse API) | ✅ Fallback | ✅ Complete |
 
 **All providers support automatic tool selection and multi-step workflows.**
-
-### Provider Notes:
-- **OpenAI**: Industry standard, most reliable for production
-- **Anthropic**: Excellent for analytical and safety-critical tasks
-- **Mistral**: Great for multilingual and European compliance needs
-- **Llama**: Perfect for local/private deployments via Ollama
 
 ### OpenAI
 
@@ -526,6 +531,92 @@ const [{ llmOutput }] = await agent({ llm: mistral })
 Environment:
 - `MISTRAL_API_KEY` (required)
 - Optional: `MISTRAL_MODEL`, `MISTRAL_BASE_URL`
+
+### AWS Bedrock
+
+- Factory: `llmBedrock({ model, region?, accessKeyId?, secretAccessKey?, sessionToken?, profile?, roleArn?, client? })`
+- Defaults: `region: "us-east-1"`
+- **Required**: `model` (choose from available Bedrock models)
+- Supports: `gen`, `genWithTools` (Converse API), `genStream` (fallback)
+- Notes: Uses AWS Bedrock's Converse API with native tool use support.
+
+**Authentication methods (in priority order):**
+
+1. **Explicit credentials** (highest priority):
+```ts
+const bedrock = llmBedrock({
+  region: 'us-east-1',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  sessionToken: process.env.AWS_SESSION_TOKEN, // optional for temporary credentials
+});
+```
+
+2. **Bearer token authentication**:
+```ts
+const bedrock = llmBedrock({
+  region: 'us-east-1',
+  bearerToken: process.env.AWS_BEARER_TOKEN_BEDROCK!,
+});
+```
+
+3. **AWS profile**:
+```ts
+const bedrock = llmBedrock({
+  region: 'us-east-1',
+  profile: 'my-aws-profile', // Uses ~/.aws/credentials
+});
+```
+
+4. **IAM role assumption**:
+```ts
+const bedrock = llmBedrock({
+  region: 'us-east-1',
+  roleArn: 'arn:aws:iam::123456789012:role/my-bedrock-role',
+});
+```
+
+5. **AWS credential chain** (default):
+```ts
+const bedrock = llmBedrock({
+  model: 'anthropic.claude-3-sonnet-20240229-v1:0', // model is required
+  region: 'us-east-1'
+  // Automatically uses: environment variables, instance profiles, 
+  // ECS task roles, EKS service accounts, etc.
+});
+```
+
+**Usage example:**
+```ts
+import { agent, llmBedrock } from "volcano-sdk";
+
+const bedrock = llmBedrock({
+  model: 'anthropic.claude-3-sonnet-20240229-v1:0', // Required
+  region: process.env.AWS_REGION || 'us-east-1',
+  // Uses AWS credential chain by default
+});
+
+const [{ llmOutput }] = await agent({ llm: bedrock })
+  .then({ prompt: "Reply ONLY with BEDROCK_OK" })
+  .run();
+```
+
+**Available model families:**
+- **Claude**: `anthropic.claude-3-sonnet-20240229-v1:0`, `anthropic.claude-3-haiku-20240307-v1:0`
+- **Titan**: `amazon.titan-text-express-v1`, `amazon.titan-text-lite-v1`
+- **Llama**: `meta.llama3-8b-instruct-v1:0`, `meta.llama3-70b-instruct-v1:0`
+- **Cohere**: `cohere.command-text-v14`, `cohere.command-light-text-v14`
+
+**Dependencies:**
+```bash
+npm install @aws-sdk/client-bedrock-runtime
+npm install @aws-sdk/credential-providers  # for profiles and roles
+```
+
+**Environment variables:**
+- Optional: `AWS_REGION`, `AWS_PROFILE`, `BEDROCK_MODEL`
+- For explicit auth: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`
+- For bearer token auth: `AWS_BEARER_TOKEN_BEDROCK`
 
 ## Requirements
 

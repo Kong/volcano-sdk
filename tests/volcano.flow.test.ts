@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
-import { agent, mcp, llmOpenAI, llmAnthropic, llmMistral, llmLlama } from '../dist/volcano-sdk.js';
+import { agent, mcp, llmOpenAI, llmAnthropic, llmMistral, llmLlama, llmBedrock } from '../dist/volcano-sdk.js';
 
 function waitForOutput(proc: any, match: RegExp, timeoutMs = 15000) {
   return new Promise<void>((resolve, reject) => {
@@ -81,6 +81,26 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
       make: () => {
         return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.2:3b' });
       },
+    },
+    {
+      name: 'Bedrock',
+      make: () => {
+        if (!process.env.AWS_BEARER_TOKEN_BEDROCK && (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY)) {
+          throw new Error('AWS_BEARER_TOKEN_BEDROCK or (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY) are required for this test');
+        }
+        return llmBedrock({ 
+          region: process.env.AWS_REGION || 'us-east-1',
+          ...(process.env.AWS_BEARER_TOKEN_BEDROCK ? {
+            bearerToken: process.env.AWS_BEARER_TOKEN_BEDROCK
+          } : {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            sessionToken: process.env.AWS_SESSION_TOKEN,
+          }),
+          model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0'
+        });
+      },
+      requireEnv: ['AWS_BEARER_TOKEN_BEDROCK'],
     },
   ];
 
