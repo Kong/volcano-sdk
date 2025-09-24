@@ -6,6 +6,7 @@ export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
 export { llmBedrock } from "./llms/bedrock.js";
+export { llmVertexStudio } from "./llms/vertex-studio.js";
 import type { LLMConfig, LLMHandle, ToolDefinition, LLMToolResult } from "./llms/types.js";
 import Ajv from "ajv";
 
@@ -570,6 +571,215 @@ export function agent(opts?: AgentOptions) {
           last.totalMcpMs = totalMcp;
         }
         return out;
+      } finally {
+        isRunning = false;
+      }
+    },
+    async *stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown> {
+      if (isRunning) {
+        throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
+      }
+      isRunning = true;
+      try {
+        const out: StepResult[] = [];
+        // snapshot steps array to make run isolated from later .then() calls
+        const planned = [...steps];
+        for (const raw of planned) {
+          if ((raw as any).__reset) { contextHistory = []; continue; }
+          const s = typeof raw === 'function' ? (raw as StepFactory)(out) : (raw as Step);
+          const stepTimeoutMs = (s as any).timeout != null ? (s as any).timeout * 1000 : defaultTimeoutMs; // seconds -> ms
+          const retryCfg: RetryConfig = (s as any).retry ?? defaultRetry;
+          const attemptsTotal = typeof retryCfg.retries === 'number' && retryCfg.retries! > 0 ? retryCfg.retries! : (defaultRetry.retries ?? 3);
+          const useDelay = typeof retryCfg.delay === 'number' ? retryCfg.delay! : (defaultRetry.delay ?? 0);
+          const useBackoff = retryCfg.backoff;
+          if (useDelay && useBackoff) throw new Error('retry: specify either delay or backoff, not both');
+  
+          const doStep = async (): Promise<StepResult> => {
+            // Execute pre-step hook
+            if ((s as any).pre) {
+              try {
+                (s as any).pre();
+              } catch (e) {
+                console.warn('Pre-step hook failed:', e);
+              }
+            }
+            
+            const r: StepResult = {};
+            const stepStart = Date.now();
+            let llmTotalMs = 0;
+            
+            // Automatic tool selection with iterative tool calls
+            if ("mcps" in s && "prompt" in s) {
+              const usedLlm = (s as any).llm ?? defaultLlm;
+              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+              const stepInstructions = (s as any).instructions ?? globalInstructions;
+              const cmr = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+              const cmc = (s as any).contextMaxChars ?? contextMaxChars;
+              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
+              r.prompt = (s as any).prompt;
+              const availableTools = await discoverTools((s as any).mcps);
+              if (availableTools.length === 0) {
+                r.llmOutput = "No tools available for this request.";
+              } else {
+                const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
+                const maxIterations = 4;
+                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
+                for (let i = 0; i < maxIterations; i++) {
+                  const llmStart = Date.now();
+                  let toolPlan: LLMToolResult;
+                  try {
+                    toolPlan = await usedLlm.genWithTools(workingPrompt, availableTools);
+                  } catch (e) {
+                    const provider = classifyProviderFromLlm(usedLlm);
+                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
+                  }
+                  llmTotalMs += Date.now() - llmStart;
+                  if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
+                    // finish with final content
+                    r.llmOutput = toolPlan?.content || r.llmOutput;
+                    break;
+                  }
+                  // Execute tools sequentially and append results to prompt for the next iteration
+                  let toolResultsAppend = "\n\n[Tool results]\n";
+                  for (const call of toolPlan.toolCalls) {
+                    const mapped = call;
+                    const handle = mapped?.mcpHandle;
+                    if (!handle) continue;
+                    // Validate args when schema known
+                    try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
+                    const idx = mapped.name.indexOf('.');
+                    const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
+                    const mcpStart = Date.now();
+                    let result: any;
+                    try {
+                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }));
+                    } catch (e) {
+                      const provider = classifyProviderFromMcp(handle);
+                      throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
+                    }
+                    const mcpMs = Date.now() - mcpStart;
+                    aggregated.push({ name: mapped.name, endpoint: handle.url, result, ms: mcpMs });
+                    toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
+                  }
+                  if (aggregated.length) r.toolCalls = aggregated;
+                  // Prepare next prompt with appended tool results
+                  workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + toolResultsAppend;
+                  // On next iteration, model can produce final answer or ask for more tools
+                }
+                // Ensure toolCalls is always set for automatic tool selection steps
+                if (!r.toolCalls) r.toolCalls = [];
+              }
+            }
+            // LLM-only steps
+            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s)) {
+              const usedLlm = (s as any).llm ?? defaultLlm;
+              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+              const stepInstructions = (s as any).instructions ?? globalInstructions;
+              const cmr2 = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+              const cmc2 = (s as any).contextMaxChars ?? contextMaxChars;
+              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr2, cmc2);
+              const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
+              r.prompt = (s as any).prompt;
+              const llmStart = Date.now();
+              try {
+                r.llmOutput = await usedLlm.gen(finalPrompt);
+              } catch (e) {
+                const provider = classifyProviderFromLlm(usedLlm);
+                throw normalizeError(e, 'llm', { stepId: out.length, provider });
+              }
+              llmTotalMs += Date.now() - llmStart;
+            }
+            // Explicit MCP tool calls (existing behavior)
+            else if ("mcp" in s && "tool" in s) {
+              if ("prompt" in s) {
+                const usedLlm = (s as any).llm ?? defaultLlm;
+                if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+                const stepInstructions = (s as any).instructions ?? globalInstructions;
+                const cmr3 = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+                const cmc3 = (s as any).contextMaxChars ?? contextMaxChars;
+                const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr3, cmc3);
+                const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
+                r.prompt = (s as any).prompt;
+                const llmStart = Date.now();
+                r.llmOutput = await usedLlm.gen(finalPrompt);
+                llmTotalMs += Date.now() - llmStart;
+              }
+              // Validate against tool schema if discoverable
+              const schema = await getToolSchema((s as any).mcp, (s as any).tool);
+              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${(s as any).mcp.id}.${(s as any).tool}`);
+              const mcpStart = Date.now();
+              let res: any;
+              try {
+                res = await withMCP((s as any).mcp, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+              } catch (e) {
+                const provider = classifyProviderFromMcp((s as any).mcp);
+                throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
+              }
+              const mcpMs = Date.now() - mcpStart;
+              r.mcp = { endpoint: (s as any).mcp.url, tool: (s as any).tool, result: res, ms: mcpMs };
+            }
+  
+            r.llmMs = llmTotalMs;
+            r.durationMs = Date.now() - stepStart;
+            
+            // Execute post-step hook
+            if ((s as any).post) {
+              try {
+                (s as any).post();
+              } catch (e) {
+                console.warn('Post-step hook failed:', e);
+              }
+            }
+            
+            return r;
+          };
+  
+          // Retry loop with per-attempt timeout
+          let lastError: any;
+          let result: StepResult | undefined;
+          for (let attempt = 1; attempt <= attemptsTotal; attempt++) {
+          try {
+            const r = await withTimeout(doStep(), stepTimeoutMs, 'Step');
+            result = r;
+            break;
+          } catch (e) {
+            // classify
+            const meta = { stepId: out.length } as VolcanoErrorMeta;
+            let vErr: VolcanoError | undefined;
+            if (e instanceof Error && /timed out/i.test(e.message)) {
+              vErr = normalizeError(e, 'timeout', meta);
+            } else if (e instanceof ValidationError || /failed schema validation/i.test(String((e as any)?.message || ''))) {
+              vErr = normalizeError(e, 'validation', meta);
+            } else {
+              vErr = e as VolcanoError;
+            }
+            lastError = vErr || e;
+            if (lastError instanceof VolcanoError && lastError.meta?.retryable === false) {
+              throw lastError; // abort retries immediately for non-retryable errors
+            }
+              if (attempt >= attemptsTotal) break;
+              // schedule wait according to policy
+              if (typeof useBackoff === 'number' && useBackoff > 0) {
+                const baseMs = 1000; // start at 1s
+                const waitMs = baseMs * Math.pow(useBackoff, attempt - 1);
+                await sleep(waitMs);
+              } else {
+                const waitMs = Math.max(0, (useDelay ?? 0) * 1000);
+                if (waitMs > 0) await sleep(waitMs);
+              }
+            }
+          }
+        if (!result) throw (lastError instanceof VolcanoError ? lastError : new RetryExhaustedError('Retry attempts exhausted', { stepId: out.length }, { cause: lastError }));
+  
+          const r = result;
+          log?.(r, out.length);
+          out.push(r);
+          contextHistory.push(r);
+          
+          // Yield the step result for streaming
+          yield r;
+        }
+        // Note: We don't populate aggregated totals for streaming since it's incremental
       } finally {
         isRunning = false;
       }

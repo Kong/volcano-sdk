@@ -118,3 +118,5 @@ jobs:
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           AWS_REGION: us-east-1
           BEDROCK_MODEL: amazon.nova-micro-v1:0
+          GCP_VERTEX_API_KEY: ${{ secrets.GCP_VERTEX_API_KEY }}
+          VERTEX_MODEL: gemini-2.5-flash-lite

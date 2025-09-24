@@ -178,8 +178,38 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       };
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
-      // Bedrock supports streaming via the converseStream API
-      // For now, fallback to non-streaming
+      try {
+        const bedrockModule = await import('@aws-sdk/client-bedrock-runtime' as any);
+        const { ConverseStreamCommand } = bedrockModule;
+        
+        const command = new ConverseStreamCommand({
+          modelId: model,
+          messages: [{ role: "user", content: [{ text: prompt }] }],
+          inferenceConfig: { maxTokens: 256 },
+        });
+        
+        const response = await client!.send(command);
+        
+        // Handle Bedrock streaming response
+        if (response.stream) {
+          for await (const chunk of response.stream) {
+            if (chunk.contentBlockDelta?.delta?.text) {
+              yield chunk.contentBlockDelta.delta.text;
+            }
+          }
+          return;
+        }
+      } catch (error: any) {
+        // If ConverseStreamCommand not available or fails, use regular generation
+        if (error.code === 'ERR_MODULE_NOT_FOUND' || error.name === 'TypeError') {
+          const full = await this.gen(prompt);
+          if (full) yield full;
+          return;
+        }
+        throw error;
+      }
+      
+      // If no stream available
       const full = await this.gen(prompt);
       if (full) yield full;
     },
