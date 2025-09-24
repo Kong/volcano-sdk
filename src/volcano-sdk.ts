@@ -5,6 +5,7 @@ import { llmOpenAI as llmOpenAIProvider } from "./llms/openai.js";
 export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
+export { llmBedrock } from "./llms/bedrock.js";
 import type { LLMConfig, LLMHandle, ToolDefinition, LLMToolResult } from "./llms/types.js";
 import Ajv from "ajv";
 
