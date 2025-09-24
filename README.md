@@ -18,6 +18,7 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 - [Errors & Diagnostics](#errors--diagnostics)
 - [Examples](#examples-youll-want-to-try)
 - [Step Hooks](#step-hooks-prepost-execution)
+- [Streaming Workflows](#streaming-workflows)
 - [Timeouts](#timeouts)
 - [Retries](#retries)
 - [Requirements](#requirements)
@@ -32,13 +33,6 @@ Volcano SDK supports **6 major LLM providers** with full function calling and MC
 ✅ Llama
 ✅ AWS Bedrock
 ✅ Google Vertex Studio
-
-All providers support:
-
-- Automatic tool selection
-- Multi-step workflows with context
-- Schema validation
-- Retries and error handling
 
 ## Install
 
@@ -369,6 +363,89 @@ await agent({ llm })
 - Hooks execute on **every retry attempt** (pre) or **only on success** (post)
 - Hooks have access to **closure variables** for state management
 
+## Streaming workflows
+
+Stream step results in real-time as they complete using the `stream()` method:
+
+```ts
+// Real-time step streaming
+for await (const stepResult of agent({ llm })
+  .then({ prompt: "Analyze user data", mcps: [analytics] })
+  .then({ prompt: "Generate insights" })
+  .then({ prompt: "Create recommendations" })
+  .stream()) {
+  
+  console.log(`Step completed: ${stepResult.prompt}`);
+  if (stepResult.toolCalls) {
+    console.log(`Tools used: ${stepResult.toolCalls.map(t => t.name).join(', ')}`);
+  }
+  if (stepResult.llmOutput) {
+    console.log(`Result: ${stepResult.llmOutput}`);
+  }
+  console.log(`Duration: ${stepResult.durationMs}ms`);
+}
+```
+
+**Streaming with progress tracking:**
+
+```ts
+let completedSteps = 0;
+const totalSteps = 3;
+
+for await (const stepResult of workflow.stream((step, stepIndex) => {
+  completedSteps++;
+  console.log(`Progress: ${completedSteps}/${totalSteps} - Step ${stepIndex + 1} done`);
+})) {
+  // Update UI with step result
+  updateProgressBar(completedSteps / totalSteps);
+  displayStepResult(stepResult);
+}
+```
+
+### Getting Started with Streaming
+
+The `stream()` method provides **real-time step results** as your workflow executes, making it perfect for interactive applications where users need immediate feedback. Unlike `run()` which waits for all steps to complete before returning results, `stream()` yields each step result as soon as it finishes.
+
+**Quick start:**
+```ts
+// Instead of waiting for everything:
+const results = await agent({ llm }).then({...}).then({...}).run();
+
+// Get results in real-time:
+for await (const stepResult of agent({ llm }).then({...}).then({...}).stream()) {
+  console.log(`Step complete: ${stepResult.llmOutput}`);
+  updateProgressBar(); // Update UI immediately
+}
+```
+
+**When to use `stream()` vs `run()`:**
+
+**Choose `stream()` for:**
+- **Interactive applications** where users need live progress updates
+- **Long-running workflows** (>5 seconds) where feedback improves UX
+- **Real-time dashboards** that display results as they arrive
+- **Memory-sensitive environments** where you can process and discard results immediately
+- **WebSocket/SSE applications** streaming results to clients
+- **Early termination scenarios** where you might stop on certain conditions
+
+**Choose `run()` for:**
+- **Batch processing** where you need the complete result set
+- **Simple scripts** that can wait for full completion
+- **Analysis workflows** where you need aggregated metrics (total timing, cost calculations)
+- **APIs returning complete responses** to end users
+- **Testing and debugging** where you want to inspect all steps together
+
+**Performance difference:** With `stream()`, your first result is available **immediately** when the first step completes, rather than waiting for the entire workflow. In practice, this means users see progress in real-time instead of staring at loading spinners.
+
+**Streaming characteristics:**
+- Steps are **yielded immediately** as they complete
+- **Same execution logic** as `run()` (retries, timeouts, validation, hooks)
+- **Same concurrency rules** - one execution per agent instance
+- **Log callbacks work** identically to `run()`
+- **Pre/post hooks execute** normally for each step
+- **Error handling** stops the stream on first failure
+- **Memory efficient** - results can be processed and released incrementally
+
 ### Instructions (agent behavior)
 
 - Pass `{ instructions }` in `agent({ ... })` to set global system‑level guidance for the agent. It’s injected before history and the user prompt.
@@ -392,7 +469,7 @@ await agent({ llm, instructions: "GLOBAL INSTR" })
 
 - **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`, `llmVertexStudio()`
 - **MCP Tools**: `mcp(url) => MCPHandle`
-- **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?) }`
+- **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?), stream(log?) }`
   - Steps:
     - `{ prompt, llm?, instructions?, timeout?, retry? }` (LLM only)
     - `{ mcp, tool, args?, timeout?, retry? }` (MCP tool only)
