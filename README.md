@@ -28,7 +28,7 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 Volcano SDK supports **6 major LLM providers** with full function calling and MCP integration:
 
 ✅ OpenAI
-✅ Anthropic  
+✅ Anthropic
 ✅ Mistral
 ✅ Llama
 ✅ AWS Bedrock
