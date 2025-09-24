@@ -24,13 +24,14 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 
 ## Supported Providers
 
-Volcano SDK supports **5 major LLM providers** with full function calling and MCP integration:
+Volcano SDK supports **6 major LLM providers** with full function calling and MCP integration:
 
 ✅ OpenAI
 ✅ Anthropic  
 ✅ Mistral
 ✅ Llama
 ✅ AWS Bedrock
+✅ Google Vertex Studio
 
 All providers support:
 
@@ -185,6 +186,10 @@ const bedrock = llmBedrock({
   region: "us-east-1", 
   accessKeyId: process.env.AWS_ACCESS_KEY_ID! 
 });
+const vertex = llmVertexStudio({ 
+  model: "gemini-2.5-flash-lite",
+  apiKey: process.env.GCP_VERTEX_API_KEY! 
+});
 
 const astro = mcp("http://localhost:3211/mcp");
 
@@ -193,6 +198,7 @@ await agent()
   .then({ llm: claude, prompt: "Analyze the personality traits of that sign" })
   .then({ llm: mistral, prompt: "Write a creative horoscope in French" })
   .then({ llm: bedrock, prompt: "Translate to Spanish and add cultural context" })
+  .then({ llm: vertex, prompt: "Analyze the cultural accuracy" })
   .then({ llm: llama, prompt: "Translate back to English" })
   .run();
 ```
@@ -384,7 +390,7 @@ await agent({ llm, instructions: "GLOBAL INSTR" })
 
 ## API (tiny and familiar)
 
-- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`
+- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`, `llmVertexStudio()`
 - **MCP Tools**: `mcp(url) => MCPHandle`
 - **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?) }`
   - Steps:
@@ -420,6 +426,7 @@ Providers live under `src/llms/` and are re‑exported from the SDK entry. Each 
 | **Mistral** | ✅ Full | ✅ Native | ✅ Native | ✅ Complete |
 | **Llama** | ✅ Full | ✅ Via Ollama | ✅ Native | ✅ Complete |
 | **AWS Bedrock** | ✅ Full | ✅ Native (Converse API) | ✅ Fallback | ✅ Complete |
+| **Google Vertex Studio** | ✅ Full | ✅ Native (Function calling) | ✅ Fallback | ✅ Complete |
 
 **All providers support automatic tool selection and multi-step workflows.**
 
@@ -617,6 +624,40 @@ npm install @aws-sdk/credential-providers  # for profiles and roles
 - Optional: `AWS_REGION`, `AWS_PROFILE`, `BEDROCK_MODEL`
 - For explicit auth: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`
 - For bearer token auth: `AWS_BEARER_TOKEN_BEDROCK`
+
+### Google Vertex Studio (AI Studio)
+
+- Factory: `llmVertexStudio({ model, apiKey, baseURL?, client? })`
+- Defaults: `baseURL: "https://aiplatform.googleapis.com/v1"`
+- **Required**: `model` (Gemini models), `apiKey` (Google AI Studio API key)
+- Supports: `gen`, `genWithTools` (function calling), `genStream` (fallback)
+- Notes: Uses Google AI Studio API with simple API key authentication.
+
+```ts
+import { agent, llmVertexStudio } from "volcano-sdk";
+
+const vertex = llmVertexStudio({
+  model: 'gemini-2.5-flash-lite',
+  apiKey: process.env.GCP_VERTEX_API_KEY!,
+});
+
+const [{ llmOutput }] = await agent({ llm: vertex })
+  .then({ prompt: "Reply ONLY with VERTEX_OK" })
+  .run();
+```
+
+**Available models:**
+- **Gemini 1.5**: `gemini-1.5-pro`, `gemini-1.5-flash`
+- **Gemini 2.5**: `gemini-2.5-flash-lite` (recommended for most use cases)
+
+**Function calling limitations:**
+- ✅ Supports function calling with single tools
+- ❌ Multiple tools per call only supported for search tools
+- 💡 Use multi-step workflows for complex tool orchestration
+
+**Environment variables:**
+- `GCP_VERTEX_API_KEY` (required)
+- Optional: `VERTEX_MODEL`
 
 ## Requirements
 

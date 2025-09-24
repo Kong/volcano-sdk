@@ -6,6 +6,7 @@ export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
 export { llmBedrock } from "./llms/bedrock.js";
+export { llmVertexStudio } from "./llms/vertex-studio.js";
 import type { LLMConfig, LLMHandle, ToolDefinition, LLMToolResult } from "./llms/types.js";
 import Ajv from "ajv";
 
