@@ -168,9 +168,9 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
         }
         return;
       }
-      // Fallback to single-shot if streaming not available
-      const text = await this.gen(prompt);
-      if (text) yield text;
+      
+      // If no async iterator, the streaming is not properly configured
+      throw new Error('Anthropic streaming not available - check client configuration');
     },
   };
 }

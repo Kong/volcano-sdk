@@ -135,10 +135,110 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
       };
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
-      // For now, use fallback to non-streaming since Google's streaming format needs more investigation
-      // TODO: Implement proper streaming parsing for Google's JSONL format
-      const full = await this.gen(prompt);
-      if (full) yield full;
+      // Use Google's streaming endpoint
+      const endpoint = `${baseURL}/publishers/google/models/${model}:streamGenerateContent?key=${cfg.apiKey}`;
+      
+      const params = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          maxOutputTokens: 256,
+        },
+      };
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Vertex Studio streaming failed: ${response.status}`);
+      }
+
+      // Google streams as array of JSON objects with incremental parsing
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Try to extract complete JSON objects from buffer
+            while (true) {
+              // Find the start of a JSON object
+              const startIdx = buffer.indexOf('{');
+              if (startIdx === -1) break;
+              
+              // Find the matching closing brace
+              let braceCount = 0;
+              let inString = false;
+              let escapeNext = false;
+              let endIdx = -1;
+              
+              for (let i = startIdx; i < buffer.length; i++) {
+                const char = buffer[i];
+                
+                if (!inString) {
+                  if (char === '{') braceCount++;
+                  else if (char === '}') {
+                    braceCount--;
+                    if (braceCount === 0) {
+                      endIdx = i;
+                      break;
+                    }
+                  }
+                  else if (char === '"') inString = true;
+                } else {
+                  if (escapeNext) {
+                    escapeNext = false;
+                  } else if (char === '\\') {
+                    escapeNext = true;
+                  } else if (char === '"') {
+                    inString = false;
+                  }
+                }
+              }
+              
+              if (endIdx === -1) break; // Incomplete JSON object
+              
+              // Extract complete JSON object
+              const jsonStr = buffer.slice(startIdx, endIdx + 1);
+              buffer = buffer.slice(endIdx + 1);
+              
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const candidates = parsed?.candidates || [];
+                const parts = candidates[0]?.content?.parts || [];
+                const text = parts.find((p: any) => p?.text)?.text;
+                if (typeof text === 'string' && text.length > 0) {
+                  yield text;
+                }
+              } catch {
+                continue;
+              }
+            }
+          }
+          
+        } finally {
+          reader.releaseLock();
+        }
+        return;
+      }
+      
+      // If no body, something went wrong
+      throw new Error('No response body received from Vertex Studio streaming endpoint');
     },
   };
 }

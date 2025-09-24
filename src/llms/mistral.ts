@@ -146,9 +146,8 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
         return;
       }
       
-      // Fallback to non-streaming if streaming not available
-      const full = await this.gen(prompt);
-      if (full) yield full;
+      // If no response body, something went wrong
+      throw new Error('No response body received from Mistral streaming endpoint');
     },
   };
 }

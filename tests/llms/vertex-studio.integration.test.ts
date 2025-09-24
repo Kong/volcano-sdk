@@ -70,7 +70,7 @@ describe('Vertex Studio provider (integration)', () => {
     expect(result.toolCalls[0].arguments).toHaveProperty('b');
   }, 30000);
 
-  it('supports streaming fallback', async () => {
+  it('supports native streaming', async () => {
     if (!process.env.GCP_VERTEX_API_KEY) {
       throw new Error('GCP_VERTEX_API_KEY is required for this test');
     }
@@ -80,9 +80,9 @@ describe('Vertex Studio provider (integration)', () => {
       model: 'gemini-2.5-flash-lite'
     });
     
-    const prompt = 'Reply ONLY with VERTEX_STREAM_OK';
+    const prompt = 'Count from 1 to 3, saying each number separately';
     
-    // Test that streaming at least returns something (may fallback to non-streaming)
+    // Test native streaming
     let streamed = '';
     let chunkCount = 0;
     for await (const chunk of llm.genStream(prompt)) {
@@ -90,9 +90,10 @@ describe('Vertex Studio provider (integration)', () => {
       chunkCount++;
     }
     
-    // Verify streaming produces output (even if via fallback)
+    // Verify streaming produces output with multiple chunks
     expect(streamed.length).toBeGreaterThan(0);
+    expect(chunkCount).toBeGreaterThanOrEqual(1);
     expect(typeof streamed).toBe('string');
-    console.log(`Streaming produced ${chunkCount} chunks: "${streamed.substring(0, 50)}..."`);
+    console.log(`Native streaming: ${chunkCount} chunks, content: "${streamed}"`);
   }, 30000);
 });

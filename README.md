@@ -425,8 +425,8 @@ Providers live under `src/llms/` and are re‑exported from the SDK entry. Each 
 | **Anthropic** | ✅ Full | ✅ Native (tool_use) | ✅ Native | ✅ Complete |
 | **Mistral** | ✅ Full | ✅ Native | ✅ Native | ✅ Complete |
 | **Llama** | ✅ Full | ✅ Via Ollama | ✅ Native | ✅ Complete |
-| **AWS Bedrock** | ✅ Full | ✅ Native (Converse API) | ✅ Fallback | ✅ Complete |
-| **Google Vertex Studio** | ✅ Full | ✅ Native (Function calling) | ✅ Fallback | ✅ Complete |
+| **AWS Bedrock** | ✅ Full | ✅ Native (Converse API) | ✅ Native | ✅ Complete |
+| **Google Vertex Studio** | ✅ Full | ✅ Native (Function calling) | ✅ Native | ✅ Complete |
 
 **All providers support automatic tool selection and multi-step workflows.**
 
@@ -630,7 +630,7 @@ npm install @aws-sdk/credential-providers  # for profiles and roles
 - Factory: `llmVertexStudio({ model, apiKey, baseURL?, client? })`
 - Defaults: `baseURL: "https://aiplatform.googleapis.com/v1"`
 - **Required**: `model` (Gemini models), `apiKey` (Google AI Studio API key)
-- Supports: `gen`, `genWithTools` (function calling), `genStream` (fallback)
+- Supports: `gen`, `genWithTools` (function calling), `genStream` (native)
 - Notes: Uses Google AI Studio API with simple API key authentication.
 
 ```ts
