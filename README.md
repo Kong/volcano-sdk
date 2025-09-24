@@ -17,6 +17,7 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 - [Concurrency & Performance](#concurrency--performance)
 - [Errors & Diagnostics](#errors--diagnostics)
 - [Examples](#examples-youll-want-to-try)
+- [Step Hooks](#step-hooks-prepost-execution)
 - [Timeouts](#timeouts)
 - [Retries](#retries)
 - [Requirements](#requirements)
@@ -317,6 +318,40 @@ await agent({ llm })
   .then({ prompt: "Second question (fresh)" })
   .run();
 ```
+
+## Step hooks (pre/post execution)
+
+Add `pre` and `post` hooks to any step for fine-grained control over execution flow:
+
+```ts
+await agent({ llm })
+  .then({
+    prompt: "Analyze the user data",
+    mcps: [analytics],
+    pre: () => { console.log("Starting analysis..."); },
+    post: () => { console.log("Analysis complete!"); }
+  })
+  .then({
+    prompt: "Generate report",
+    pre: () => { startTimer(); },
+    post: () => { endTimer(); saveMetrics(); }
+  })
+  .run((step, stepIndex) => {
+    console.log(`Step ${stepIndex + 1} finished`);
+  });
+```
+
+**Hook execution order:**
+1. `pre()` hook (before step execution)
+2. Step execution (LLM/MCP calls)
+3. `post()` hook (after step completion)
+4. `run()` callback (with step result and index)
+
+**Hook characteristics:**
+- Hooks are **synchronous functions** (`() => void`)
+- Hook errors are **caught and logged** but don't fail the step
+- Hooks execute on **every retry attempt** (pre) or **only on success** (post)
+- Hooks have access to **closure variables** for state management
 
 ### Instructions (agent behavior)
 

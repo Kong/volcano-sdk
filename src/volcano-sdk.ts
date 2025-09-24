@@ -272,10 +272,10 @@ export type RetryConfig = {
 };
 
 export type Step =
-  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number }
-  | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number }
-  | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number }
-  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number };
+  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
   prompt?: string;
@@ -352,7 +352,7 @@ export function agent(opts?: AgentOptions) {
   return {
     resetHistory() { steps.push({ __reset: true }); return this; },
     then(s: Step | StepFactory) { steps.push(s); return this; },
-    async run(log?: (s: StepResult) => void): Promise<StepResult[]> {
+    async run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]> {
       if (isRunning) {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
@@ -372,6 +372,15 @@ export function agent(opts?: AgentOptions) {
           if (useDelay && useBackoff) throw new Error('retry: specify either delay or backoff, not both');
   
           const doStep = async (): Promise<StepResult> => {
+            // Execute pre-step hook
+            if ((s as any).pre) {
+              try {
+                (s as any).pre();
+              } catch (e) {
+                console.warn('Pre-step hook failed:', e);
+              }
+            }
+            
             const r: StepResult = {};
             const stepStart = Date.now();
             let llmTotalMs = 0;
@@ -489,6 +498,16 @@ export function agent(opts?: AgentOptions) {
   
             r.llmMs = llmTotalMs;
             r.durationMs = Date.now() - stepStart;
+            
+            // Execute post-step hook
+            if ((s as any).post) {
+              try {
+                (s as any).post();
+              } catch (e) {
+                console.warn('Post-step hook failed:', e);
+              }
+            }
+            
             return r;
           };
   
@@ -530,7 +549,7 @@ export function agent(opts?: AgentOptions) {
         if (!result) throw (lastError instanceof VolcanoError ? lastError : new RetryExhaustedError('Retry attempts exhausted', { stepId: out.length }, { cause: lastError }));
   
           const r = result;
-          log?.(r);
+          log?.(r, out.length);
           out.push(r);
           contextHistory.push(r);
         }
