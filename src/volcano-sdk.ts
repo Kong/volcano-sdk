@@ -7,6 +7,7 @@ export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
 export { llmBedrock } from "./llms/bedrock.js";
 export { llmVertexStudio } from "./llms/vertex-studio.js";
+export { llmAzure } from "./llms/azure.js";
 import type { LLMConfig, LLMHandle, ToolDefinition, LLMToolResult } from "./llms/types.js";
 import Ajv from "ajv";
 

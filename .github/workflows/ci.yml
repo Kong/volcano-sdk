@@ -120,3 +120,6 @@ jobs:
           BEDROCK_MODEL: amazon.nova-micro-v1:0
           GCP_VERTEX_API_KEY: ${{ secrets.GCP_VERTEX_API_KEY }}
           VERTEX_MODEL: gemini-2.5-flash-lite
+          AZURE_AI_API_KEY: ${{ secrets.AZURE_AI_API_KEY }}
+          AZURE_AI_ENDPOINT: https://volcano-sdk.openai.azure.com/openai/responses
+          AZURE_AI_MODEL: gpt-5-mini

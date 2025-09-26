@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
-import { agent, mcp, llmOpenAI, llmAnthropic, llmMistral, llmLlama, llmBedrock, llmVertexStudio } from '../dist/volcano-sdk.js';
+import { agent, mcp, llmOpenAI, llmAnthropic, llmMistral, llmLlama, llmBedrock, llmVertexStudio, llmAzure } from '../dist/volcano-sdk.js';
 
 function waitForOutput(proc: any, match: RegExp, timeoutMs = 15000) {
   return new Promise<void>((resolve, reject) => {
@@ -114,6 +114,21 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
         });
       },
       requireEnv: ['GCP_VERTEX_API_KEY'],
+    },
+    {
+      name: 'Azure',
+      make: () => {
+        if (!process.env.AZURE_AI_API_KEY) {
+          throw new Error('AZURE_AI_API_KEY is required for this test');
+        }
+        return llmAzure({ 
+          model: 'gpt-5-mini',
+          endpoint: 'https://volcano-sdk.openai.azure.com/openai/responses',
+          apiKey: process.env.AZURE_AI_API_KEY!,
+          apiVersion: '2025-04-01-preview'
+        });
+      },
+      requireEnv: ['AZURE_AI_API_KEY'],
     },
   ];
 

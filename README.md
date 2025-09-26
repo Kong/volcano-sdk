@@ -25,14 +25,15 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 
 ## Supported Providers
 
-Volcano SDK supports **6 major LLM providers** with full function calling and MCP integration:
+Volcano SDK supports **7 major LLM providers** with full function calling and MCP integration:
 
 ✅ OpenAI
-✅ Anthropic
+✅ Anthropic  
 ✅ Mistral
 ✅ Llama
 ✅ AWS Bedrock
 ✅ Google Vertex Studio
+✅ Azure AI
 
 ## Install
 
@@ -467,7 +468,7 @@ await agent({ llm, instructions: "GLOBAL INSTR" })
 
 ## API (tiny and familiar)
 
-- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`, `llmVertexStudio()`
+- **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`, `llmVertexStudio()`, `llmAzure()`
 - **MCP Tools**: `mcp(url) => MCPHandle`
 - **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?), stream(log?) }`
   - Steps:
@@ -504,6 +505,7 @@ Providers live under `src/llms/` and are re‑exported from the SDK entry. Each 
 | **Llama** | ✅ Full | ✅ Via Ollama | ✅ Native | ✅ Complete |
 | **AWS Bedrock** | ✅ Full | ✅ Native (Converse API) | ✅ Native | ✅ Complete |
 | **Google Vertex Studio** | ✅ Full | ✅ Native (Function calling) | ✅ Native | ✅ Complete |
+| **Azure AI** | ✅ Full | ✅ Native (Responses API) | ✅ Native | ✅ Complete |
 
 **All providers support automatic tool selection and multi-step workflows.**
 
@@ -735,6 +737,69 @@ const [{ llmOutput }] = await agent({ llm: vertex })
 **Environment variables:**
 - `GCP_VERTEX_API_KEY` (required)
 - Optional: `VERTEX_MODEL`
+
+### Azure AI (Azure OpenAI Service)
+
+- Factory: `llmAzure({ model, endpoint, apiVersion?, apiKey?, accessToken?, client? })`
+- **Required**: `model` (deployment model), `endpoint` (Azure resource URL)
+- Defaults: `apiVersion: "2025-04-01-preview"`
+- Supports: `gen`, `genWithTools` (Responses API), `genStream` (native)
+- Notes: Uses Azure OpenAI Service Responses API with enterprise authentication.
+
+**Authentication methods (in priority order):**
+
+1. **API Key** (simplest):
+```ts
+const azure = llmAzure({
+  model: 'gpt-5-mini',
+  endpoint: 'https://your-resource.openai.azure.com/openai/responses',
+  apiKey: process.env.AZURE_AI_API_KEY!
+});
+```
+
+2. **Entra ID Access Token**:
+```ts
+const azure = llmAzure({
+  model: 'gpt-5-mini',
+  endpoint: 'https://your-resource.openai.azure.com/openai/responses', 
+  accessToken: process.env.AZURE_ACCESS_TOKEN!
+});
+```
+
+3. **Azure Default Credential Chain**:
+```ts
+const azure = llmAzure({
+  model: 'gpt-5-mini',
+  endpoint: 'https://your-resource.openai.azure.com/openai/responses'
+  // Uses Azure SDK: Managed Identity, Service Principal, CLI, etc.
+});
+```
+
+**Usage example:**
+```ts
+import { agent, llmAzure } from "volcano-sdk";
+
+const azure = llmAzure({
+  model: 'gpt-5-mini',
+  endpoint: 'https://your-resource.openai.azure.com/openai/responses',
+  apiKey: process.env.AZURE_AI_API_KEY!
+});
+
+const [{ llmOutput }] = await agent({ llm: azure })
+  .then({ prompt: "Reply ONLY with AZURE_OK" })
+  .run();
+```
+
+**Dependencies:**
+```bash
+npm install @azure/identity  # for Entra ID and credential chain
+```
+
+**Environment variables:**
+- `AZURE_AI_API_KEY` (required for API key auth)
+- `AZURE_AI_ENDPOINT` (required)
+- Optional: `AZURE_AI_MODEL`, `AZURE_AI_API_VERSION`
+- For Entra ID: `AZURE_ACCESS_TOKEN`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`
 
 ## Requirements
 
