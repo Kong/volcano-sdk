@@ -1,4 +1,5 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
+import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
 
 type AnthropicLikeClient = {
   messages: {
@@ -6,19 +7,40 @@ type AnthropicLikeClient = {
   };
 };
 
+export type AnthropicOptions = {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  top_k?: number;
+  stop_sequences?: string[];
+  thinking?: {
+    type: "enabled" | "disabled";
+    budget_tokens?: number;
+  };
+};
+
 export type AnthropicConfig = {
-  model?: string;
+  model: string; // Required - be explicit about which model to use
   client?: AnthropicLikeClient;
   apiKey?: string;
   baseURL?: string; // default https://api.anthropic.com
   version?: string; // default 2023-06-01
+  options?: AnthropicOptions;
 };
 
 export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
-  const model = cfg.model || "claude-4-sonnet";
+  if (!cfg.model) {
+    throw new Error(
+      "llmAnthropic: Missing required 'model' parameter. " +
+      "Please specify which Claude model to use. " +
+      "Example: llmAnthropic({ apiKey: 'sk-ant-...', model: 'claude-3-haiku-20240307' })"
+    );
+  }
+  const model = cfg.model;
   const apiKey = cfg.apiKey;
   const baseURL = (cfg.baseURL || "https://api.anthropic.com").replace(/\/$/, "");
   const version = cfg.version || "2023-06-01";
+  const options = cfg.options || {};
 
   let client: AnthropicLikeClient | undefined = cfg.client;
 
@@ -148,7 +170,11 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
   }
 
   if (!client) {
-    throw new Error("llmAnthropic: provide either client or apiKey");
+    throw new Error(
+      "llmAnthropic: Missing configuration. " +
+      "Please provide either 'client' or 'apiKey' in the config object. " +
+      "Example: llmAnthropic({ apiKey: 'sk-ant-...' })"
+    );
   }
 
   return {
@@ -156,57 +182,46 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
     model,
     client,
     async gen(prompt: string): Promise<string> {
-      const resp = await client!.messages.create({ model, max_tokens: 256, messages: [{ role: "user", content: prompt }] });
+      const resp = await client!.messages.create({ 
+        model, 
+        max_tokens: options.max_tokens || 256, 
+        messages: [{ role: "user", content: prompt }],
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { top_p: options.top_p }),
+        ...(options.top_k !== undefined && { top_k: options.top_k }),
+        ...(options.stop_sequences && { stop_sequences: options.stop_sequences }),
+        ...(options.thinking && { thinking: options.thinking }),
+      });
       const text = resp?.content?.[0]?.text ?? resp?.content ?? "";
       return typeof text === "string" ? text : JSON.stringify(text);
     },
     async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
-      const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const openaiTools = tools.map((tool) => {
-        const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
-        nameMap.set(sanitized, { dottedName, def: tool });
-        return {
-          type: "function" as const,
-          function: {
-            name: sanitized,
-            description: tool.description,
-            parameters: tool.parameters,
-          },
-        };
-      });
+      const { nameMap, formattedTools } = createOpenAICompatibleTools(tools);
 
       // Use the OpenAI-compatible shim that handles tools properly
       const resp = await (client as any).chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
-        tools: openaiTools,
+        tools: formattedTools,
         tool_choice: "auto",
       });
 
-      const message: any = resp.choices?.[0]?.message as any;
-      const rawCalls: any[] = (message?.tool_calls ?? []) as any[];
-      const toolCalls = rawCalls.map((call: any) => {
-        const sanitizedName: string = call?.function?.name ?? call?.name ?? "";
-        const mapped = nameMap.get(sanitizedName);
-        const argsJson: string = call?.function?.arguments ?? call?.arguments ?? "{}";
-        const parsedArgs = (() => { try { return JSON.parse(argsJson); } catch { return {}; } })();
-        const mcpHandle = mapped?.def.mcpHandle;
-        return {
-          name: mapped?.dottedName ?? sanitizedName,
-          arguments: parsedArgs,
-          mcpHandle,
-        };
-      });
-
-      return {
-        content: message?.content || undefined,
-        toolCalls,
-      };
+      const message = resp.choices?.[0]?.message;
+      return parseOpenAICompatibleResponse(message, nameMap);
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       // Native streaming using messages.create with stream: true
-      const streamResp: any = await (client as any).messages.create({ model, max_tokens: 256, messages: [{ role: "user", content: prompt }], stream: true });
+      const streamResp: any = await (client as any).messages.create({ 
+        model, 
+        max_tokens: options.max_tokens || 256, 
+        messages: [{ role: "user", content: prompt }], 
+        stream: true,
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { top_p: options.top_p }),
+        ...(options.top_k !== undefined && { top_k: options.top_k }),
+        ...(options.stop_sequences && { stop_sequences: options.stop_sequences }),
+        ...(options.thinking && { thinking: options.thinking }),
+      });
       // The official Anthropic SDK exposes an async iterator on streamResp
       if (streamResp && typeof streamResp[Symbol.asyncIterator] === 'function') {
         for await (const event of streamResp) {

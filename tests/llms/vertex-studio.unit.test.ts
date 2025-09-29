@@ -133,12 +133,12 @@ describe('Vertex Studio provider (unit)', () => {
   it('requires model parameter', () => {
     expect(() => {
       llmVertexStudio({ apiKey: 'test-key' } as any);
-    }).toThrow(/model parameter is required/);
+    }).toThrow(/Missing required 'model' parameter/);
   });
 
   it('requires apiKey parameter', () => {
     expect(() => {
       llmVertexStudio({ model: 'gemini-2.5-flash-lite' } as any);
-    }).toThrow(/apiKey parameter is required/);
+    }).toThrow(/Missing required 'apiKey' parameter/);
   });
 });

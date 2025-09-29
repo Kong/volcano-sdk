@@ -50,7 +50,10 @@ npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 ```ts
 import { agent, llmOpenAI } from "volcano-sdk";
 
-const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!, 
+  model: "gpt-5-mini" 
+});
 
 const results = await agent({ llm })
   .then({ prompt: "Say hello to Marco in one short sentence." })
@@ -64,7 +67,10 @@ Two-step with a sample MCP tool (automatic selection):
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!, 
+  model: "gpt-5-mini" 
+});
 const astro = mcp("http://localhost:3211/mcp");
 
 const steps = await agent({ llm })
@@ -154,7 +160,10 @@ Retry semantics:
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!, 
+  model: "gpt-5-mini" 
+});
 
 const astro = mcp("http://localhost:3211/mcp");
 const favorites = mcp("http://localhost:3212/mcp");
@@ -250,7 +259,10 @@ await agent({ llm, retry: { delay: 20 } })
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!, 
+  model: "gpt-5-mini" 
+});
 const weather = mcp("http://localhost:3000/mcp");
 const notifications = mcp("http://localhost:4000/mcp");
 
@@ -267,7 +279,10 @@ await agent({ llm })
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!, 
+  model: "gpt-5-mini" 
+});
 const astro = mcp("http://localhost:3211/mcp");
 const favorites = mcp("http://localhost:3212/mcp");
 
@@ -288,10 +303,10 @@ await agent({ llm })
 ```ts
 import { agent, llmOpenAI, llmAnthropic, llmMistral, llmLlama, mcp } from "volcano-sdk";
 
-const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY! });
-const llama = llmLlama({ baseURL: "http://127.0.0.1:11434" });
+const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY!, model: "claude-3-haiku-20240307" });
+const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY!, model: "mistral-small-latest" });
+const llama = llmLlama({ baseURL: "http://127.0.0.1:11434", model: "llama3.2:3b" });
 
 const astro = mcp("http://localhost:3211/mcp");
 
@@ -308,7 +323,10 @@ await agent()
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
-const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!, 
+  model: "gpt-5-mini" 
+});
 const cafe = mcp("http://localhost:3000/mcp");
 
 await agent({ llm })
@@ -511,16 +529,34 @@ Providers live under `src/llms/` and are re‑exported from the SDK entry. Each 
 
 ### OpenAI
 
-- Factory: `llmOpenAI({ apiKey, model?, baseURL? })`
-- Defaults: `model: "gpt-5-mini"`, `baseURL: https://api.openai.com/v1`
+- Factory: `llmOpenAI({ apiKey, model, baseURL?, options? })`
+- **Required**: `apiKey`, `model`
+- Defaults: `baseURL: https://api.openai.com/v1`
 - Supports: `gen`, `genWithTools` (function/tool calling), `genStream`
+
+**Optional Parameters:**
+- `temperature` (0-2): Controls randomness
+- `max_completion_tokens`: Maximum tokens to generate (recommended for all models)
+- `max_tokens`: Maximum tokens to generate (legacy, supported only by older models)
+- `top_p` (0-1): Nucleus sampling
+- `frequency_penalty` (-2 to 2): Penalize based on frequency
+- `presence_penalty` (-2 to 2): Penalize based on presence
+- `stop`: Stop sequences (string or array)
+- `seed`: For deterministic outputs
+- `response_format`: For JSON mode
 
 ```ts
 import { agent, llmOpenAI } from "volcano-sdk";
 
 const openai = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: process.env.OPENAI_MODEL || "gpt-5-mini",
+  model: "gpt-5-mini",
+  options: {
+    temperature: 0.7,
+    max_completion_tokens: 2000,
+    top_p: 0.9,
+    seed: 42,
+  }
 });
 
 // Basic
@@ -547,10 +583,19 @@ Environment:
 
 ### Anthropic (Claude)
 
-- Factory: `llmAnthropic({ apiKey?, client?, model?, baseURL?, version? })`
-- Defaults: `model: "claude-4-sonnet"`, `baseURL: https://api.anthropic.com`, `version: 2023-06-01`
+- Factory: `llmAnthropic({ apiKey?, client?, model, baseURL?, version?, options? })`
+- **Required**: `model` (and either `apiKey` or `client`)
+- Defaults: `baseURL: https://api.anthropic.com`, `version: 2023-06-01`
 - Supports: `gen`
 - Notes: The `anthropic-version` request header is required by the API.
+
+**Optional Parameters:**
+- `temperature` (0-1): Controls randomness
+- `max_tokens`: Maximum tokens to generate
+- `top_p` (0-1): Nucleus sampling
+- `top_k`: Sample from top K options
+- `stop_sequences`: Array of stop sequences
+- `thinking`: Extended thinking configuration (Claude-specific)
 
 ```ts
 import { agent, llmAnthropic } from "volcano-sdk";
@@ -558,7 +603,13 @@ import { agent, llmAnthropic } from "volcano-sdk";
 // Use built-in fetch client
 const claude = llmAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
-  model: process.env.ANTHROPIC_MODEL || "claude-3-haiku-20240307",
+  model: "claude-3-haiku-20240307",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_k: 50,
+    stop_sequences: ["\n\n"],
+  }
 });
 
 const [{ llmOutput }] = await agent({ llm: claude })
@@ -572,10 +623,21 @@ Environment:
 
 ### Llama (OpenAI‑compatible)
 
-- Factory: `llmLlama({ baseURL?, apiKey?, model?, client? })`
-- Defaults: `baseURL: http://localhost:11434` (Ollama), `model: "llama3-8b-instruct"`
+- Factory: `llmLlama({ baseURL?, apiKey?, model, client?, options? })`
+- **Required**: `model`
+- Defaults: `baseURL: http://localhost:11434` (Ollama)
 - Supports: `gen`
 - Notes: Works with OpenAI‑compatible servers (Ollama/OpenRouter/etc.). Tool calling and streaming not yet implemented.
+
+**Optional Parameters:**
+- `temperature` (0-2): Controls randomness
+- `max_tokens`: Maximum tokens to generate
+- `top_p` (0-1): Nucleus sampling
+- `top_k`: Sample from top K options
+- `stop`: Stop sequences
+- `repeat_penalty`: Penalize repetitions (Ollama-specific)
+- `seed`: For deterministic outputs
+- `num_predict`: Number of tokens to predict (Ollama-specific)
 
 ```ts
 import { agent, llmLlama } from "volcano-sdk";
@@ -583,7 +645,16 @@ import { agent, llmLlama } from "volcano-sdk";
 // Local Ollama quickstart
 // $ ollama serve &
 // $ ollama pull llama3.2:3b
-const llama = llmLlama({ baseURL: process.env.LLAMA_BASE_URL || "http://127.0.0.1:11434", model: process.env.LLAMA_MODEL || "llama3.2:3b" });
+const llama = llmLlama({ 
+  baseURL: "http://127.0.0.1:11434", 
+  model: "llama3.2:3b",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_k: 40,
+    repeat_penalty: 1.1,
+  }
+});
 
 const [{ llmOutput }] = await agent({ llm: llama })
   .then({ prompt: "Reply ONLY with LLAMA_OK" })
@@ -595,18 +666,32 @@ Environment:
 
 ### Mistral (Cloud)
 
-- Factory: `llmMistral({ baseURL?, apiKey?, model?, client? })`
-- Defaults: `baseURL: https://api.mistral.ai`, `model: "mistral-small-latest"`
+- Factory: `llmMistral({ baseURL?, apiKey?, model, client?, options? })`
+- **Required**: `model` (and either `apiKey` or `client`)
+- Defaults: `baseURL: https://api.mistral.ai`
 - Supports: `gen`
-- Notes: Uses Mistral’s OpenAI‑compatible chat completions endpoint (`/v1/chat/completions`).
+- Notes: Uses Mistral's OpenAI‑compatible chat completions endpoint (`/v1/chat/completions`).
+
+**Optional Parameters:**
+- `temperature` (0-1): Controls randomness
+- `max_tokens`: Maximum tokens to generate
+- `top_p` (0-1): Nucleus sampling
+- `stop`: Stop sequences
+- `safe_prompt`: Enable safety mode (boolean)
+- `random_seed`: For deterministic outputs
+- `response_format`: For JSON mode
 
 ```ts
 import { agent, llmMistral } from "volcano-sdk";
 
 const mistral = llmMistral({
   apiKey: process.env.MISTRAL_API_KEY!,
-  baseURL: process.env.MISTRAL_BASE_URL || "https://api.mistral.ai",
-  model: process.env.MISTRAL_MODEL || "mistral-small-latest"
+  model: "mistral-small-latest",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    safe_prompt: true,
+  }
 });
 
 const [{ llmOutput }] = await agent({ llm: mistral })
@@ -620,11 +705,17 @@ Environment:
 
 ### AWS Bedrock
 
-- Factory: `llmBedrock({ model, region?, accessKeyId?, secretAccessKey?, sessionToken?, profile?, roleArn?, client? })`
+- Factory: `llmBedrock({ model, region?, accessKeyId?, secretAccessKey?, sessionToken?, profile?, roleArn?, client?, options? })`
 - Defaults: `region: "us-east-1"`
 - **Required**: `model` (choose from available Bedrock models)
 - Supports: `gen`, `genWithTools` (Converse API), `genStream` (fallback)
 - Notes: Uses AWS Bedrock's Converse API with native tool use support.
+
+**Optional Parameters:**
+- `temperature` (0-1): Controls randomness
+- `max_tokens`: Maximum tokens to generate
+- `top_p` (0-1): Nucleus sampling
+- `stop_sequences`: Array of stop sequences
 
 **Authentication methods (in priority order):**
 
@@ -680,6 +771,11 @@ const bedrock = llmBedrock({
   model: 'anthropic.claude-3-sonnet-20240229-v1:0', // Required
   region: process.env.AWS_REGION || 'us-east-1',
   // Uses AWS credential chain by default
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_p: 0.9,
+  }
 });
 
 const [{ llmOutput }] = await agent({ llm: bedrock })
@@ -706,11 +802,20 @@ npm install @aws-sdk/credential-providers  # for profiles and roles
 
 ### Google Vertex Studio (AI Studio)
 
-- Factory: `llmVertexStudio({ model, apiKey, baseURL?, client? })`
+- Factory: `llmVertexStudio({ model, apiKey, baseURL?, client?, options? })`
 - Defaults: `baseURL: "https://aiplatform.googleapis.com/v1"`
 - **Required**: `model` (Gemini models), `apiKey` (Google AI Studio API key)
 - Supports: `gen`, `genWithTools` (function calling), `genStream` (native)
 - Notes: Uses Google AI Studio API with simple API key authentication.
+
+**Optional Parameters:**
+- `temperature` (0-2): Controls randomness
+- `max_output_tokens`: Maximum tokens to generate
+- `top_p` (0-1): Nucleus sampling
+- `top_k`: Sample from top K options
+- `stop_sequences`: Array of stop sequences
+- `candidate_count`: Number of response variations
+- `response_mime_type`: For JSON mode (e.g., "application/json")
 
 ```ts
 import { agent, llmVertexStudio } from "volcano-sdk";
@@ -718,6 +823,11 @@ import { agent, llmVertexStudio } from "volcano-sdk";
 const vertex = llmVertexStudio({
   model: 'gemini-2.5-flash-lite',
   apiKey: process.env.GCP_VERTEX_API_KEY!,
+  options: {
+    temperature: 0.8,
+    max_output_tokens: 2048,
+    top_k: 40,
+  }
 });
 
 const [{ llmOutput }] = await agent({ llm: vertex })
@@ -740,11 +850,15 @@ const [{ llmOutput }] = await agent({ llm: vertex })
 
 ### Azure AI (Azure OpenAI Service)
 
-- Factory: `llmAzure({ model, endpoint, apiVersion?, apiKey?, accessToken?, client? })`
+- Factory: `llmAzure({ model, endpoint, apiVersion?, apiKey?, accessToken?, client?, options? })`
 - **Required**: `model` (deployment model), `endpoint` (Azure resource URL)
 - Defaults: `apiVersion: "2025-04-01-preview"`
 - Supports: `gen`, `genWithTools` (Responses API), `genStream` (native)
 - Notes: Uses Azure OpenAI Service Responses API with enterprise authentication.
+
+**Optional Parameters:**
+
+**⚠️ Important**: Azure Responses API currently does **not support** optional configuration parameters. All inference parameters (`max_output_tokens`, `seed`, `temperature`, `top_p`, etc.) are rejected with HTTP 400 errors. The `AzureOptions` type is defined for API consistency but parameters cannot be used in practice. This is a limitation of Azure's Responses API endpoint.
 
 **Authentication methods (in priority order):**
 
@@ -782,7 +896,8 @@ import { agent, llmAzure } from "volcano-sdk";
 const azure = llmAzure({
   model: 'gpt-5-mini',
   endpoint: 'https://your-resource.openai.azure.com/openai/responses',
-  apiKey: process.env.AZURE_AI_API_KEY!
+  apiKey: process.env.AZURE_AI_API_KEY!,
+  // Note: Azure Responses API does not accept options parameters
 });
 
 const [{ llmOutput }] = await agent({ llm: azure })

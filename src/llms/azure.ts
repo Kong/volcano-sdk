@@ -1,7 +1,17 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
+import { sanitizeToolName, parseToolArguments } from "./utils.js";
 
 type AzureAIClient = {
   createResponse: (params: any) => Promise<any>;
+};
+
+export type AzureOptions = {
+  // Note: Azure Responses API has very limited parameter support
+  // Most parameters from OpenAI Chat Completions are not supported
+  max_output_tokens?: number; // Maximum tokens to generate
+  seed?: number; // For deterministic outputs
+  // The following are NOT supported by Azure Responses API:
+  // temperature, top_p, frequency_penalty, presence_penalty, stop, response_format
 };
 
 export type AzureConfig = {
@@ -15,19 +25,29 @@ export type AzureConfig = {
   
   // Custom client
   client?: AzureAIClient;
+  options?: AzureOptions;
 };
 
 export function llmAzure(cfg: AzureConfig): LLMHandle {
   if (!cfg.model) {
-    throw new Error("llmAzure: model parameter is required. Specify the Azure deployment model name.");
+    throw new Error(
+      "llmAzure: Missing required 'model' parameter. " +
+      "Please specify your Azure deployment model name. " +
+      "Example: llmAzure({ model: 'gpt-5-mini', endpoint: 'https://...', apiKey: '...' })"
+    );
   }
   if (!cfg.endpoint) {
-    throw new Error("llmAzure: endpoint parameter is required. Specify your Azure OpenAI resource endpoint.");
+    throw new Error(
+      "llmAzure: Missing required 'endpoint' parameter. " +
+      "Please specify your Azure OpenAI resource endpoint. " +
+      "Example: llmAzure({ model: '...', endpoint: 'https://your-resource.openai.azure.com/openai/responses', apiKey: '...' })"
+    );
   }
 
   const model = cfg.model;
   const endpoint = cfg.endpoint.replace(/\/$/, "");
   const apiVersion = cfg.apiVersion || "2025-04-01-preview";
+  const options = cfg.options || {};
   let client = cfg.client;
 
   if (!client) {
@@ -96,14 +116,17 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
     model,
     client,
     async gen(prompt: string): Promise<string> {
-      const params = {
+      const params: any = {
         model,
         input: [
           {
             role: "user",
             content: prompt
           }
-        ]
+        ],
+        // Azure Responses API only supports max_output_tokens and seed
+        ...(options.max_output_tokens !== undefined && { max_output_tokens: options.max_output_tokens }),
+        ...(options.seed !== undefined && { seed: options.seed }),
       };
 
       const resp = await client!.createResponse(params);
@@ -115,9 +138,9 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
     },
     async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
       const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const azureTools = tools.map((tool) => {
+      const formattedTools = tools.map((tool) => {
         const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const sanitized = sanitizeToolName(dottedName);
         nameMap.set(sanitized, { dottedName, def: tool });
         return {
           type: "function" as const,
@@ -127,7 +150,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
         };
       });
 
-      const params = {
+      const params: any = {
         model,
         input: [
           {
@@ -135,8 +158,11 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
             content: prompt
           }
         ],
-        tools: azureTools,
+        tools: formattedTools,
         tool_choice: "auto",
+        // Azure Responses API only supports max_output_tokens and seed
+        ...(options.max_output_tokens !== undefined && { max_output_tokens: options.max_output_tokens }),
+        ...(options.seed !== undefined && { seed: options.seed }),
       };
 
       const resp = await client!.createResponse(params);
@@ -152,7 +178,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
           const sanitizedName = item?.name || "";
           const mapped = nameMap.get(sanitizedName);
           const args = item?.arguments;
-          const parsedArgs = typeof args === 'string' ? (() => { try { return JSON.parse(args); } catch { return {}; } })() : (args || {});
+          const parsedArgs = typeof args === 'string' ? parseToolArguments(args) : (args || {});
           
           toolCalls.push({
             name: mapped?.dottedName ?? sanitizedName,
@@ -181,7 +207,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       const url = `${endpoint}?api-version=${apiVersion}`;
       
-      const params = {
+      const params: any = {
         model,
         input: [
           {
@@ -189,7 +215,10 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
             content: prompt
           }
         ],
-        stream: true
+        stream: true,
+        // Azure Responses API only supports max_output_tokens and seed
+        ...(options.max_output_tokens !== undefined && { max_output_tokens: options.max_output_tokens }),
+        ...(options.seed !== undefined && { seed: options.seed }),
       };
 
       // Determine authentication headers

@@ -7,7 +7,7 @@ describe('agent streaming (live APIs)', () => {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
 
-    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o-mini' });
+    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-5-mini' });
     const stepResults: any[] = [];
     const timestamps: number[] = [];
 
@@ -56,7 +56,7 @@ describe('agent streaming (live APIs)', () => {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
 
-    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o-mini' });
+    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-5-mini' });
     
     // Test with run()
     const runResults = await agent({ llm })

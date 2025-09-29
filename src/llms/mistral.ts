@@ -1,18 +1,38 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
+import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
 
 type OpenAILikeClient = {
   chat: { completions: { create: (args: any) => Promise<any> } };
 };
 
+export type MistralOptions = {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  stop?: string | string[];
+  safe_prompt?: boolean;
+  random_seed?: number;
+  response_format?: { type: "json_object" | "text" };
+};
+
 export type MistralConfig = {
-  model?: string;
+  model: string; // Required - be explicit about which model to use
   client?: OpenAILikeClient;
   apiKey?: string;
   baseURL?: string; // default https://api.mistral.ai
+  options?: MistralOptions;
 };
 
 export function llmMistral(cfg: MistralConfig): LLMHandle {
-  const model = cfg.model || "mistral-small-latest";
+  if (!cfg.model) {
+    throw new Error(
+      "llmMistral: Missing required 'model' parameter. " +
+      "Please specify which Mistral model to use. " +
+      "Example: llmMistral({ apiKey: 'your-key', model: 'mistral-small-latest' })"
+    );
+  }
+  const model = cfg.model;
+  const options = cfg.options || {};
   let client = cfg.client;
 
   if (!client && (cfg.apiKey || cfg.baseURL)) {
@@ -51,7 +71,11 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
   }
 
   if (!client) {
-    throw new Error("llmMistral: provide either client or (apiKey/baseURL) for a Mistral endpoint");
+    throw new Error(
+      "llmMistral: Missing configuration. " +
+      "Please provide either 'client' or 'apiKey' for Mistral API. " +
+      "Example: llmMistral({ apiKey: 'your-key', model: 'mistral-small-latest' })"
+    );
   }
 
   return {
@@ -59,52 +83,34 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
     model,
     client,
     async gen(prompt: string): Promise<string> {
-      const resp = await client!.chat.completions.create({ model, messages: [{ role: "user", content: prompt }] });
+      const resp = await client!.chat.completions.create({ 
+        model, 
+        messages: [{ role: "user", content: prompt }],
+        ...options,
+      });
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
     },
     async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
-      const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const openaiTools = tools.map((tool) => {
-        const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
-        nameMap.set(sanitized, { dottedName, def: tool });
-        return {
-          type: "function" as const,
-          function: {
-            name: sanitized,
-            description: tool.description,
-            parameters: tool.parameters,
-          },
-        };
-      });
+      const { nameMap, formattedTools } = createOpenAICompatibleTools(tools);
+      
       const resp = await client!.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
-        tools: openaiTools as any,
+        tools: formattedTools as any,
         tool_choice: "auto" as any,
+        ...options,
       } as any);
-      const message: any = resp?.choices?.[0]?.message ?? {};
-      const rawCalls: any[] = (message?.tool_calls ?? []) as any[];
-      const toolCalls = rawCalls.map((call: any) => {
-        const sanitizedName: string = call?.function?.name ?? call?.name ?? "";
-        const mapped = nameMap.get(sanitizedName);
-        const argsJson: string = call?.function?.arguments ?? call?.arguments ?? "{}";
-        const parsedArgs = (() => { try { return JSON.parse(argsJson); } catch { return {}; } })();
-        const mcpHandle = mapped?.def.mcpHandle;
-        return {
-          name: mapped?.dottedName ?? sanitizedName,
-          arguments: parsedArgs,
-          mcpHandle,
-        };
-      });
-      return { content: message?.content || undefined, toolCalls };
+      
+      const message = resp?.choices?.[0]?.message;
+      return parseOpenAICompatibleResponse(message, nameMap);
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       const streamResponse: any = await client!.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
         stream: true,
+        ...options,
       });
       
       // Handle Server-Sent Events streaming

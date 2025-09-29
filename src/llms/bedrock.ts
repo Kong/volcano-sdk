@@ -1,11 +1,19 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
+import { sanitizeToolName } from "./utils.js";
 
 type BedrockLikeClient = {
   send: (command: any) => Promise<any>;
 };
 
+export type BedrockOptions = {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  stop_sequences?: string[];
+};
+
 export type BedrockConfig = {
-  model?: string;
+  model: string; // Required - be explicit about which model to use
   client?: BedrockLikeClient;
   region?: string;
   // Explicit credentials (optional - falls back to AWS credential chain)
@@ -17,13 +25,19 @@ export type BedrockConfig = {
   // AWS credential chain options
   profile?: string; // AWS profile name
   roleArn?: string; // Role ARN for assume role
+  options?: BedrockOptions;
 };
 
 export function llmBedrock(cfg: BedrockConfig): LLMHandle {
   if (!cfg.model) {
-    throw new Error("llmBedrock: model parameter is required. Choose from Claude, Titan, Llama, or other available Bedrock models.");
+    throw new Error(
+      "llmBedrock: Missing required 'model' parameter. " +
+      "Please specify a Bedrock model ID (e.g., 'anthropic.claude-3-sonnet-20240229-v1:0'). " +
+      "Example: llmBedrock({ model: 'anthropic.claude-3-sonnet-20240229-v1:0', region: 'us-east-1' })"
+    );
   }
   const model = cfg.model;
+  const options = cfg.options || {};
   let client = cfg.client;
 
   // If no client provided, we'll create one with the specified configuration
@@ -111,10 +125,17 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       const bedrockModule = await import('@aws-sdk/client-bedrock-runtime' as any);
       const { ConverseCommand } = bedrockModule;
       
+      const inferenceConfig: any = { 
+        maxTokens: options.max_tokens || 256,
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { topP: options.top_p }),
+      };
+      
       const command = new ConverseCommand({
         modelId: model,
         messages: [{ role: "user", content: [{ text: prompt }] }],
-        inferenceConfig: { maxTokens: 256 },
+        inferenceConfig,
+        ...(options.stop_sequences && { stopSequences: options.stop_sequences }),
       });
       
       const resp = await client!.send(command);
@@ -127,9 +148,9 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       const { ConverseCommand } = bedrockModule;
       
       const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const bedrockTools = tools.map((tool) => {
+      const formattedTools = tools.map((tool) => {
         const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const sanitized = sanitizeToolName(dottedName);
         nameMap.set(sanitized, { dottedName, def: tool });
         return {
           toolSpec: {
@@ -142,13 +163,20 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
         };
       });
 
+      const inferenceConfig: any = { 
+        maxTokens: options.max_tokens || 256,
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { topP: options.top_p }),
+      };
+      
       const command = new ConverseCommand({
         modelId: model,
         messages: [{ role: "user", content: [{ text: prompt }] }],
-        inferenceConfig: { maxTokens: 256 },
+        inferenceConfig,
         toolConfig: {
-          tools: bedrockTools,
+          tools: formattedTools,
         },
+        ...(options.stop_sequences && { stopSequences: options.stop_sequences }),
       });
 
       const resp = await client!.send(command);
@@ -182,10 +210,17 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
         const bedrockModule = await import('@aws-sdk/client-bedrock-runtime' as any);
         const { ConverseStreamCommand } = bedrockModule;
         
+        const inferenceConfig: any = { 
+          maxTokens: options.max_tokens || 256,
+          ...(options.temperature !== undefined && { temperature: options.temperature }),
+          ...(options.top_p !== undefined && { topP: options.top_p }),
+        };
+        
         const command = new ConverseStreamCommand({
           modelId: model,
           messages: [{ role: "user", content: [{ text: prompt }] }],
-          inferenceConfig: { maxTokens: 256 },
+          inferenceConfig,
+          ...(options.stop_sequences && { stopSequences: options.stop_sequences }),
         });
         
         const response = await client!.send(command);

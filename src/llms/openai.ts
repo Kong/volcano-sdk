@@ -1,12 +1,41 @@
 import OpenAI from "openai";
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types";
+import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
 
-type Cfg = { apiKey: string; model?: string; baseURL?: string };
+export type OpenAIOptions = {
+  temperature?: number;
+  max_tokens?: number; // Legacy parameter, use max_completion_tokens for newer models
+  max_completion_tokens?: number; // Preferred for newer models (gpt-4o, gpt-4o-mini, etc.)
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  stop?: string | string[];
+  seed?: number;
+  response_format?: { type: "json_object" | "text" };
+  n?: number;
+  logit_bias?: Record<string, number>;
+  user?: string;
+};
 
-export function llmOpenAI(cfg: Cfg): LLMHandle {
-  const model = cfg.model ?? "gpt-5-mini";
+export type OpenAIConfig = { 
+  apiKey: string; 
+  model: string; // Required - be explicit about which model to use
+  baseURL?: string;
+  options?: OpenAIOptions;
+};
+
+export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
+  if (!cfg.model) {
+    throw new Error(
+      "llmOpenAI: Missing required 'model' parameter. " +
+      "Please specify which OpenAI model to use. " +
+      "Example: llmOpenAI({ apiKey: 'sk-...', model: 'gpt-5-mini' })"
+    );
+  }
+  const model = cfg.model;
   const id = `OpenAI-${model}`;
   const client = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
+  const options = cfg.options || {};
 
   return {
     id,
@@ -16,57 +45,30 @@ export function llmOpenAI(cfg: Cfg): LLMHandle {
       const r = await client.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
+        ...options,
       });
       return r.choices?.[0]?.message?.content ?? "";
     },
     genWithTools: async (prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> => {
-      const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const openaiTools = tools.map((tool) => {
-        const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
-        nameMap.set(sanitized, { dottedName, def: tool });
-        return {
-          type: "function" as const,
-          function: {
-            name: sanitized,
-            description: tool.description,
-            parameters: tool.parameters,
-          },
-        };
-      });
+      const { nameMap, formattedTools } = createOpenAICompatibleTools(tools);
 
       const r = await client.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
-        tools: openaiTools,
+        tools: formattedTools,
         tool_choice: "auto",
+        ...options,
       });
 
-      const message: any = r.choices?.[0]?.message as any;
-      const rawCalls: any[] = (message?.tool_calls ?? []) as any[];
-      const toolCalls = rawCalls.map((call: any) => {
-        const sanitizedName: string = call?.function?.name ?? call?.name ?? "";
-        const mapped = nameMap.get(sanitizedName);
-        const argsJson: string = call?.function?.arguments ?? call?.arguments ?? "{}";
-        const parsedArgs = (() => { try { return JSON.parse(argsJson); } catch { return {}; } })();
-        const mcpHandle = mapped?.def.mcpHandle;
-        return {
-          name: mapped?.dottedName ?? sanitizedName,
-          arguments: parsedArgs,
-          mcpHandle,
-        };
-      });
-
-      return {
-        content: message?.content || undefined,
-        toolCalls,
-      };
+      const message = r.choices?.[0]?.message;
+      return parseOpenAICompatibleResponse(message, nameMap);
     },
     genStream: async function* (prompt: string) {
       const stream = await client.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
         stream: true,
+        ...options,
       });
       for await (const chunk of stream as any) {
         const delta = chunk?.choices?.[0]?.delta?.content;

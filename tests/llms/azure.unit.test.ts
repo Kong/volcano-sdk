@@ -128,7 +128,7 @@ describe('Azure AI provider (unit)', () => {
         endpoint: 'https://test.openai.azure.com/openai/responses',
         apiKey: 'test-key'
       } as any);
-    }).toThrow(/model parameter is required/);
+    }).toThrow(/Missing required 'model' parameter/);
   });
 
   it('requires endpoint parameter', () => {
@@ -137,7 +137,7 @@ describe('Azure AI provider (unit)', () => {
         model: 'gpt-5-mini',
         apiKey: 'test-key'
       } as any);
-    }).toThrow(/endpoint parameter is required/);
+    }).toThrow(/Missing required 'endpoint' parameter/);
   });
 
   it('supports API key authentication', () => {

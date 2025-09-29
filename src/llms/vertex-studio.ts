@@ -1,7 +1,18 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
+import { sanitizeToolName } from "./utils.js";
 
 type VertexStudioClient = {
   generateContent: (params: any) => Promise<any>;
+};
+
+export type VertexStudioOptions = {
+  temperature?: number;
+  max_output_tokens?: number;
+  top_p?: number;
+  top_k?: number;
+  stop_sequences?: string[];
+  candidate_count?: number;
+  response_mime_type?: string; // e.g., "application/json"
 };
 
 export type VertexStudioConfig = {
@@ -9,18 +20,28 @@ export type VertexStudioConfig = {
   apiKey: string; // Google AI Studio API key
   baseURL?: string; // Default: "https://aiplatform.googleapis.com/v1"
   client?: VertexStudioClient;
+  options?: VertexStudioOptions;
 };
 
 export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
   if (!cfg.model) {
-    throw new Error("llmVertexStudio: model parameter is required. Choose from Gemini models available in AI Studio.");
+    throw new Error(
+      "llmVertexStudio: Missing required 'model' parameter. " +
+      "Please specify a Gemini model (e.g., 'gemini-2.0-flash-lite'). " +
+      "Example: llmVertexStudio({ model: 'gemini-2.0-flash-lite', apiKey: 'your-api-key' })"
+    );
   }
   if (!cfg.apiKey && !cfg.client) {
-    throw new Error("llmVertexStudio: apiKey parameter is required, or provide a custom client.");
+    throw new Error(
+      "llmVertexStudio: Missing required 'apiKey' parameter. " +
+      "Please provide a Google AI Studio API key. " +
+      "Example: llmVertexStudio({ model: 'gemini-2.0-flash-lite', apiKey: 'your-api-key' })"
+    );
   }
 
   const model = cfg.model;
   const baseURL = (cfg.baseURL || "https://aiplatform.googleapis.com/v1").replace(/\/$/, "");
+  const options = cfg.options || {};
   let client = cfg.client;
 
   if (!client) {
@@ -54,6 +75,16 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
     model,
     client,
     async gen(prompt: string): Promise<string> {
+      const generationConfig: any = {
+        maxOutputTokens: options.max_output_tokens || 256,
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { topP: options.top_p }),
+        ...(options.top_k !== undefined && { topK: options.top_k }),
+        ...(options.stop_sequences && { stopSequences: options.stop_sequences }),
+        ...(options.candidate_count !== undefined && { candidateCount: options.candidate_count }),
+        ...(options.response_mime_type && { responseMimeType: options.response_mime_type }),
+      };
+      
       const params = {
         contents: [
           {
@@ -61,9 +92,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
             parts: [{ text: prompt }]
           }
         ],
-        generationConfig: {
-          maxOutputTokens: 256,
-        },
+        generationConfig,
       };
 
       const resp = await client!.generateContent(params);
@@ -74,9 +103,9 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
     },
     async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
       const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const geminiTools = tools.map((tool) => {
+      const formattedTools = tools.map((tool) => {
         const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const sanitized = sanitizeToolName(dottedName);
         nameMap.set(sanitized, { dottedName, def: tool });
         
         // Clean the parameters to remove any $schema or other unsupported fields
@@ -94,6 +123,16 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
         };
       });
 
+      const generationConfig: any = {
+        maxOutputTokens: options.max_output_tokens || 256,
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { topP: options.top_p }),
+        ...(options.top_k !== undefined && { topK: options.top_k }),
+        ...(options.stop_sequences && { stopSequences: options.stop_sequences }),
+        ...(options.candidate_count !== undefined && { candidateCount: options.candidate_count }),
+        ...(options.response_mime_type && { responseMimeType: options.response_mime_type }),
+      };
+      
       const params = {
         contents: [
           {
@@ -101,10 +140,8 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
             parts: [{ text: prompt }]
           }
         ],
-        tools: geminiTools,
-        generationConfig: {
-          maxOutputTokens: 256,
-        },
+        tools: formattedTools,
+        generationConfig,
       };
 
       const resp = await client!.generateContent(params);
@@ -138,6 +175,16 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
       // Use Google's streaming endpoint
       const endpoint = `${baseURL}/publishers/google/models/${model}:streamGenerateContent?key=${cfg.apiKey}`;
       
+      const generationConfig: any = {
+        maxOutputTokens: options.max_output_tokens || 256,
+        ...(options.temperature !== undefined && { temperature: options.temperature }),
+        ...(options.top_p !== undefined && { topP: options.top_p }),
+        ...(options.top_k !== undefined && { topK: options.top_k }),
+        ...(options.stop_sequences && { stopSequences: options.stop_sequences }),
+        ...(options.candidate_count !== undefined && { candidateCount: options.candidate_count }),
+        ...(options.response_mime_type && { responseMimeType: options.response_mime_type }),
+      };
+      
       const params = {
         contents: [
           {
@@ -145,9 +192,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
             parts: [{ text: prompt }]
           }
         ],
-        generationConfig: {
-          maxOutputTokens: 256,
-        },
+        generationConfig,
       };
 
       const response = await fetch(endpoint, {
