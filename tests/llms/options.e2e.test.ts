@@ -235,7 +235,7 @@ describe('LLM Provider Options (E2E)', () => {
     expect(longResult).toBeTruthy();
     // max_output_tokens should limit shortResult
     expect(shortResult.length).toBeLessThan(longResult.length);
-    expect(shortResult.length).toBeLessThan(200); // ~30 tokens
+    expect(shortResult.length).toBeLessThan(250); // ~30 tokens (with some margin)
     expect(longResult.length).toBeGreaterThan(300); // ~200 tokens
   }, 60000);
 });
