@@ -53,6 +53,15 @@
         </div>
 
         <div class="nav-section">
+          <div class="nav-section-title">MCP Tools</div>
+          <a href="mcp-tools.html" class="nav-link">Overview</a>
+          <a href="mcp-tools.html#automatic" class="nav-link">Automatic Selection</a>
+          <a href="mcp-tools.html#explicit" class="nav-link">Explicit Calling</a>
+          <a href="mcp-tools.html#authentication" class="nav-link">Authentication</a>
+          <a href="mcp-tools.html#connection-pooling" class="nav-link">Connection Pooling</a>
+        </div>
+
+        <div class="nav-section">
           <div class="nav-section-title">Advanced Patterns</div>
           <a href="patterns.html" class="nav-link">Overview</a>
           <a href="patterns.html#parallel" class="nav-link">Parallel Execution</a>
@@ -69,7 +78,6 @@
           <a href="#retries" class="nav-link">Retries & Timeouts</a>
           <a href="#hooks" class="nav-link">Step Hooks</a>
           <a href="#errors" class="nav-link">Error Handling</a>
-          <a href="#mcp-tools" class="nav-link">MCP Tools</a>
         </div>
 
         <div class="nav-section">
@@ -428,96 +436,6 @@ for await (const stepResult of workflow.stream((step, stepIndex) => {
           </ul>
         </section>
 
-        <!-- MCP Tools -->
-        <section id="mcp-tools" class="doc-section">
-          <h2>MCP Tools</h2>
-          <p>The Model Context Protocol (MCP) enables AI agents to securely interact with external tools and data sources.</p>
-          
-          <h3>Automatic Tool Selection</h3>
-          <p>Let the LLM choose which tools to call:</p>
-          
-          <div class="code-block">
-            <pre><code class="language-typescript">const weather = mcp("http://localhost:3000/mcp");
-const notifications = mcp("http://localhost:4000/mcp");
-
-await agent({ llm })
-  .then({
-    prompt: "Check SF weather and send me a notification.",
-    mcps: [weather, notifications]
-  })
-  .run();</code></pre>
-          </div>
-
-          <h3>Explicit Tool Calling</h3>
-          <p>Call specific tools directly:</p>
-          
-          <div class="code-block">
-            <pre><code class="language-typescript">const cafe = mcp("http://localhost:3000/mcp");
-
-await agent({ llm })
-  .then({ prompt: "Recommend a coffee for Ava from Naples" })
-  .then({ 
-    mcp: cafe, 
-    tool: "order_item", 
-    args: { item_id: "espresso" } 
-  })
-  .run();</code></pre>
-          </div>
-
-          <h3>Features</h3>
-          <table class="params-table">
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Connection Pooling</td>
-                <td>TCP sessions reused across steps, idle connections evicted</td>
-              </tr>
-              <tr>
-                <td>Tool Discovery Cache</td>
-                <td><code>listTools()</code> results cached with TTL, invalidated on failures</td>
-              </tr>
-              <tr>
-                <td>JSON Schema Validation</td>
-                <td>Arguments validated against schema before tool execution</td>
-              </tr>
-              <tr>
-                <td>Automatic Retries</td>
-                <td>Connection errors retry automatically with backoff</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <h3>Configuration</h3>
-          <p>Pool and cache settings (for advanced use):</p>
-          
-          <div class="code-block">
-            <pre><code class="language-typescript">// Internal test helpers (not typically needed)
-import { 
-  __internal_setPoolConfig,
-  __internal_setDiscoveryTtl,
-  __internal_clearDiscoveryCache,
-  __internal_forcePoolCleanup
-} from "volcano-sdk";
-
-// Set pool size and idle timeout
-__internal_setPoolConfig(16, 30_000); // max 16 connections, 30s idle
-
-// Set discovery cache TTL
-__internal_setDiscoveryTtl(60_000); // 60s cache</code></pre>
-          </div>
-
-          <div class="info-box">
-            <div class="info-icon">💡</div>
-            <div>
-              <strong>Note:</strong> MCP tools are automatically discovered and cached. Connection management and schema validation are handled by the SDK.
-            </div>
-          </div>
-        </section>
 
       </div>
 

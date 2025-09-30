@@ -258,7 +258,47 @@ await agent({ llm, retry: { delay: 20 } })
   .run();
 ```
 
-## Examples You’ll Want to Try
+## MCP Authentication
+
+Volcano SDK supports OAuth 2.1 and Bearer token authentication per the MCP specification.
+
+### OAuth Authentication (Client Credentials)
+
+```ts
+const protectedMcp = mcp("https://api.example.com/mcp", {
+  auth: {
+    type: 'oauth',
+    clientId: process.env.MCP_CLIENT_ID!,
+    clientSecret: process.env.MCP_CLIENT_SECRET!,
+    tokenEndpoint: 'https://api.example.com/oauth/token'
+  }
+});
+
+await agent({ llm })
+  .then({ prompt: "Use protected tools", mcps: [protectedMcp] })
+  .run();
+```
+
+### Bearer Token Authentication
+
+```ts
+const authMcp = mcp("https://api.example.com/mcp", {
+  auth: {
+    type: 'bearer',
+    token: process.env.MCP_BEARER_TOKEN!
+  }
+});
+```
+
+### Features
+
+- ✅ **MCP Spec Compliant**: Follows OAuth 2.1 standard per MCP specification
+- ✅ **OAuth token caching**: Tokens are cached and reused until expiration
+- ✅ **Automatic refresh**: Expired tokens refreshed automatically (60s buffer)
+- ✅ **Per-endpoint configuration**: Each MCP server can have different auth
+- ✅ **Connection pooling**: Authenticated connections pooled separately
+
+## Examples You'll Want to Try
 
 ### A. Automatic tool selection (one step)
 

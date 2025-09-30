@@ -72,9 +72,9 @@ app.post('/mcp', requireAuth, async (req, res) => {
   
   if (!transport) {
     transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID()
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sid) => transports.set(sid, transport)
     });
-    transports.set(transport.sessionId, transport);
     const server = getAuthServer();
     await server.connect(transport);
   }
