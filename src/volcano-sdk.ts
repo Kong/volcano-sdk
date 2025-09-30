@@ -312,15 +312,6 @@ type StepFactory = (history: StepResult[]) => Step;
 export interface AgentBuilder {
   resetHistory(): AgentBuilder;
   then(s: Step | StepFactory): AgentBuilder;
-<<<<<<< HEAD
-  parallel(stepsOrDict: Step[] | Record<string, Step>): AgentBuilder;
-  branch(condition: (history: StepResult[]) => boolean, branches: { true: (agent: AgentBuilder) => AgentBuilder; false: (agent: AgentBuilder) => AgentBuilder }): AgentBuilder;
-  switch<T = string>(selector: (history: StepResult[]) => T, cases: Record<string, (agent: AgentBuilder) => AgentBuilder> & { default?: (agent: AgentBuilder) => AgentBuilder }): AgentBuilder;
-  while(condition: (history: StepResult[]) => boolean, body: (agent: AgentBuilder) => AgentBuilder, opts?: { maxIterations?: number; timeout?: number }): AgentBuilder;
-  forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder): AgentBuilder;
-  retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number }): AgentBuilder;
-  runAgent(subAgent: AgentBuilder, input?: { context?: Record<string, any> }): AgentBuilder;
-=======
   parallel(stepsOrDict: Step[] | Record<string, Step>, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   branch(condition: (history: StepResult[]) => boolean, branches: { true: (agent: AgentBuilder) => AgentBuilder; false: (agent: AgentBuilder) => AgentBuilder }, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   switch<T = string>(selector: (history: StepResult[]) => T, cases: Record<string, (agent: AgentBuilder) => AgentBuilder> & { default?: (agent: AgentBuilder) => AgentBuilder }, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
@@ -328,7 +319,6 @@ export interface AgentBuilder {
   forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number; pre?: () => void; post?: () => void }): AgentBuilder;
   runAgent(subAgent: AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
   run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]>;
   stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown>;
 }
@@ -394,26 +384,12 @@ export function agent(opts?: AgentOptions): AgentBuilder {
     then(s: Step | StepFactory) { steps.push(s); return builder; },
     
     // Parallel execution
-<<<<<<< HEAD
-    parallel(stepsOrDict: Step[] | Record<string, Step>) {
-      steps.push({ __parallel: stepsOrDict } as any);
-=======
     parallel(stepsOrDict: Step[] | Record<string, Step>, hooks?: { pre?: () => void; post?: () => void }) {
       steps.push({ __parallel: stepsOrDict, __hooks: hooks } as any);
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
       return builder;
     },
     
     // Conditional branching
-<<<<<<< HEAD
-    branch(condition: (history: StepResult[]) => boolean, branches: { true: (agent: AgentBuilder) => AgentBuilder; false: (agent: AgentBuilder) => AgentBuilder }) {
-      steps.push({ __branch: { condition, branches } } as any);
-      return builder;
-    },
-    
-    switch<T = string>(selector: (history: StepResult[]) => T, cases: Record<string, (agent: AgentBuilder) => AgentBuilder> & { default?: (agent: AgentBuilder) => AgentBuilder }) {
-      steps.push({ __switch: { selector, cases } } as any);
-=======
     branch(condition: (history: StepResult[]) => boolean, branches: { true: (agent: AgentBuilder) => AgentBuilder; false: (agent: AgentBuilder) => AgentBuilder }, hooks?: { pre?: () => void; post?: () => void }) {
       steps.push({ __branch: { condition, branches }, __hooks: hooks } as any);
       return builder;
@@ -421,47 +397,28 @@ export function agent(opts?: AgentOptions): AgentBuilder {
     
     switch<T = string>(selector: (history: StepResult[]) => T, cases: Record<string, (agent: AgentBuilder) => AgentBuilder> & { default?: (agent: AgentBuilder) => AgentBuilder }, hooks?: { pre?: () => void; post?: () => void }) {
       steps.push({ __switch: { selector, cases }, __hooks: hooks } as any);
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
       return builder;
     },
     
     // Loops
-<<<<<<< HEAD
-    while(condition: (history: StepResult[]) => boolean, body: (agent: AgentBuilder) => AgentBuilder, opts?: { maxIterations?: number; timeout?: number }) {
-=======
     while(condition: (history: StepResult[]) => boolean, body: (agent: AgentBuilder) => AgentBuilder, opts?: { maxIterations?: number; timeout?: number; pre?: () => void; post?: () => void }) {
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
       steps.push({ __while: { condition, body, opts } } as any);
       return builder;
     },
     
-<<<<<<< HEAD
-    forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder) {
-      steps.push({ __forEach: { items, body } } as any);
-      return builder;
-    },
-    
-    retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number }) {
-=======
     forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder, hooks?: { pre?: () => void; post?: () => void }) {
       steps.push({ __forEach: { items, body }, __hooks: hooks } as any);
       return builder;
     },
     
     retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number; pre?: () => void; post?: () => void }) {
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
       steps.push({ __retryUntil: { body, successCondition, opts } } as any);
       return builder;
     },
     
     // Sub-agent composition
-<<<<<<< HEAD
-    runAgent(subAgent: AgentBuilder, input?: { context?: Record<string, any> }) {
-      steps.push({ __runAgent: { subAgent, input } } as any);
-=======
     runAgent(subAgent: AgentBuilder, hooks?: { pre?: () => void; post?: () => void }) {
       steps.push({ __runAgent: { subAgent }, __hooks: hooks } as any);
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
       return builder;
     },
     
@@ -479,8 +436,6 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           
           // Handle advanced pattern steps
           if ((raw as any).__parallel) {
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             try {
               hooks?.pre?.();
@@ -488,7 +443,6 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for parallel:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const parallelResult = await executeParallel(
               (raw as any).__parallel,
               async (step: any) => {
@@ -500,22 +454,17 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             out.push(parallelResult);
             contextHistory.push(parallelResult);
             log?.(parallelResult, out.length - 1);
-<<<<<<< HEAD
-=======
             
             try {
               hooks?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for parallel:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__branch) {
             const { condition, branches } = (raw as any).__branch;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             
             try {
@@ -524,27 +473,21 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for branch:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
             out.push(...branchResults);
             contextHistory.push(...branchResults);
             branchResults.forEach((r, i) => log?.(r, out.length - branchResults.length + i));
-<<<<<<< HEAD
-=======
             
             try {
               hooks?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for branch:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__switch) {
             const { selector, cases } = (raw as any).__switch;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             
             try {
@@ -553,27 +496,21 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for switch:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
             out.push(...switchResults);
             contextHistory.push(...switchResults);
             switchResults.forEach((r, i) => log?.(r, out.length - switchResults.length + i));
-<<<<<<< HEAD
-=======
             
             try {
               hooks?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for switch:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__while) {
             const { condition, body, opts: whileOpts } = (raw as any).__while;
-<<<<<<< HEAD
-=======
             
             try {
               whileOpts?.pre?.();
@@ -581,27 +518,21 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for while:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
             out.push(...whileResults);
             contextHistory.push(...whileResults);
             whileResults.forEach((r, i) => log?.(r, out.length - whileResults.length + i));
-<<<<<<< HEAD
-=======
             
             try {
               whileOpts?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for while:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__forEach) {
             const { items, body } = (raw as any).__forEach;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             
             try {
@@ -610,27 +541,21 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for forEach:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const forEachResults = await executeForEach(items, body, () => agent(opts));
             out.push(...forEachResults);
             contextHistory.push(...forEachResults);
             forEachResults.forEach((r, i) => log?.(r, out.length - forEachResults.length + i));
-<<<<<<< HEAD
-=======
             
             try {
               hooks?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for forEach:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__retryUntil) {
             const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
-<<<<<<< HEAD
-=======
             
             try {
               retryOpts?.pre?.();
@@ -638,27 +563,21 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for retryUntil:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
             out.push(...retryResults);
             contextHistory.push(...retryResults);
             retryResults.forEach((r, i) => log?.(r, out.length - retryResults.length + i));
-<<<<<<< HEAD
-=======
             
             try {
               retryOpts?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for retryUntil:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__runAgent) {
             const { subAgent } = (raw as any).__runAgent;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             
             try {
@@ -667,20 +586,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for runAgent:', e);
             }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const subResults = await executeRunAgent(subAgent);
             out.push(...subResults);
             contextHistory.push(...subResults);
             subResults.forEach((r, i) => log?.(r, out.length - subResults.length + i));
-<<<<<<< HEAD
-=======
             
             try {
               hooks?.post?.();
             } catch (e) {
               console.warn('Post-hook failed for runAgent:', e);
             }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
@@ -906,16 +821,11 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         for (const raw of planned) {
           if ((raw as any).__reset) { contextHistory = []; continue; }
           
-<<<<<<< HEAD
-          // Handle advanced pattern steps (same as run())
-          if ((raw as any).__parallel) {
-=======
           // Handle advanced pattern steps (same as run() with hooks)
           if ((raw as any).__parallel) {
             const hooks = (raw as any).__hooks;
             try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for parallel:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const parallelResult = await executeParallel(
               (raw as any).__parallel,
               async (step: any) => {
@@ -928,22 +838,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             contextHistory.push(parallelResult);
             log?.(parallelResult, out.length - 1);
             yield parallelResult;
-<<<<<<< HEAD
-=======
             
             try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for parallel:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__branch) {
             const { condition, branches } = (raw as any).__branch;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for branch:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
             out.push(...branchResults);
             contextHistory.push(...branchResults);
@@ -951,22 +855,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               log?.(r, out.length - branchResults.length + branchResults.indexOf(r));
               yield r;
             }
-<<<<<<< HEAD
-=======
             
             try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for branch:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__switch) {
             const { selector, cases } = (raw as any).__switch;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for switch:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
             out.push(...switchResults);
             contextHistory.push(...switchResults);
@@ -974,21 +872,15 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               log?.(r, out.length - switchResults.length + switchResults.indexOf(r));
               yield r;
             }
-<<<<<<< HEAD
-=======
             
             try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for switch:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__while) {
             const { condition, body, opts: whileOpts } = (raw as any).__while;
-<<<<<<< HEAD
-=======
             try { whileOpts?.pre?.(); } catch (e) { console.warn('Pre-hook failed for while:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
             out.push(...whileResults);
             contextHistory.push(...whileResults);
@@ -996,22 +888,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               log?.(r, out.length - whileResults.length + whileResults.indexOf(r));
               yield r;
             }
-<<<<<<< HEAD
-=======
             
             try { whileOpts?.post?.(); } catch (e) { console.warn('Post-hook failed for while:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__forEach) {
             const { items, body } = (raw as any).__forEach;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for forEach:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const forEachResults = await executeForEach(items, body, () => agent(opts));
             out.push(...forEachResults);
             contextHistory.push(...forEachResults);
@@ -1019,21 +905,15 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               log?.(r, out.length - forEachResults.length + forEachResults.indexOf(r));
               yield r;
             }
-<<<<<<< HEAD
-=======
             
             try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for forEach:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__retryUntil) {
             const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
-<<<<<<< HEAD
-=======
             try { retryOpts?.pre?.(); } catch (e) { console.warn('Pre-hook failed for retryUntil:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
             out.push(...retryResults);
             contextHistory.push(...retryResults);
@@ -1041,22 +921,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               log?.(r, out.length - retryResults.length + retryResults.indexOf(r));
               yield r;
             }
-<<<<<<< HEAD
-=======
             
             try { retryOpts?.post?.(); } catch (e) { console.warn('Post-hook failed for retryUntil:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
           if ((raw as any).__runAgent) {
             const { subAgent } = (raw as any).__runAgent;
-<<<<<<< HEAD
-=======
             const hooks = (raw as any).__hooks;
             try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for runAgent:', e); }
             
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             const subResults = await executeRunAgent(subAgent);
             out.push(...subResults);
             contextHistory.push(...subResults);
@@ -1064,11 +938,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               log?.(r, out.length - subResults.length + subResults.indexOf(r));
               yield r;
             }
-<<<<<<< HEAD
-=======
             
             try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for runAgent:', e); }
->>>>>>> d037fb3aed5a92744c59d978cad319eb13775ff2
             continue;
           }
           
