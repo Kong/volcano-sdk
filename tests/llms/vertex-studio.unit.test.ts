@@ -100,21 +100,21 @@ describe('Vertex Studio provider (unit)', () => {
   it('handles tool name sanitization', async () => {
     const mockClient = {
       generateContent: async () => ({
-        candidates: [{
-          content: {
-            parts: [{
-              functionCall: {
-                name: 'localhost_3211_mcp_get_sign',
-                args: { birthdate: '1993-07-11' }
-              }
-            }]
-          }
-        }]
+          candidates: [{
+            content: {
+              parts: [{
+                functionCall: {
+                  name: 'astro_get_sign',  // Sanitized (dots → underscores)
+                  args: { birthdate: '1993-07-11' }
+                }
+              }]
+            }
+          }]
       })
     };
 
     const tools = [{
-      name: 'localhost_3211_mcp.get_sign',
+      name: 'astro.get_sign',
       description: 'Get astrological sign',
       parameters: { type: 'object', properties: { birthdate: { type: 'string' } } }
     }];
@@ -126,8 +126,8 @@ describe('Vertex Studio provider (unit)', () => {
     });
     const result = await llm.genWithTools('Get sign', tools);
     
-    // Result should have the original dotted name
-    expect(result.toolCalls[0].name).toBe('localhost_3211_mcp.get_sign');
+    // Result should have the original dotted name (matches input)
+    expect(result.toolCalls[0].name).toBe('astro.get_sign');
   });
 
   it('requires model parameter', () => {

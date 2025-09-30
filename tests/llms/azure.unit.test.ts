@@ -98,14 +98,14 @@ describe('Azure AI provider (unit)', () => {
       createResponse: async () => ({
         output: [{
           type: 'function_call',
-          name: 'localhost_3211_mcp_get_sign',
+          name: 'astro_get_sign',  // Sanitized (dots → underscores)
           arguments: '{"birthdate":"1993-07-11"}'
         }]
       })
     };
 
     const tools = [{
-      name: 'localhost_3211_mcp.get_sign',
+      name: 'astro.get_sign',
       description: 'Get astrological sign',
       parameters: { type: 'object', properties: { birthdate: { type: 'string' } } }
     }];
@@ -118,8 +118,8 @@ describe('Azure AI provider (unit)', () => {
     });
     const result = await llm.genWithTools('Get sign', tools);
     
-    // Result should have the original dotted name
-    expect(result.toolCalls[0].name).toBe('localhost_3211_mcp.get_sign');
+    // Result should have the original dotted name (matches input)
+    expect(result.toolCalls[0].name).toBe('astro.get_sign');
   });
 
   it('requires model parameter', () => {

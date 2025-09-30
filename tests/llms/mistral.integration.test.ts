@@ -54,7 +54,7 @@ describe('Mistral provider (integration)', () => {
     const model = process.env.MISTRAL_MODEL || 'mistral-small-latest';
     const llm = llmMistral({ baseURL: base, apiKey: process.env.MISTRAL_API_KEY!, model });
     const tools: any = [{
-      name: 'localhost_3211_mcp.get_sign',
+      name: 'astro.get_sign',
       description: 'Return sign for birthdate',
       parameters: { type: 'object', properties: { birthdate: { type: 'string' } }, required: ['birthdate'] }
     }];

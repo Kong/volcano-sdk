@@ -36,8 +36,9 @@ describe('context configuration', () => {
       id: 'OpenAI-mock', model: 'mock', client: {},
       gen: async (p: string) => { capturedPrompt = p; return 'OK'; },
       genWithTools: async (_prompt: string, tools: any[]) => {
-        const dotted = `localhost_${PORT}_mcp.get_sign`;
-        const found = tools.find(t => t.name === dotted);
+        // Tool names now use hash-based IDs
+        const found = tools.find(t => t.name.endsWith('.get_sign'));
+        if (!found) throw new Error('get_sign tool not found');
         return {
           content: '',
           toolCalls: [

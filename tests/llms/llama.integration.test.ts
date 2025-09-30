@@ -45,7 +45,7 @@ describe('Llama provider (integration)', () => {
     const model = process.env.LLAMA_MODEL || 'llama3.2:3b';
     const llm = llmLlama({ baseURL: base, model });
     const tools: any = [{
-      name: 'localhost_3211_mcp.get_sign',
+      name: 'astro.get_sign',
       description: 'Return sign for birthdate',
       parameters: { type: 'object', properties: { birthdate: { type: 'string' } }, required: ['birthdate'] }
     }];

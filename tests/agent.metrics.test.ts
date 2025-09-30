@@ -67,8 +67,8 @@ describe('latency metrics', () => {
         id: 'OpenAI-mock', model: 'mock', client: {},
         gen: async () => 'OK',
         genWithTools: async (_p: string, tools: any[]) => {
-          const dotted = `localhost_${PORT}_mcp.get_sign`;
-          const found = tools.find(t => t.name === dotted);
+          // Tool names now use hash-based IDs: mcp_XXXXXXXX.get_sign
+          const found = tools.find(t => t.name.endsWith('.get_sign'));
           return { content: '', toolCalls: [{ name: found.name, arguments: { birthdate: '1993-07-11' }, mcpHandle: astro }] };
         },
         genStream: async function*(){}
