@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Providers - Volcano SDK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="index.html" class="logo">
+          <span class="emoji">🌋</span>
+          <span class="text">Volcano SDK</span>
+        </a>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Getting Started</div>
+          <a href="index.html#introduction" class="nav-link">Introduction</a>
+          <a href="index.html#installation" class="nav-link">Installation</a>
+          <a href="index.html#quick-start" class="nav-link">Quick Start</a>
+          <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Providers</div>
+          <a href="providers.html" class="nav-link active">Overview</a>
+          <a href="#openai" class="nav-link">OpenAI</a>
+          <a href="#anthropic" class="nav-link">Anthropic (Claude)</a>
+          <a href="#mistral" class="nav-link">Mistral</a>
+          <a href="#llama" class="nav-link">Llama</a>
+          <a href="#bedrock" class="nav-link">AWS Bedrock</a>
+          <a href="#vertex" class="nav-link">Google Vertex Studio</a>
+          <a href="#azure" class="nav-link">Azure AI</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Advanced Patterns</div>
+          <a href="patterns.html" class="nav-link">Overview</a>
+          <a href="patterns.html#parallel" class="nav-link">Parallel Execution</a>
+          <a href="patterns.html#branching" class="nav-link">Conditional Branching</a>
+          <a href="patterns.html#loops" class="nav-link">Loops</a>
+          <a href="patterns.html#sub-agents" class="nav-link">Sub-Agent Composition</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Features</div>
+          <a href="features.html" class="nav-link">Overview</a>
+          <a href="features.html#streaming" class="nav-link">Streaming</a>
+          <a href="features.html#retries" class="nav-link">Retries & Timeouts</a>
+          <a href="features.html#hooks" class="nav-link">Step Hooks</a>
+          <a href="features.html#errors" class="nav-link">Error Handling</a>
+          <a href="features.html#mcp-tools" class="nav-link">MCP Tools</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">API Reference</div>
+          <a href="api.html" class="nav-link">Overview</a>
+          <a href="api.html#agent" class="nav-link">agent()</a>
+          <a href="api.html#step" class="nav-link">Step Types</a>
+          <a href="api.html#results" class="nav-link">Step Results</a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-inner">
+        <section class="doc-section">
+          <h1>LLM Providers</h1>
+          <p class="lead">Volcano SDK supports 7 LLM providers with function calling and MCP integration. Providers can be mixed within a single workflow.</p>
+          
+          <div class="provider-grid">
+            <div class="provider-card">
+              <h3>✅ OpenAI</h3>
+              <p>GPT-4o, GPT-4o-mini with native function calling</p>
+            </div>
+            <div class="provider-card">
+              <h3>✅ Anthropic</h3>
+              <p>Claude 3.5 Sonnet/Haiku with tool_use</p>
+            </div>
+            <div class="provider-card">
+              <h3>✅ Mistral</h3>
+              <p>Mistral models with OpenAI-compatible API</p>
+            </div>
+            <div class="provider-card">
+              <h3>✅ Llama</h3>
+              <p>Local Llama via Ollama or cloud endpoints</p>
+            </div>
+            <div class="provider-card">
+              <h3>✅ AWS Bedrock</h3>
+              <p>Foundation models with Converse API</p>
+            </div>
+            <div class="provider-card">
+              <h3>✅ Google Vertex</h3>
+              <p>Gemini models with function calling</p>
+            </div>
+            <div class="provider-card">
+              <h3>✅ Azure AI</h3>
+              <p>Azure OpenAI with enterprise auth</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- OpenAI Provider -->
+        <section id="openai" class="doc-section">
+          <h2>OpenAI Provider</h2>
+          <p>Full support for OpenAI's GPT models with function calling and streaming.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmOpenAI } from "volcano-sdk";
+
+const openai = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+  options: {
+    temperature: 0.7,
+    max_completion_tokens: 2000,
+    top_p: 0.9,
+    seed: 42
+  }
+});</code></pre>
+          </div>
+
+          <h3>Supported Models</h3>
+          <ul>
+            <li><code>gpt-4o</code> - Most capable model</li>
+            <li><code>gpt-4o-mini</code> - Fast and affordable</li>
+            <li><code>gpt-4-turbo</code> - Latest GPT-4 Turbo</li>
+            <li><code>gpt-3.5-turbo</code> - Fast and cost-effective</li>
+          </ul>
+
+          <h3>Optional Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-2</td>
+                <td>Controls randomness</td>
+              </tr>
+              <tr>
+                <td><code>max_completion_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>seed</code></td>
+                <td>number</td>
+                <td>For deterministic outputs</td>
+              </tr>
+              <tr>
+                <td><code>frequency_penalty</code></td>
+                <td>-2 to 2</td>
+                <td>Penalize based on frequency</td>
+              </tr>
+              <tr>
+                <td><code>presence_penalty</code></td>
+                <td>-2 to 2</td>
+                <td>Penalize based on presence</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Anthropic Provider -->
+        <section id="anthropic" class="doc-section">
+          <h2>Anthropic (Claude) Provider</h2>
+          <p>Native support for Claude models with tool calling.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmAnthropic } from "volcano-sdk";
+
+const claude = llmAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-3-5-sonnet-20241022",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_k: 50
+  }
+});</code></pre>
+          </div>
+
+          <h3>Supported Models</h3>
+          <ul>
+            <li><code>claude-3-5-sonnet-20241022</code> - Most intelligent model</li>
+            <li><code>claude-3-5-haiku-20241022</code> - Fast and affordable</li>
+            <li><code>claude-3-opus-20240229</code> - Previous flagship</li>
+          </ul>
+
+          <h3>Optional Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-1</td>
+                <td>Controls randomness</td>
+              </tr>
+              <tr>
+                <td><code>max_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>top_k</code></td>
+                <td>number</td>
+                <td>Sample from top K options</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Mistral Provider -->
+        <section id="mistral" class="doc-section">
+          <h2>Mistral Provider</h2>
+          <p>Support for Mistral's open and proprietary models.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmMistral } from "volcano-sdk";
+
+const mistral = llmMistral({
+  apiKey: process.env.MISTRAL_API_KEY!,
+  model: "mistral-small-latest",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    safe_prompt: true
+  }
+});</code></pre>
+          </div>
+
+          <h3>Supported Models</h3>
+          <ul>
+            <li><code>mistral-large-latest</code> - Most capable model</li>
+            <li><code>mistral-small-latest</code> - Fast and efficient</li>
+            <li><code>open-mistral-7b</code> - Open source model</li>
+          </ul>
+        </section>
+
+        <!-- Llama Provider -->
+        <section id="llama" class="doc-section">
+          <h2>Llama Provider</h2>
+          <p>Run Llama models locally with Ollama or via OpenAI-compatible endpoints.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmLlama } from "volcano-sdk";
+
+// Local Ollama setup
+const llama = llmLlama({
+  baseURL: "http://127.0.0.1:11434",
+  model: "llama3.2:3b",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    repeat_penalty: 1.1
+  }
+});</code></pre>
+          </div>
+
+          <div class="info-box">
+            <div class="info-icon">💡</div>
+            <div>
+              <strong>Setup:</strong> Install Ollama from <a href="https://ollama.ai" target="_blank">ollama.ai</a> and run <code>ollama pull llama3.2:3b</code>
+            </div>
+          </div>
+
+          <h3>Supported Models</h3>
+          <ul>
+            <li><code>llama3.2:3b</code> - Small, fast model</li>
+            <li><code>llama3.2:1b</code> - Tiny model for edge devices</li>
+            <li><code>llama3.1:8b</code> - Balanced performance</li>
+            <li><code>llama3.1:70b</code> - Most capable (requires GPU)</li>
+          </ul>
+        </section>
+
+        <!-- AWS Bedrock Provider -->
+        <section id="bedrock" class="doc-section">
+          <h2>AWS Bedrock Provider</h2>
+          <p>Access foundation models via AWS Bedrock with native tool calling support.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmBedrock } from "volcano-sdk";
+
+const bedrock = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1",
+  // Uses AWS credential chain by default
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000
+  }
+});</code></pre>
+          </div>
+
+          <h3>Authentication Methods</h3>
+          <ol>
+            <li><strong>Explicit credentials:</strong> Pass <code>accessKeyId</code> and <code>secretAccessKey</code></li>
+            <li><strong>AWS profile:</strong> Pass <code>profile</code> name</li>
+            <li><strong>IAM role:</strong> Pass <code>roleArn</code></li>
+            <li><strong>Default chain:</strong> Uses environment variables, instance profiles, etc.</li>
+          </ol>
+
+          <h3>Available Model Families</h3>
+          <ul>
+            <li><strong>Claude:</strong> <code>anthropic.claude-3-sonnet-20240229-v1:0</code></li>
+            <li><strong>Titan:</strong> <code>amazon.titan-text-express-v1</code></li>
+            <li><strong>Llama:</strong> <code>meta.llama3-8b-instruct-v1:0</code></li>
+            <li><strong>Cohere:</strong> <code>cohere.command-text-v14</code></li>
+          </ul>
+        </section>
+
+        <!-- Google Vertex Studio Provider -->
+        <section id="vertex" class="doc-section">
+          <h2>Google Vertex Studio Provider</h2>
+          <p>Google's Gemini models with function calling via AI Studio API.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmVertexStudio } from "volcano-sdk";
+
+const vertex = llmVertexStudio({
+  model: "gemini-2.0-flash-exp",
+  apiKey: process.env.GCP_VERTEX_API_KEY!,
+  options: {
+    temperature: 0.8,
+    max_output_tokens: 2048,
+    top_k: 40
+  }
+});</code></pre>
+          </div>
+
+          <h3>Available Models</h3>
+          <ul>
+            <li><code>gemini-2.0-flash-exp</code> - Latest experimental flash model</li>
+            <li><code>gemini-1.5-pro</code> - Production-ready pro model</li>
+            <li><code>gemini-1.5-flash</code> - Fast and efficient</li>
+          </ul>
+
+          <div class="info-box warning">
+            <div class="info-icon">⚠️</div>
+            <div>
+              <strong>Function calling limitations:</strong> Multiple tools per call only supported for search tools. Use multi-step workflows for complex tool orchestration.
+            </div>
+          </div>
+        </section>
+
+        <!-- Azure AI Provider -->
+        <section id="azure" class="doc-section">
+          <h2>Azure AI Provider</h2>
+          <p>Azure OpenAI Service with enterprise authentication.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmAzure } from "volcano-sdk";
+
+const azure = llmAzure({
+  model: "gpt-4o-mini",
+  endpoint: "https://your-resource.openai.azure.com/openai/responses",
+  apiKey: process.env.AZURE_AI_API_KEY!
+});</code></pre>
+          </div>
+
+          <h3>Authentication Methods</h3>
+          <ul>
+            <li><strong>API Key:</strong> Pass <code>apiKey</code></li>
+            <li><strong>Entra ID:</strong> Pass <code>accessToken</code></li>
+            <li><strong>Default credentials:</strong> Uses Azure SDK credential chain</li>
+          </ul>
+
+          <div class="info-box warning">
+            <div class="info-icon">⚠️</div>
+            <div>
+              <strong>Note:</strong> Azure Responses API currently does not support optional configuration parameters. All inference parameters are rejected with HTTP 400 errors.
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Table of Contents (Right Sidebar) -->
+      <aside class="toc">
+        <div class="toc-header">On this page</div>
+        <nav class="toc-nav" id="toc-nav">
+          <!-- Dynamically populated by script.js -->
+        </nav>
+      </aside>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

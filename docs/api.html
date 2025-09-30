@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference - Volcano SDK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="index.html" class="logo">
+          <span class="emoji">🌋</span>
+          <span class="text">Volcano SDK</span>
+        </a>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Getting Started</div>
+          <a href="index.html#introduction" class="nav-link">Introduction</a>
+          <a href="index.html#installation" class="nav-link">Installation</a>
+          <a href="index.html#quick-start" class="nav-link">Quick Start</a>
+          <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Providers</div>
+          <a href="providers.html" class="nav-link">Overview</a>
+          <a href="providers.html#openai" class="nav-link">OpenAI</a>
+          <a href="providers.html#anthropic" class="nav-link">Anthropic (Claude)</a>
+          <a href="providers.html#mistral" class="nav-link">Mistral</a>
+          <a href="providers.html#llama" class="nav-link">Llama</a>
+          <a href="providers.html#bedrock" class="nav-link">AWS Bedrock</a>
+          <a href="providers.html#vertex" class="nav-link">Google Vertex Studio</a>
+          <a href="providers.html#azure" class="nav-link">Azure AI</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Advanced Patterns</div>
+          <a href="patterns.html" class="nav-link">Overview</a>
+          <a href="patterns.html#parallel" class="nav-link">Parallel Execution</a>
+          <a href="patterns.html#branching" class="nav-link">Conditional Branching</a>
+          <a href="patterns.html#loops" class="nav-link">Loops</a>
+          <a href="patterns.html#sub-agents" class="nav-link">Sub-Agent Composition</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Features</div>
+          <a href="features.html" class="nav-link">Overview</a>
+          <a href="features.html#streaming" class="nav-link">Streaming</a>
+          <a href="features.html#retries" class="nav-link">Retries & Timeouts</a>
+          <a href="features.html#hooks" class="nav-link">Step Hooks</a>
+          <a href="features.html#errors" class="nav-link">Error Handling</a>
+          <a href="features.html#mcp-tools" class="nav-link">MCP Tools</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">API Reference</div>
+          <a href="api.html" class="nav-link active">Overview</a>
+          <a href="#agent" class="nav-link">agent()</a>
+          <a href="#step" class="nav-link">Step Types</a>
+          <a href="#results" class="nav-link">Step Results</a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-inner">
+        <section class="doc-section">
+          <h1>API Reference</h1>
+          <p class="lead">API documentation for Volcano SDK: agent creation, step types, results, and utility functions.</p>
+        </section>
+
+        <!-- agent() Function -->
+        <section id="agent" class="doc-section">
+          <h2>agent(options?): AgentBuilder</h2>
+          <p>Create an agent workflow builder.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { agent, llmOpenAI } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+const myAgent = agent({ 
+  llm,
+  instructions: "You are a helpful assistant",
+  timeout: 60,
+  retry: { retries: 3 }
+});</code></pre>
+          </div>
+
+          <h3>Options</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>llm</code></td>
+                <td>LLMHandle</td>
+                <td>-</td>
+                <td>Default LLM provider for all steps</td>
+              </tr>
+              <tr>
+                <td><code>instructions</code></td>
+                <td>string</td>
+                <td>-</td>
+                <td>Global system instructions</td>
+              </tr>
+              <tr>
+                <td><code>timeout</code></td>
+                <td>number</td>
+                <td>60</td>
+                <td>Default timeout per step (seconds)</td>
+              </tr>
+              <tr>
+                <td><code>retry</code></td>
+                <td>RetryConfig</td>
+                <td>{ retries: 3 }</td>
+                <td>Retry configuration</td>
+              </tr>
+              <tr>
+                <td><code>contextMaxChars</code></td>
+                <td>number</td>
+                <td>20480</td>
+                <td>Soft cap for injected context size</td>
+              </tr>
+              <tr>
+                <td><code>contextMaxToolResults</code></td>
+                <td>number</td>
+                <td>8</td>
+                <td>Number of recent tool results to include</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Methods</h3>
+          
+          <h4>Basic Methods</h4>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>.then(step)</code></td>
+                <td>Add a sequential step to the workflow</td>
+              </tr>
+              <tr>
+                <td><code>.resetHistory()</code></td>
+                <td>Clear context/history for subsequent steps</td>
+              </tr>
+              <tr>
+                <td><code>.run(log?)</code></td>
+                <td>Execute workflow and return all results</td>
+              </tr>
+              <tr>
+                <td><code>.stream(log?)</code></td>
+                <td>Execute workflow and yield results incrementally</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Advanced Pattern Methods</h4>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>.parallel(steps)</code></td>
+                <td>Execute steps concurrently (array or dict mode)</td>
+              </tr>
+              <tr>
+                <td><code>.branch(condition, branches)</code></td>
+                <td>Conditional if/else routing</td>
+              </tr>
+              <tr>
+                <td><code>.switch(selector, cases)</code></td>
+                <td>Multi-way branching with default</td>
+              </tr>
+              <tr>
+                <td><code>.while(condition, body, opts?)</code></td>
+                <td>Loop until condition is false</td>
+              </tr>
+              <tr>
+                <td><code>.forEach(items, body)</code></td>
+                <td>Iterate over array of items</td>
+              </tr>
+              <tr>
+                <td><code>.retryUntil(body, success, opts?)</code></td>
+                <td>Retry until success condition is met</td>
+              </tr>
+              <tr>
+                <td><code>.runAgent(subAgent)</code></td>
+                <td>Compose and run sub-agents</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Step Types -->
+        <section id="step" class="doc-section">
+          <h2>Step Types</h2>
+          <p>Volcano SDK supports three types of steps:</p>
+          
+          <h3>LLM-Only Step</h3>
+          <p>Generate text with an LLM without tools:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">{ 
+  prompt: string;
+  llm?: LLMHandle;
+  instructions?: string;
+  timeout?: number;
+  retry?: RetryConfig;
+  contextMaxChars?: number;
+  contextMaxToolResults?: number;
+  pre?: () => void;
+  post?: () => void;
+}</code></pre>
+          </div>
+
+          <h3>Automatic MCP Tool Selection</h3>
+          <p>Let the LLM automatically choose which tools to call:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">{ 
+  prompt: string;
+  mcps: MCPHandle[];
+  llm?: LLMHandle;
+  instructions?: string;
+  timeout?: number;
+  retry?: RetryConfig;
+  contextMaxChars?: number;
+  contextMaxToolResults?: number;
+  pre?: () => void;
+  post?: () => void;
+}</code></pre>
+          </div>
+
+          <h3>Explicit MCP Tool Call</h3>
+          <p>Call a specific tool directly:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">{ 
+  mcp: MCPHandle;
+  tool: string;
+  args?: Record<string, any>;
+  prompt?: string;         // Optional LLM step before tool
+  llm?: LLMHandle;
+  instructions?: string;
+  timeout?: number;
+  retry?: RetryConfig;
+  contextMaxChars?: number;
+  contextMaxToolResults?: number;
+  pre?: () => void;
+  post?: () => void;
+}</code></pre>
+          </div>
+
+          <h3>Common Step Fields</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>llm</code></td>
+                <td>LLMHandle</td>
+                <td>Override the LLM for this step</td>
+              </tr>
+              <tr>
+                <td><code>instructions</code></td>
+                <td>string</td>
+                <td>Override system instructions for this step</td>
+              </tr>
+              <tr>
+                <td><code>timeout</code></td>
+                <td>number</td>
+                <td>Step timeout in seconds (overrides agent default)</td>
+              </tr>
+              <tr>
+                <td><code>retry</code></td>
+                <td>RetryConfig</td>
+                <td>Retry config for this step (overrides agent default)</td>
+              </tr>
+              <tr>
+                <td><code>pre</code></td>
+                <td>() =&gt; void</td>
+                <td>Hook called before step execution</td>
+              </tr>
+              <tr>
+                <td><code>post</code></td>
+                <td>() =&gt; void</td>
+                <td>Hook called after successful step execution</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Step Results -->
+        <section id="results" class="doc-section">
+          <h2>Step Results</h2>
+          <p>Each step returns a <code>StepResult</code> object with execution details:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">type StepResult = {
+  // Basic fields
+  prompt?: string;
+  llmOutput?: string;
+  
+  // Timing metrics (milliseconds)
+  durationMs?: number;        // Total step wall time
+  llmMs?: number;             // Time spent in LLM calls
+  
+  // MCP tool results (explicit call)
+  mcp?: {
+    endpoint: string;
+    tool: string;
+    result: any;
+    ms?: number;              // Tool execution time
+  };
+  
+  // MCP tool calls (automatic selection)
+  toolCalls?: Array<{
+    name: string;
+    endpoint: string;
+    result: any;
+    ms?: number;              // Tool execution time
+  }>;
+  
+  // Parallel execution results
+  parallel?: Record<string, StepResult>;
+  parallelResults?: StepResult[];
+  
+  // Aggregated metrics (on final step only)
+  totalDurationMs?: number;
+  totalLlmMs?: number;
+  totalMcpMs?: number;
+};</code></pre>
+          </div>
+
+          <h3>Example Usage</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">const results = await agent({ llm })
+  .then({ prompt: "Analyze sentiment", mcps: [analytics] })
+  .then({ prompt: "Generate summary" })
+  .run();
+
+// Access first step results
+console.log(results[0].prompt);        // "Analyze sentiment"
+console.log(results[0].llmOutput);     // LLM response
+console.log(results[0].toolCalls);     // Tools that were called
+console.log(results[0].durationMs);    // Step duration
+console.log(results[0].llmMs);         // LLM time
+
+// Access aggregated metrics (on last step)
+const last = results[results.length - 1];
+console.log(last.totalDurationMs);     // Total workflow time
+console.log(last.totalLlmMs);          // Total LLM time
+console.log(last.totalMcpMs);          // Total MCP time</code></pre>
+          </div>
+        </section>
+
+        <!-- Retry Config -->
+        <section id="retry-config" class="doc-section">
+          <h2>RetryConfig</h2>
+          <p>Configuration for retry behavior:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">type RetryConfig = {
+  delay?: number;      // Seconds to wait between retries (mutually exclusive with backoff)
+  backoff?: number;    // Exponential factor (waits 1s, factor^n each retry)
+  retries?: number;    // Total attempts including first (default: 3)
+};</code></pre>
+          </div>
+
+          <h3>Examples</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// Immediate retry
+{ retries: 3 }
+
+// Delayed retry (wait 20s between attempts)
+{ delay: 20, retries: 3 }
+
+// Exponential backoff (1s, 2s, 4s, 8s)
+{ backoff: 2, retries: 4 }</code></pre>
+          </div>
+        </section>
+
+        <!-- Utility Functions -->
+        <section id="utilities" class="doc-section">
+          <h2>Utility Functions</h2>
+          
+          <h3>mcp(url): MCPHandle</h3>
+          <p>Create an MCP handle for a tool server:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { mcp } from "volcano-sdk";
+
+const astro = mcp("http://localhost:3211/mcp");
+const weather = mcp("https://api.example.com/mcp");</code></pre>
+          </div>
+
+          <h3>discoverTools(handles): Promise&lt;ToolDefinition[]&gt;</h3>
+          <p>Manually discover tools from MCP servers:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { discoverTools, mcp } from "volcano-sdk";
+
+const handles = [
+  mcp("http://localhost:3211/mcp"),
+  mcp("http://localhost:3212/mcp")
+];
+
+const tools = await discoverTools(handles);
+console.log(tools); // Array of tool definitions</code></pre>
+          </div>
+        </section>
+
+        <!-- Types Reference -->
+        <section id="types" class="doc-section">
+          <h2>Type Reference</h2>
+          
+          <h3>LLMHandle</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">type LLMHandle = {
+  model: string;
+  gen(prompt: string): Promise<string>;
+  genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult>;
+  genStream?(prompt: string): AsyncGenerator<string, void, unknown>;
+};</code></pre>
+          </div>
+
+          <h3>MCPHandle</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">type MCPHandle = {
+  id: string;
+  url: string;
+};</code></pre>
+          </div>
+
+          <h3>ToolDefinition</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">type ToolDefinition = {
+  name: string;
+  description: string;
+  parameters: any;        // JSON Schema
+  mcpHandle?: MCPHandle;
+};</code></pre>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Table of Contents (Right Sidebar) -->
+      <aside class="toc">
+        <div class="toc-header">On this page</div>
+        <nav class="toc-nav" id="toc-nav">
+          <!-- Dynamically populated by script.js -->
+        </nav>
+      </aside>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
