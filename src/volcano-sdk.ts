@@ -530,6 +530,8 @@ type AgentOptions = {
   // Context compaction options
   contextMaxChars?: number;            // soft cap for injected context size (default 4000)
   contextMaxToolResults?: number;      // number of recent tool results to include (default 3)
+  // MCP authentication configuration per endpoint
+  mcpAuth?: Record<string, MCPAuthConfig>;
 };
 
 export function agent(opts?: AgentOptions): AgentBuilder {
@@ -541,7 +543,18 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const defaultRetry: RetryConfig = opts?.retry ?? { delay: 0, retries: 3 };
   const contextMaxChars = typeof opts?.contextMaxChars === 'number' ? opts!.contextMaxChars! : 20480;
   const contextMaxToolResults = typeof opts?.contextMaxToolResults === 'number' ? opts!.contextMaxToolResults! : 8;
+  const agentMcpAuth = opts?.mcpAuth || {};
   let isRunning = false;
+  
+  // Helper to apply agent-level auth to MCP handle
+  function applyAgentAuth(handle: MCPHandle): MCPHandle {
+    if (handle.auth) return handle; // Handle-level auth takes precedence
+    const authConfig = agentMcpAuth[handle.url];
+    if (authConfig) {
+      return { ...handle, auth: authConfig };
+    }
+    return handle;
+  }
   
   const builder: AgentBuilder = {
     resetHistory() { steps.push({ __reset: true }); return builder; },
@@ -794,7 +807,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const cmc = (s as any).contextMaxChars ?? contextMaxChars;
               const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
               r.prompt = (s as any).prompt;
-              const availableTools = await discoverTools((s as any).mcps);
+              // Apply agent-level auth to all MCP handles
+              const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
+              const availableTools = await discoverTools(mcpsWithAuth);
               if (availableTools.length === 0) {
                 r.llmOutput = "No tools available for this request.";
               } else {
@@ -820,8 +835,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                   let toolResultsAppend = "\n\n[Tool results]\n";
                   for (const call of toolPlan.toolCalls) {
                     const mapped = call;
-                    const handle = mapped?.mcpHandle;
+                    let handle = mapped?.mcpHandle;
                     if (!handle) continue;
+                    // Apply agent-level auth
+                    handle = applyAgentAuth(handle);
                     // Validate args when schema known
                     try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
                     const idx = mapped.name.indexOf('.');
@@ -868,6 +885,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             }
             // Explicit MCP tool calls (existing behavior)
             else if ("mcp" in s && "tool" in s) {
+              // Apply agent-level auth
+              const mcpHandle = applyAgentAuth((s as any).mcp);
+              
               if ("prompt" in s) {
                 const usedLlm = (s as any).llm ?? defaultLlm;
                 if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
@@ -882,18 +902,18 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 llmTotalMs += Date.now() - llmStart;
               }
               // Validate against tool schema if discoverable
-              const schema = await getToolSchema((s as any).mcp, (s as any).tool);
-              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${(s as any).mcp.id}.${(s as any).tool}`);
+              const schema = await getToolSchema(mcpHandle, (s as any).tool);
+              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
               const mcpStart = Date.now();
               let res: any;
               try {
-                res = await withMCP((s as any).mcp, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
               } catch (e) {
-                const provider = classifyProviderFromMcp((s as any).mcp);
+                const provider = classifyProviderFromMcp(mcpHandle);
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
               }
               const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: (s as any).mcp.url, tool: (s as any).tool, result: res, ms: mcpMs };
+              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
             }
   
             r.llmMs = llmTotalMs;
@@ -1138,7 +1158,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const cmc = (s as any).contextMaxChars ?? contextMaxChars;
               const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
               r.prompt = (s as any).prompt;
-              const availableTools = await discoverTools((s as any).mcps);
+              // Apply agent-level auth to all MCP handles
+              const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
+              const availableTools = await discoverTools(mcpsWithAuth);
               if (availableTools.length === 0) {
                 r.llmOutput = "No tools available for this request.";
               } else {
@@ -1164,8 +1186,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                   let toolResultsAppend = "\n\n[Tool results]\n";
                   for (const call of toolPlan.toolCalls) {
                     const mapped = call;
-                    const handle = mapped?.mcpHandle;
+                    let handle = mapped?.mcpHandle;
                     if (!handle) continue;
+                    // Apply agent-level auth
+                    handle = applyAgentAuth(handle);
                     // Validate args when schema known
                     try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
                     const idx = mapped.name.indexOf('.');
@@ -1212,6 +1236,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             }
             // Explicit MCP tool calls (existing behavior)
             else if ("mcp" in s && "tool" in s) {
+              // Apply agent-level auth
+              const mcpHandle = applyAgentAuth((s as any).mcp);
+              
               if ("prompt" in s) {
                 const usedLlm = (s as any).llm ?? defaultLlm;
                 if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
@@ -1226,18 +1253,18 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 llmTotalMs += Date.now() - llmStart;
               }
               // Validate against tool schema if discoverable
-              const schema = await getToolSchema((s as any).mcp, (s as any).tool);
-              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${(s as any).mcp.id}.${(s as any).tool}`);
+              const schema = await getToolSchema(mcpHandle, (s as any).tool);
+              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
               const mcpStart = Date.now();
               let res: any;
               try {
-                res = await withMCP((s as any).mcp, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
               } catch (e) {
-                const provider = classifyProviderFromMcp((s as any).mcp);
+                const provider = classifyProviderFromMcp(mcpHandle);
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
               }
               const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: (s as any).mcp.url, tool: (s as any).tool, result: res, ms: mcpMs };
+              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
             }
   
             r.llmMs = llmTotalMs;

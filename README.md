@@ -260,9 +260,11 @@ await agent({ llm, retry: { delay: 20 } })
 
 ## MCP Authentication
 
-Volcano SDK supports OAuth 2.1 and Bearer token authentication per the MCP specification.
+Volcano SDK supports OAuth 2.1 and Bearer token authentication per the MCP specification. Configure auth at the handle level or centrally at the agent level.
 
-### OAuth Authentication (Client Credentials)
+### Handle-Level Authentication
+
+Configure auth directly on individual MCP handles:
 
 ```ts
 const protectedMcp = mcp("https://api.example.com/mcp", {
@@ -279,16 +281,36 @@ await agent({ llm })
   .run();
 ```
 
-### Bearer Token Authentication
+### Agent-Level Authentication
+
+Configure auth centrally for cleaner code when using multiple authenticated servers:
 
 ```ts
-const authMcp = mcp("https://api.example.com/mcp", {
-  auth: {
-    type: 'bearer',
-    token: process.env.MCP_BEARER_TOKEN!
+// MCP handles without auth
+const mcp1 = mcp("https://api.example.com/mcp");
+const mcp2 = mcp("https://api.other.com/mcp");
+
+// Auth configured at agent level
+await agent({
+  llm,
+  mcpAuth: {
+    'https://api.example.com/mcp': {
+      type: 'oauth',
+      clientId: process.env.CLIENT_ID_1!,
+      clientSecret: process.env.CLIENT_SECRET_1!,
+      tokenEndpoint: 'https://api.example.com/oauth/token'
+    },
+    'https://api.other.com/mcp': {
+      type: 'bearer',
+      token: process.env.TOKEN_2!
+    }
   }
-});
+})
+  .then({ prompt: "Use tools from both servers", mcps: [mcp1, mcp2] })
+  .run();
 ```
+
+**Note:** Handle-level auth takes precedence over agent-level auth.
 
 ### Features
 
@@ -296,6 +318,7 @@ const authMcp = mcp("https://api.example.com/mcp", {
 - ✅ **OAuth token caching**: Tokens are cached and reused until expiration
 - ✅ **Automatic refresh**: Expired tokens refreshed automatically (60s buffer)
 - ✅ **Per-endpoint configuration**: Each MCP server can have different auth
+- ✅ **Agent or handle level**: Configure centrally or per-handle
 - ✅ **Connection pooling**: Authenticated connections pooled separately
 
 ## Examples You'll Want to Try

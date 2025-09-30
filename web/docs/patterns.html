@@ -37,6 +37,7 @@
           <a href="index.html#comparison" class="nav-link">Volcano vs Others</a>
           <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
           <a href="examples.html" class="nav-link">Examples</a>
+          <a href="index.html#questions" class="nav-link">Questions & Requests</a>
         </div>
 
         <div class="nav-section">
@@ -64,6 +65,7 @@
         <div class="nav-section">
           <div class="nav-section-title">Advanced Patterns</div>
           <a href="patterns.html" class="nav-link active">Overview</a>
+          <a href="#multi-llm" class="nav-link">Multi-LLM Workflows</a>
           <a href="#parallel" class="nav-link">Parallel Execution</a>
           <a href="#branching" class="nav-link">Conditional Branching</a>
           <a href="#loops" class="nav-link">Loops</a>
@@ -95,7 +97,136 @@
       <div class="content-inner">
         <section class="doc-section">
           <h1>Advanced Patterns</h1>
-          <p class="lead">Control flow patterns for building multi-step agents: parallel execution, conditional branching, loops, and sub-agent composition.</p>
+          <p class="lead">Control flow patterns for building multi-step agents: parallel execution, conditional branching, loops, sub-agent composition, and multi-LLM workflows.</p>
+        </section>
+
+        <!-- Multi-LLM Workflows -->
+        <section id="multi-llm" class="doc-section">
+          <h2>Multi-LLM Workflows</h2>
+          <p>One of Volcano's most powerful features: use different LLM providers for different steps in the same workflow. Mix and match to leverage each model's strengths.</p>
+          
+          <div class="highlight-box orange">
+            <strong>Why use multiple LLMs?</strong> Different models excel at different tasks. GPT-4 for complex reasoning, Claude for detailed analysis, Mistral for creative writing, local Llama for cost-effective preprocessing. Volcano makes it seamless.
+          </div>
+
+          <h3>Basic Multi-Provider Workflow</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
+
+const gpt = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini"
+});
+
+const claude = llmAnthropic({ 
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-3-5-haiku-20241022"
+});
+
+const mistral = llmMistral({ 
+  apiKey: process.env.MISTRAL_API_KEY!,
+  model: "mistral-small-latest"
+});
+
+// Each step uses a different LLM
+await agent()
+  .then({ llm: gpt, prompt: "Extract key data from this report..." })
+  .then({ llm: claude, prompt: "Analyze the extracted data for patterns" })
+  .then({ llm: mistral, prompt: "Write a creative summary in French" })
+  .run();
+
+// Context flows automatically between steps, regardless of provider</code></pre>
+          </div>
+
+          <h3>Cost-Optimized Pipeline</h3>
+          <p>Use local models for preprocessing, expensive models for critical tasks:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { agent, llmLlama, llmOpenAI } from "volcano-sdk";
+
+const llama = llmLlama({ 
+  baseURL: "http://127.0.0.1:11434",
+  model: "llama3.2:3b"  // Free, local
+});
+
+const gpt4 = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o"  // Expensive, high-quality
+});
+
+// Process 100 documents
+await agent()
+  .forEach(documents, (doc, a) => 
+    a.then({ llm: llama, prompt: `Summarize: ${doc}` })  // Cheap preprocessing
+  )
+  .then({ llm: gpt4, prompt: "Analyze all summaries and create final report" })  // Quality output
+  .run();</code></pre>
+          </div>
+
+          <h3>Multi-Provider with MCP Tools</h3>
+          <p>Combine different LLMs with automatic MCP tool selection:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">const database = mcp("http://localhost:5000/mcp");
+const analytics = mcp("http://localhost:5001/mcp");
+
+await agent()
+  .then({ 
+    llm: gpt, 
+    prompt: "Query user data from database",
+    mcps: [database]
+  })
+  .then({ 
+    llm: claude, 
+    prompt: "Perform statistical analysis",
+    mcps: [analytics]
+  })
+  .then({ 
+    llm: mistral, 
+    prompt: "Generate executive summary" 
+  })
+  .run();</code></pre>
+          </div>
+
+          <h3>Conditional Provider Switching</h3>
+          <p>Route to different LLMs based on complexity:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent()
+  .then({ llm: gpt, prompt: "Classify this task as SIMPLE or COMPLEX" })
+  .switch(
+    (h) => h[0].llmOutput?.includes("COMPLEX") ? "complex" : "simple",
+    {
+      complex: (a) => a
+        .then({ llm: gpt4, prompt: "Handle complex reasoning" })
+        .then({ llm: claude, prompt: "Verify the analysis" }),
+      
+      simple: (a) => a
+        .then({ llm: llama, prompt: "Handle simple task quickly" })
+    }
+  )
+  .run();</code></pre>
+          </div>
+
+          <h3>Global Default with Per-Step Overrides</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// Set default LLM at agent level
+await agent({ llm: gpt })
+  .then({ prompt: "Step 1 uses default GPT" })
+  .then({ llm: claude, prompt: "Step 2 overrides with Claude" })
+  .then({ prompt: "Step 3 back to default GPT" })
+  .then({ llm: mistral, prompt: "Step 4 uses Mistral" })
+  .run();</code></pre>
+          </div>
+
+          <h3>Benefits</h3>
+          <ul class="benefits-list">
+            <li><strong>Best-of-breed:</strong> Use the best model for each specific task</li>
+            <li><strong>Cost optimization:</strong> Expensive models only where needed</li>
+            <li><strong>Automatic context:</strong> Results flow between providers seamlessly</li>
+            <li><strong>A/B testing:</strong> Compare model outputs in production</li>
+            <li><strong>Fallback strategies:</strong> Switch to backup provider if primary fails</li>
+          </ul>
         </section>
 
         <!-- Parallel Execution -->
