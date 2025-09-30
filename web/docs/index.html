@@ -146,23 +146,22 @@
         <!-- Installation -->
         <section id="installation" class="doc-section">
           <h2>Installation</h2>
-          <p>Install Volcano SDK and its peer dependencies:</p>
+          <p>Install Volcano SDK - everything you need for OpenAI, Anthropic, Mistral, Llama, and Google Vertex providers:</p>
           
           <div class="code-block">
             <pre><code class="language-bash">npm install volcano-sdk</code></pre>
           </div>
 
-          <h3>Peer Dependencies</h3>
-          <p>Volcano uses peer dependencies to avoid version conflicts. Install the ones you need:</p>
+          <p>That's it! The core SDK includes MCP support and all common LLM providers.</p>
+
+          <h3>Optional Provider Dependencies</h3>
+          <p>For provider-specific features, install additional packages:</p>
           
           <div class="code-block">
-            <pre><code class="language-bash"># Required for any LLM provider and MCP tools
-npm install @modelcontextprotocol/sdk openai
-
-# Optional: For AWS Bedrock
+            <pre><code class="language-bash"># For AWS Bedrock
 npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 
-# Optional: For Azure AI
+# For Azure AI (if using credential chain)
 npm install @azure/identity</code></pre>
           </div>
 
@@ -170,13 +169,6 @@ npm install @azure/identity</code></pre>
             <div class="info-icon">✓</div>
             <div>
               <strong>Requirements:</strong> Node.js 18.17 or later
-            </div>
-          </div>
-
-          <div class="info-box tip">
-            <div class="info-icon">💡</div>
-            <div>
-              <strong>Why peer dependencies?</strong> This prevents version conflicts and keeps bundle sizes minimal. You only install what you use.
             </div>
           </div>
         </section>
