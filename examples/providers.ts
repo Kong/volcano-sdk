@@ -15,7 +15,7 @@ async function demonstrateProviders() {
   const favorites = mcp("http://localhost:3212/mcp");
 
   // Configure different LLM providers
-  const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-4o-mini" });
+  const openai = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-5-mini" });
   const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY!, model: "claude-3-haiku-20240307" });
   const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY!, model: "mistral-large-latest" });
   const llama = llmLlama({ baseURL: "http://127.0.0.1:11434", model: "llama3.2:3b" });

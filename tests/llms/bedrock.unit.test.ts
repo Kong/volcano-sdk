@@ -143,7 +143,7 @@ describe('Bedrock provider (unit)', () => {
   it('requires model parameter', () => {
     expect(() => {
       llmBedrock({});
-    }).toThrow(/model parameter is required/);
+    }).toThrow(/Missing required 'model' parameter/);
   });
 
   it('handles AWS configuration errors gracefully', async () => {

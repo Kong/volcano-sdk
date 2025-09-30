@@ -16,7 +16,7 @@ describe('Bedrock provider (integration)', () => {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         sessionToken: process.env.AWS_SESSION_TOKEN,
       }),
-      model: process.env.BEDROCK_MODEL || 'amazon.titan-text-express-v1'
+      model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0'
     });
     
     const prompt = 'Reply ONLY with BEDROCK_OK';
@@ -40,7 +40,7 @@ describe('Bedrock provider (integration)', () => {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         sessionToken: process.env.AWS_SESSION_TOKEN,
       }),
-      model: process.env.BEDROCK_MODEL || 'amazon.titan-text-express-v1'
+      model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0'
     });
     
     const prompt = 'Reply ONLY with BEDROCK_ECHO_OK';
@@ -106,7 +106,7 @@ describe('Bedrock provider (integration)', () => {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         sessionToken: process.env.AWS_SESSION_TOKEN,
       }),
-      model: process.env.BEDROCK_MODEL || 'amazon.titan-text-express-v1'
+      model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0'
     });
     
     const prompt = 'Reply ONLY with BEDROCK_STREAM_OK';
