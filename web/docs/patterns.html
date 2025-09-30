@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Patterns - Volcano SDK</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="index.html" class="logo">
+          <span class="emoji">🌋</span>
+          <span class="text">Volcano SDK</span>
+        </a>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Getting Started</div>
+          <a href="index.html#introduction" class="nav-link">Introduction</a>
+          <a href="index.html#installation" class="nav-link">Installation</a>
+          <a href="index.html#quick-start" class="nav-link">Quick Start</a>
+          <a href="index.html#use-cases" class="nav-link">Use Cases</a>
+          <a href="index.html#comparison" class="nav-link">Volcano vs Others</a>
+          <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
+          <a href="examples.html" class="nav-link">Examples</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Providers</div>
+          <a href="providers.html" class="nav-link">Overview</a>
+          <a href="providers.html#openai" class="nav-link">OpenAI</a>
+          <a href="providers.html#anthropic" class="nav-link">Anthropic (Claude)</a>
+          <a href="providers.html#mistral" class="nav-link">Mistral</a>
+          <a href="providers.html#llama" class="nav-link">Llama</a>
+          <a href="providers.html#bedrock" class="nav-link">AWS Bedrock</a>
+          <a href="providers.html#vertex" class="nav-link">Google Vertex Studio</a>
+          <a href="providers.html#azure" class="nav-link">Azure AI</a>
+          <a href="providers.html#custom" class="nav-link">Custom Provider</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Advanced Patterns</div>
+          <a href="patterns.html" class="nav-link active">Overview</a>
+          <a href="#parallel" class="nav-link">Parallel Execution</a>
+          <a href="#branching" class="nav-link">Conditional Branching</a>
+          <a href="#loops" class="nav-link">Loops</a>
+          <a href="#sub-agents" class="nav-link">Sub-Agent Composition</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Features</div>
+          <a href="features.html" class="nav-link">Overview</a>
+          <a href="features.html#run" class="nav-link">run() Method</a>
+          <a href="features.html#streaming" class="nav-link">stream() Method</a>
+          <a href="features.html#retries" class="nav-link">Retries & Timeouts</a>
+          <a href="features.html#hooks" class="nav-link">Step Hooks</a>
+          <a href="features.html#errors" class="nav-link">Error Handling</a>
+          <a href="features.html#mcp-tools" class="nav-link">MCP Tools</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">API Reference</div>
+          <a href="api.html" class="nav-link">Overview</a>
+          <a href="api.html#agent" class="nav-link">agent()</a>
+          <a href="api.html#step" class="nav-link">Step Types</a>
+          <a href="api.html#results" class="nav-link">Step Results</a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-inner">
+        <section class="doc-section">
+          <h1>Advanced Patterns</h1>
+          <p class="lead">Control flow patterns for building multi-step agents: parallel execution, conditional branching, loops, and sub-agent composition.</p>
+        </section>
+
+        <!-- Parallel Execution -->
+        <section id="parallel" class="doc-section">
+          <h2>Parallel Execution</h2>
+          <p>Execute multiple steps simultaneously for faster workflows.</p>
+          
+          <h3>Array Mode</h3>
+          <p>Run multiple tasks in parallel and get results as an array:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .parallel([
+    { prompt: "Analyze sentiment" },
+    { prompt: "Extract entities" },
+    { prompt: "Categorize topic" }
+  ])
+  .then({ prompt: "Combine all analysis results" })
+  .run();</code></pre>
+          </div>
+
+          <h3>Named Dictionary Mode</h3>
+          <p>Access results by key for better organization:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .parallel({
+    sentiment: { prompt: "What's the sentiment?" },
+    entities: { prompt: "Extract key entities" },
+    summary: { prompt: "Summarize in 5 words" }
+  })
+  .then((history) => {
+    const results = history[0].parallel;
+    // Access: results.sentiment, results.entities, results.summary
+    return { prompt: "Generate report based on analysis" };
+  })
+  .run();</code></pre>
+          </div>
+
+          <h3>Benefits</h3>
+          <ul>
+            <li><strong>Speed:</strong> Tasks run simultaneously, reducing total execution time</li>
+            <li><strong>Independence:</strong> Suitable for independent analysis tasks</li>
+            <li><strong>Organization:</strong> Named mode provides structured result access</li>
+          </ul>
+        </section>
+
+        <!-- Conditional Branching -->
+        <section id="branching" class="doc-section">
+          <h2>Conditional Branching</h2>
+          <p>Route workflows based on conditions.</p>
+          
+          <h3>If/Else Branching</h3>
+          <p>Binary decision based on a condition:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .then({ prompt: "Is this email spam? Reply YES or NO" })
+  .branch(
+    (history) => history[0].llmOutput?.includes("YES") || false,
+    {
+      true: (a) => a
+        .then({ prompt: "Categorize spam type" })
+        .then({ mcp: notifications, tool: "alert" }),
+      false: (a) => a
+        .then({ prompt: "Extract action items" })
+        .then({ prompt: "Draft reply" })
+    }
+  )
+  .run();</code></pre>
+          </div>
+
+          <h3>Switch/Case Branching</h3>
+          <p>Handle multiple branches with a default fallback:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .then({ prompt: "Classify ticket priority: HIGH, MEDIUM, or LOW" })
+  .switch(
+    (history) => history[0].llmOutput?.toUpperCase().trim() || '',
+    {
+      'HIGH': (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+      'MEDIUM': (a) => a.then({ mcp: jira, tool: "create_ticket" }),
+      'LOW': (a) => a.then({ mcp: email, tool: "queue_for_review" }),
+      default: (a) => a.then({ prompt: "Escalate unknown priority" })
+    }
+  )
+  .run();</code></pre>
+          </div>
+
+          <h3>Use Cases</h3>
+          <ul>
+            <li>Email triage and routing</li>
+            <li>Content moderation with different actions</li>
+            <li>Customer support ticket classification</li>
+            <li>Approval workflows</li>
+          </ul>
+        </section>
+
+        <!-- Loops -->
+        <section id="loops" class="doc-section">
+          <h2>Loops</h2>
+          <p>Iterate until conditions are met.</p>
+          
+          <h3>While Loop</h3>
+          <p>Continue until a condition becomes false:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .while(
+    (history) => {
+      if (history.length === 0) return true;
+      const last = history[history.length - 1];
+      return !last.llmOutput?.includes("COMPLETE");
+    },
+    (a) => a.then({ prompt: "Process next chunk", mcps: [database] }),
+    { maxIterations: 10 }
+  )
+  .then({ prompt: "Generate final summary" })
+  .run();</code></pre>
+          </div>
+
+          <h3>For-Each Loop</h3>
+          <p>Process an array of items:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">const customers = ["alice@example.com", "bob@example.com", "charlie@example.com"];
+
+await agent({ llm })
+  .forEach(customers, (email, a) => 
+    a.then({ prompt: `Generate personalized email for ${email}` })
+     .then({ mcp: sendgrid, tool: "send", args: { to: email } })
+  )
+  .then({ prompt: "Summarize campaign results" })
+  .run();</code></pre>
+          </div>
+
+          <h3>Retry Until Success</h3>
+          <p>Self-correcting agents that retry until a success condition is met:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .retryUntil(
+    (a) => a.then({ prompt: "Generate a haiku about AI" }),
+    (result) => {
+      // Validate 5-7-5 syllable structure
+      const lines = result.llmOutput?.split('\n') || [];
+      return lines.length === 3; // Simple validation
+    },
+    { maxAttempts: 5, backoff: 1.5 }
+  )
+  .run();</code></pre>
+          </div>
+
+          <h3>Use Cases</h3>
+          <ul>
+            <li>Batch processing of items</li>
+            <li>Data pagination and processing</li>
+            <li>Email campaigns</li>
+            <li>Self-correcting content generation</li>
+            <li>Iterative refinement</li>
+          </ul>
+        </section>
+
+        <!-- Sub-Agent Composition -->
+        <section id="sub-agents" class="doc-section">
+          <h2>Sub-Agent Composition</h2>
+          <p>Build reusable agent components and compose them into larger workflows.</p>
+          
+          <h3>Defining Reusable Sub-Agents</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// Define specialized sub-agents
+const emailAnalyzer = agent({ llm: claude })
+  .then({ prompt: "Extract sender intent" })
+  .then({ prompt: "Classify urgency level" });
+
+const responseGenerator = agent({ llm: openai })
+  .then({ prompt: "Draft professional response" })
+  .then({ prompt: "Add signature" });
+
+const qualityChecker = agent({ llm: mistral })
+  .then({ prompt: "Check response quality" })
+  .then({ prompt: "Suggest improvements" });</code></pre>
+          </div>
+
+          <h3>Composing Sub-Agents</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// Compose them in a larger workflow
+await agent({ llm })
+  .then({ mcp: gmail, tool: "fetch_unread" })
+  .runAgent(emailAnalyzer)      // Run first sub-agent
+  .runAgent(responseGenerator)  // Run second sub-agent
+  .runAgent(qualityChecker)     // Run third sub-agent
+  .then({ mcp: gmail, tool: "send_reply" })
+  .run();</code></pre>
+          </div>
+
+          <h3>Complex Composition</h3>
+          <p>Mix sub-agents with other patterns:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">const contentAnalyzer = agent({ llm })
+  .parallel({
+    sentiment: { prompt: "Analyze sentiment" },
+    topics: { prompt: "Extract main topics" },
+    tone: { prompt: "Determine tone" }
+  });
+
+const contentModerator = agent({ llm })
+  .then({ prompt: "Check for policy violations" })
+  .branch(
+    (h) => h[0].llmOutput?.includes("VIOLATION") || false,
+    {
+      true: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
+      false: (a) => a.then({ prompt: "Approve content" })
+    }
+  );
+
+// Main workflow
+await agent({ llm })
+  .then({ mcp: cms, tool: "fetch_pending_posts" })
+  .forEach(posts, (post, a) => 
+    a.runAgent(contentAnalyzer)
+     .runAgent(contentModerator)
+  )
+  .then({ prompt: "Generate moderation report" })
+  .run();</code></pre>
+          </div>
+
+          <h3>Benefits</h3>
+          <ul>
+            <li><strong>Reusability:</strong> Define once, use many times</li>
+            <li><strong>Modularity:</strong> Each sub-agent has a clear responsibility</li>
+            <li><strong>Testing:</strong> Test sub-agents in isolation</li>
+            <li><strong>Maintainability:</strong> Changes in one place affect all uses</li>
+            <li><strong>Clarity:</strong> High-level workflows read like documentation</li>
+          </ul>
+        </section>
+
+        <!-- Combined Patterns -->
+        <section id="combined" class="doc-section">
+          <h2>Combined Patterns</h2>
+          <p>Mix and match patterns for powerful workflows:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  // Parallel analysis
+  .parallel({
+    sentiment: { prompt: "Analyze sentiment" },
+    intent: { prompt: "Extract intent" },
+    priority: { prompt: "Determine priority" }
+  })
+  
+  // Route based on priority
+  .switch(
+    (h) => h[0].parallel?.priority.llmOutput?.trim() || '',
+    {
+      'URGENT': (a) => a
+        .then({ mcp: slack, tool: "alert_team" })
+        .runAgent(escalationAgent),
+      
+      'NORMAL': (a) => a
+        .forEach(responders, (person, ag) => 
+          ag.then({ prompt: `Assign to ${person}` })
+        ),
+      
+      default: (a) => a.then({ prompt: "Queue for review" })
+    }
+  )
+  
+  // Final step
+  .then({ prompt: "Log outcome" })
+  .run();</code></pre>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Table of Contents (Right Sidebar) -->
+      <aside class="toc">
+        <div class="toc-header">On this page</div>
+        <nav class="toc-nav" id="toc-nav">
+          <!-- Dynamically populated by script.js -->
+        </nav>
+      </aside>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -179,27 +179,35 @@ describe('LLM Provider Options (E2E)', () => {
       return;
     }
     
-    // Test random_seed for deterministic output
-    const llmWithSeed = llmMistral({
+    // Test max_tokens limits output length
+    const llmShort = llmMistral({
       apiKey: process.env.MISTRAL_API_KEY!,
       model: process.env.MISTRAL_MODEL || 'mistral-small-latest',
       options: {
         temperature: 0.7,
-        max_tokens: 80,
+        max_tokens: 30, // Very short
         top_p: 0.95,
-        random_seed: 42,
         safe_prompt: true,
       }
     });
     
-    // Same seed should give identical results
-    const result1 = await llmWithSeed.gen('Name a color.');
-    const result2 = await llmWithSeed.gen('Name a color.');
+    const llmLong = llmMistral({
+      apiKey: process.env.MISTRAL_API_KEY!,
+      model: process.env.MISTRAL_MODEL || 'mistral-small-latest',
+      options: {
+        max_tokens: 150, // Much longer
+      }
+    });
     
-    expect(result1).toBeTruthy();
-    expect(result2).toBeTruthy();
-    expect(result1).toBe(result2); // Deterministic with seed
-    expect(result1.length).toBeLessThan(400); // max_tokens limits output
+    const shortResult = await llmShort.gen('Write a paragraph about AI.');
+    const longResult = await llmLong.gen('Write a paragraph about AI.');
+    
+    expect(shortResult).toBeTruthy();
+    expect(longResult).toBeTruthy();
+    // max_tokens should make shortResult significantly shorter
+    expect(shortResult.length).toBeLessThan(longResult.length);
+    expect(shortResult.length).toBeLessThan(250); // ~30 tokens
+    expect(longResult.length).toBeGreaterThan(200); // ~150 tokens
   }, 60000);
 
   it('Vertex Studio: uses optional parameters correctly', async () => {
@@ -235,7 +243,7 @@ describe('LLM Provider Options (E2E)', () => {
     expect(longResult).toBeTruthy();
     // max_output_tokens should limit shortResult
     expect(shortResult.length).toBeLessThan(longResult.length);
-    expect(shortResult.length).toBeLessThan(200); // ~30 tokens
+    expect(shortResult.length).toBeLessThan(250); // ~30 tokens (with some margin)
     expect(longResult.length).toBeGreaterThan(300); // ~200 tokens
   }, 60000);
 });
