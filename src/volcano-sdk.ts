@@ -81,14 +81,27 @@ function normalizeError(e: any, kind: 'timeout'|'validation'|'llm'|'mcp-conn'|'m
 }
 
 /* ---------- MCP (Streamable HTTP) ---------- */
-export type MCPHandle = { id: string; url: string };
-export function mcp(url: string): MCPHandle {
+export type MCPAuthConfig = {
+  type: 'oauth' | 'bearer';
+  token?: string;           // For bearer auth: direct token
+  clientId?: string;        // For OAuth: client credentials
+  clientSecret?: string;
+  tokenEndpoint?: string;   // OAuth token endpoint (for OAuth)
+};
+
+export type MCPHandle = { 
+  id: string; 
+  url: string; 
+  auth?: MCPAuthConfig;
+};
+
+export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle {
   const u = new URL(url);
   const host = (u.hostname || 'host').replace(/[^a-zA-Z0-9_-]/g, '_');
   const port = u.port || (u.protocol === 'https:' ? '443' : '80');
   const path = (u.pathname || '/').replace(/\//g, '_').replace(/[^a-zA-Z0-9_-]/g, '_');
   const id = `${host}_${port}${path}`.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
-  return { id, url };
+  return { id, url, auth: options?.auth };
 }
 
 // Ajv validator instance
@@ -114,14 +127,60 @@ type MCPPoolEntry = {
   transport: StreamableHTTPClientTransport;
   lastUsed: number;
   busyCount: number;
+  auth?: MCPAuthConfig;
 };
 
 const MCP_POOL = new Map<string, MCPPoolEntry>();
 let MCP_POOL_MAX = 16;
 let MCP_POOL_IDLE_MS = 30_000;
 
-async function getPooledClient(url: string): Promise<MCPPoolEntry> {
-  let entry = MCP_POOL.get(url);
+// OAuth token cache: endpoint -> { token, expiresAt }
+type TokenCacheEntry = { token: string; expiresAt: number };
+const OAUTH_TOKEN_CACHE = new Map<string, TokenCacheEntry>();
+
+async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<string> {
+  // Check cache first
+  const cached = OAUTH_TOKEN_CACHE.get(endpoint);
+  if (cached && cached.expiresAt > Date.now() + 60000) { // 60s buffer before expiration
+    return cached.token;
+  }
+  
+  // Acquire new token
+  if (!auth.tokenEndpoint || !auth.clientId || !auth.clientSecret) {
+    throw new Error(`OAuth auth requires tokenEndpoint, clientId, and clientSecret`);
+  }
+  
+  const response = await fetch(auth.tokenEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'client_credentials',
+      client_id: auth.clientId,
+      client_secret: auth.clientSecret
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`OAuth token acquisition failed: ${response.status} ${await response.text()}`);
+  }
+  
+  const data = await response.json();
+  const token = data.access_token;
+  const expiresIn = data.expires_in || 3600; // default 1 hour
+  
+  // Cache the token
+  OAUTH_TOKEN_CACHE.set(endpoint, {
+    token,
+    expiresAt: Date.now() + (expiresIn * 1000)
+  });
+  
+  return token;
+}
+
+
+async function getPooledClient(url: string, auth?: MCPAuthConfig): Promise<MCPPoolEntry> {
+  const poolKey = auth ? `${url}::auth` : url; // Separate pool entries for auth vs non-auth
+  let entry = MCP_POOL.get(poolKey);
   if (!entry) {
     // Evict LRU idle if over max
     if (MCP_POOL.size >= MCP_POOL_MAX) {
@@ -133,23 +192,66 @@ async function getPooledClient(url: string): Promise<MCPPoolEntry> {
         MCP_POOL.delete(k);
       }
     }
+    
+    // Create transport
     const transport = new StreamableHTTPClientTransport(new URL(url));
+    
     const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
-    await client.connect(transport);
-    entry = { client, transport, lastUsed: Date.now(), busyCount: 0 };
-    MCP_POOL.set(url, entry);
+    
+    // Connect with auth if needed
+    if (auth) {
+      await connectWithAuth(transport, client, auth, url);
+    } else {
+      await client.connect(transport);
+    }
+    
+    entry = { client, transport, lastUsed: Date.now(), busyCount: 0, auth };
+    MCP_POOL.set(poolKey, entry);
   }
   entry.busyCount++;
   entry.lastUsed = Date.now();
   return entry;
 }
 
-async function releasePooledClient(url: string) {
-  const entry = MCP_POOL.get(url);
-  if (!entry) return;
-  entry.busyCount = Math.max(0, entry.busyCount - 1);
-  entry.lastUsed = Date.now();
+async function connectWithAuth(transport: any, client: MCPClient, auth: MCPAuthConfig, endpoint: string) {
+  // Get auth headers
+  const authHeaders: Record<string, string> = {};
+  
+  if (auth.type === 'oauth') {
+    const token = await getOAuthToken(auth, endpoint);
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  } else if (auth.type === 'bearer' && auth.token) {
+    authHeaders['Authorization'] = `Bearer ${auth.token}`;
+  }
+  
+  // Wrap fetch globally during connect
+  const originalFetch = global.fetch;
+  global.fetch = async (url: any, init: any = {}) => {
+    let mergedHeaders: any = {};
+    if (init.headers) {
+      if (init.headers instanceof Headers) {
+        init.headers.forEach((value: string, key: string) => {
+          mergedHeaders[key] = value;
+        });
+      } else {
+        mergedHeaders = { ...init.headers };
+      }
+    }
+    Object.assign(mergedHeaders, authHeaders);
+    
+    return originalFetch(url, {
+      ...init,
+      headers: mergedHeaders
+    });
+  };
+  
+  try {
+    await client.connect(transport);
+  } finally {
+    global.fetch = originalFetch;
+  }
 }
+
 
 async function cleanupIdlePool() {
   const now = Date.now();
@@ -180,12 +282,74 @@ export function __internal_getMcpPoolStats() {
 }
 export async function __internal_forcePoolCleanup() { await cleanupIdlePool(); }
 export function __internal_setPoolConfig(max: number, idleMs: number) { MCP_POOL_MAX = max; MCP_POOL_IDLE_MS = idleMs; }
+export function __internal_clearOAuthTokenCache() { OAUTH_TOKEN_CACHE.clear(); }
+export function __internal_getOAuthTokenCache() { 
+  return Array.from(OAUTH_TOKEN_CACHE.entries()).map(([endpoint, entry]) => ({ 
+    endpoint, 
+    token: entry.token, 
+    expiresAt: entry.expiresAt 
+  })); 
+}
 
 async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>): Promise<T> {
   ensurePoolSweeper();
-  const entry = await getPooledClient(h.url);
-  try { return await fn(entry.client); }
-  finally { await releasePooledClient(h.url); }
+  const poolKey = h.auth ? `${h.url}::auth` : h.url;
+  const entry = await getPooledClient(h.url, h.auth);
+  
+  try {
+    // Always wrap with auth if configured (for both connect and tool calls)
+    if (h.auth || entry.auth) {
+      const authConfig = h.auth || entry.auth!;
+      return await executeWithAuth(authConfig, h.url, () => fn(entry.client));
+    } else {
+      return await fn(entry.client);
+    }
+  } finally { 
+    const e = MCP_POOL.get(poolKey);
+    if (e) {
+      e.busyCount = Math.max(0, e.busyCount - 1);
+      e.lastUsed = Date.now();
+    }
+  }
+}
+
+async function executeWithAuth<T>(auth: MCPAuthConfig, endpoint: string, fn: () => Promise<T>): Promise<T> {
+  // Get auth headers
+  const authHeaders: Record<string, string> = {};
+  
+  if (auth.type === 'oauth') {
+    const token = await getOAuthToken(auth, endpoint);
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  } else if (auth.type === 'bearer' && auth.token) {
+    authHeaders['Authorization'] = `Bearer ${auth.token}`;
+  }
+  
+  // Wrap fetch
+  const originalFetch = global.fetch;
+  global.fetch = async (url: any, init: any = {}) => {
+    let mergedHeaders: any = {};
+    if (init.headers) {
+      if (init.headers instanceof Headers) {
+        init.headers.forEach((value: string, key: string) => {
+          mergedHeaders[key] = value;
+        });
+      } else {
+        mergedHeaders = { ...init.headers };
+      }
+    }
+    Object.assign(mergedHeaders, authHeaders);
+    
+    return originalFetch(url, {
+      ...init,
+      headers: mergedHeaders
+    });
+  };
+  
+  try {
+    return await fn();
+  } finally {
+    global.fetch = originalFetch;
+  }
 }
 
 function sleep(ms: number) {
@@ -366,6 +530,8 @@ type AgentOptions = {
   // Context compaction options
   contextMaxChars?: number;            // soft cap for injected context size (default 4000)
   contextMaxToolResults?: number;      // number of recent tool results to include (default 3)
+  // MCP authentication configuration per endpoint
+  mcpAuth?: Record<string, MCPAuthConfig>;
 };
 
 export function agent(opts?: AgentOptions): AgentBuilder {
@@ -377,7 +543,18 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const defaultRetry: RetryConfig = opts?.retry ?? { delay: 0, retries: 3 };
   const contextMaxChars = typeof opts?.contextMaxChars === 'number' ? opts!.contextMaxChars! : 20480;
   const contextMaxToolResults = typeof opts?.contextMaxToolResults === 'number' ? opts!.contextMaxToolResults! : 8;
+  const agentMcpAuth = opts?.mcpAuth || {};
   let isRunning = false;
+  
+  // Helper to apply agent-level auth to MCP handle
+  function applyAgentAuth(handle: MCPHandle): MCPHandle {
+    if (handle.auth) return handle; // Handle-level auth takes precedence
+    const authConfig = agentMcpAuth[handle.url];
+    if (authConfig) {
+      return { ...handle, auth: authConfig };
+    }
+    return handle;
+  }
   
   const builder: AgentBuilder = {
     resetHistory() { steps.push({ __reset: true }); return builder; },
@@ -630,7 +807,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const cmc = (s as any).contextMaxChars ?? contextMaxChars;
               const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
               r.prompt = (s as any).prompt;
-              const availableTools = await discoverTools((s as any).mcps);
+              // Apply agent-level auth to all MCP handles
+              const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
+              const availableTools = await discoverTools(mcpsWithAuth);
               if (availableTools.length === 0) {
                 r.llmOutput = "No tools available for this request.";
               } else {
@@ -656,8 +835,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                   let toolResultsAppend = "\n\n[Tool results]\n";
                   for (const call of toolPlan.toolCalls) {
                     const mapped = call;
-                    const handle = mapped?.mcpHandle;
+                    let handle = mapped?.mcpHandle;
                     if (!handle) continue;
+                    // Apply agent-level auth
+                    handle = applyAgentAuth(handle);
                     // Validate args when schema known
                     try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
                     const idx = mapped.name.indexOf('.');
@@ -704,6 +885,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             }
             // Explicit MCP tool calls (existing behavior)
             else if ("mcp" in s && "tool" in s) {
+              // Apply agent-level auth
+              const mcpHandle = applyAgentAuth((s as any).mcp);
+              
               if ("prompt" in s) {
                 const usedLlm = (s as any).llm ?? defaultLlm;
                 if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
@@ -718,18 +902,18 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 llmTotalMs += Date.now() - llmStart;
               }
               // Validate against tool schema if discoverable
-              const schema = await getToolSchema((s as any).mcp, (s as any).tool);
-              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${(s as any).mcp.id}.${(s as any).tool}`);
+              const schema = await getToolSchema(mcpHandle, (s as any).tool);
+              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
               const mcpStart = Date.now();
               let res: any;
               try {
-                res = await withMCP((s as any).mcp, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
               } catch (e) {
-                const provider = classifyProviderFromMcp((s as any).mcp);
+                const provider = classifyProviderFromMcp(mcpHandle);
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
               }
               const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: (s as any).mcp.url, tool: (s as any).tool, result: res, ms: mcpMs };
+              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
             }
   
             r.llmMs = llmTotalMs;
@@ -974,7 +1158,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const cmc = (s as any).contextMaxChars ?? contextMaxChars;
               const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
               r.prompt = (s as any).prompt;
-              const availableTools = await discoverTools((s as any).mcps);
+              // Apply agent-level auth to all MCP handles
+              const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
+              const availableTools = await discoverTools(mcpsWithAuth);
               if (availableTools.length === 0) {
                 r.llmOutput = "No tools available for this request.";
               } else {
@@ -1000,8 +1186,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                   let toolResultsAppend = "\n\n[Tool results]\n";
                   for (const call of toolPlan.toolCalls) {
                     const mapped = call;
-                    const handle = mapped?.mcpHandle;
+                    let handle = mapped?.mcpHandle;
                     if (!handle) continue;
+                    // Apply agent-level auth
+                    handle = applyAgentAuth(handle);
                     // Validate args when schema known
                     try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
                     const idx = mapped.name.indexOf('.');
@@ -1048,6 +1236,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             }
             // Explicit MCP tool calls (existing behavior)
             else if ("mcp" in s && "tool" in s) {
+              // Apply agent-level auth
+              const mcpHandle = applyAgentAuth((s as any).mcp);
+              
               if ("prompt" in s) {
                 const usedLlm = (s as any).llm ?? defaultLlm;
                 if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
@@ -1062,18 +1253,18 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 llmTotalMs += Date.now() - llmStart;
               }
               // Validate against tool schema if discoverable
-              const schema = await getToolSchema((s as any).mcp, (s as any).tool);
-              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${(s as any).mcp.id}.${(s as any).tool}`);
+              const schema = await getToolSchema(mcpHandle, (s as any).tool);
+              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
               const mcpStart = Date.now();
               let res: any;
               try {
-                res = await withMCP((s as any).mcp, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
               } catch (e) {
-                const provider = classifyProviderFromMcp((s as any).mcp);
+                const provider = classifyProviderFromMcp(mcpHandle);
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
               }
               const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: (s as any).mcp.url, tool: (s as any).tool, result: res, ms: mcpMs };
+              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
             }
   
             r.llmMs = llmTotalMs;
