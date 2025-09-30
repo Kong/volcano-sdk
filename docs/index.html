@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Volcano SDK - Build MCP-powered AI Agents</title>
+  <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
   <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
   <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
@@ -32,7 +33,10 @@
           <a href="index.html#introduction" class="nav-link active">Introduction</a>
           <a href="index.html#installation" class="nav-link">Installation</a>
           <a href="index.html#quick-start" class="nav-link">Quick Start</a>
+          <a href="index.html#use-cases" class="nav-link">Use Cases</a>
+          <a href="index.html#comparison" class="nav-link">Volcano vs Others</a>
           <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
+          <a href="examples.html" class="nav-link">Examples</a>
         </div>
 
         <div class="nav-section">
@@ -45,6 +49,7 @@
           <a href="providers.html#bedrock" class="nav-link">AWS Bedrock</a>
           <a href="providers.html#vertex" class="nav-link">Google Vertex Studio</a>
           <a href="providers.html#azure" class="nav-link">Azure AI</a>
+          <a href="providers.html#custom" class="nav-link">Custom Provider</a>
         </div>
 
         <div class="nav-section">
@@ -59,7 +64,8 @@
         <div class="nav-section">
           <div class="nav-section-title">Features</div>
           <a href="features.html" class="nav-link">Overview</a>
-          <a href="features.html#streaming" class="nav-link">Streaming</a>
+          <a href="features.html#run" class="nav-link">run() Method</a>
+          <a href="features.html#streaming" class="nav-link">stream() Method</a>
           <a href="features.html#retries" class="nav-link">Retries & Timeouts</a>
           <a href="features.html#hooks" class="nav-link">Step Hooks</a>
           <a href="features.html#errors" class="nav-link">Error Handling</a>
@@ -89,51 +95,51 @@
           </div>
           
           <div class="feature-grid">
-            <div class="feature-card">
+            <a href="api.html#agent" class="feature-card">
               <div class="feature-icon">⚡️</div>
               <h3>Chainable API</h3>
               <p>Chain steps with <code>.then()</code> and <code>.run()</code>. Promise-like syntax for building multi-step workflows.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="features.html#mcp-tools" class="feature-card">
               <div class="feature-icon">✨</div>
               <h3>Automatic Tool Selection</h3>
               <p>The LLM selects and calls appropriate MCP tools based on the prompt. No manual routing required.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="providers.html" class="feature-card">
               <div class="feature-icon">🔧</div>
               <h3>7 LLM Providers</h3>
               <p>Supports OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, and Azure. Switch providers per-step or globally.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="api.html#types" class="feature-card">
               <div class="feature-icon">🛡️</div>
               <h3>TypeScript-First</h3>
               <p>Full TypeScript support with type inference and IntelliSense for all APIs.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="patterns.html" class="feature-card">
               <div class="feature-icon">🔄</div>
               <h3>Advanced Patterns</h3>
               <p>Parallel execution, conditional branching, loops, and sub-agent composition for complex workflows.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="features.html#retries" class="feature-card">
               <div class="feature-icon">⏱️</div>
               <h3>Retries & Timeouts</h3>
               <p>Configurable retry strategies (immediate, delayed, exponential backoff) and per-step timeouts.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="features.html#streaming" class="feature-card">
               <div class="feature-icon">📡</div>
               <h3>Streaming Workflows</h3>
               <p>Stream step results as they complete using async generators. Useful for long-running tasks and real-time UIs.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="features.html#mcp-tools" class="feature-card">
               <div class="feature-icon">🎯</div>
               <h3>MCP Integration</h3>
               <p>Native Model Context Protocol support with connection pooling, tool discovery, and JSON schema validation.</p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="patterns.html#sub-agents" class="feature-card">
               <div class="feature-icon">🧩</div>
               <h3>Sub-Agent Composition</h3>
               <p>Define reusable agent components and compose them into larger workflows.</p>
-            </div>
+            </a>
           </div>
 
           <div class="nav-cards">
@@ -162,13 +168,20 @@
           <p>Install Volcano SDK and its peer dependencies:</p>
           
           <div class="code-block">
-            <pre><code class="language-bash">npm install volcano-sdk
+            <pre><code class="language-bash">npm install volcano-sdk</code></pre>
+          </div>
+
+          <h3>Peer Dependencies</h3>
+          <p>Volcano uses peer dependencies to avoid version conflicts. Install the ones you need:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-bash"># Required for any LLM provider and MCP tools
 npm install @modelcontextprotocol/sdk openai
 
-# For AWS Bedrock support (optional)
+# Optional: For AWS Bedrock
 npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 
-# For Azure support (optional)
+# Optional: For Azure AI
 npm install @azure/identity</code></pre>
           </div>
 
@@ -176,6 +189,13 @@ npm install @azure/identity</code></pre>
             <div class="info-icon">✓</div>
             <div>
               <strong>Requirements:</strong> Node.js 18.17 or later
+            </div>
+          </div>
+
+          <div class="info-box tip">
+            <div class="info-icon">💡</div>
+            <div>
+              <strong>Why peer dependencies?</strong> This prevents version conflicts and keeps bundle sizes minimal. You only install what you use.
             </div>
           </div>
         </section>
@@ -231,6 +251,34 @@ console.log(steps[0].toolCalls); // Tools that were called
 console.log(steps[1].llmOutput); // Fortune based on the sign</code></pre>
           </div>
 
+          <h3>Multi-Provider Workflow</h3>
+          <p>Use different LLM providers for different steps in the same workflow:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
+
+const openai = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini"
+});
+const claude = llmAnthropic({ 
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-3-5-haiku-20241022"
+});
+const mistral = llmMistral({ 
+  apiKey: process.env.MISTRAL_API_KEY!,
+  model: "mistral-small-latest"
+});
+
+const results = await agent()
+  .then({ llm: openai, prompt: "Extract key data from this report..." })
+  .then({ llm: claude, prompt: "Analyze the data for patterns" })
+  .then({ llm: mistral, prompt: "Write a creative summary" })
+  .run();
+
+// Each step uses a different provider. Context flows automatically.</code></pre>
+          </div>
+
           <div class="next-steps">
             <h3>Next Steps</h3>
             <ul>
@@ -240,6 +288,178 @@ console.log(steps[1].llmOutput); // Fortune based on the sign</code></pre>
               <li>Check the <a href="api.html">API Reference</a> for complete documentation</li>
             </ul>
           </div>
+        </section>
+
+        <!-- Use Cases -->
+        <section id="use-cases" class="doc-section">
+          <h2>Use Cases</h2>
+          <p>Volcano SDK excels in scenarios that require LLM reasoning combined with real-world actions:</p>
+          
+          <div class="highlight-box blue">
+            <h3>Customer Support Automation</h3>
+            <p>Build agents that analyze support tickets, look up customer data via MCP tools, and generate personalized responses across multiple LLMs for quality.</p>
+            <div class="code-block">
+              <pre><code class="language-typescript">await agent({ llm: gpt4 })
+  .then({ prompt: "Classify ticket urgency", mcps: [ticketing] })
+  .branch(
+    (h) => h[0].llmOutput?.includes("URGENT"),
+    {
+      true: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+      false: (a) => a.then({ llm: claude, prompt: "Draft response" })
+    }
+  )
+  .run();</code></pre>
+            </div>
+          </div>
+
+          <div class="highlight-box green">
+            <h3>Content Moderation Pipeline</h3>
+            <p>Analyze content in parallel (sentiment, topics, violations), then route based on results with conditional branching.</p>
+            <div class="code-block">
+              <pre><code class="language-typescript">await agent({ llm })
+  .parallel({
+    sentiment: { prompt: "Analyze sentiment" },
+    topics: { prompt: "Extract topics" },
+    violations: { prompt: "Check policy violations" }
+  })
+  .switch(
+    (h) => h[0].parallel?.violations.llmOutput?.includes("VIOLATION") ? "flag" : "approve",
+    {
+      flag: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
+      approve: (a) => a.then({ mcp: cms, tool: "publish" })
+    }
+  )
+  .run();</code></pre>
+            </div>
+          </div>
+
+          <div class="highlight-box purple">
+            <h3>Data Processing Workflows</h3>
+            <p>Process large datasets with loops, use local Llama for preprocessing, then GPT-4 for final analysis.</p>
+            <div class="code-block">
+              <pre><code class="language-typescript">await agent()
+  .forEach(documents, (doc, a) => 
+    a.then({ llm: llama, prompt: `Summarize: ${doc}` })
+  )
+  .then({ llm: gpt4, prompt: "Aggregate all summaries into final report" })
+  .run();</code></pre>
+            </div>
+          </div>
+
+          <div class="highlight-box orange">
+            <h3>Multi-Step Research Agent</h3>
+            <p>Use MCP tools to gather data, multiple LLMs for analysis, and streaming for real-time updates.</p>
+            <div class="code-block">
+              <pre><code class="language-typescript">for await (const step of agent({ llm: gpt4 })
+  .then({ prompt: "Research topic X", mcps: [web, database] })
+  .then({ llm: claude, prompt: "Analyze findings" })
+  .then({ llm: mistral, prompt: "Write comprehensive report" })
+  .stream()) {
+  
+  updateUI(step); // Real-time progress
+}</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- Volcano vs Others -->
+        <section id="comparison" class="doc-section">
+          <h2>Volcano vs Others</h2>
+          <p>Factual comparison with other AI frameworks:</p>
+          
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Volcano SDK</th>
+                <th>AI SDK</th>
+                <th>LangChain</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>API Style</strong></td>
+                <td>Fluent, chainable <code>.then()</code></td>
+                <td>Function-based</td>
+                <td>Class-based chains</td>
+              </tr>
+              <tr>
+                <td><strong>MCP Integration</strong></td>
+                <td>Native, first-class</td>
+                <td>Via custom tools</td>
+                <td>Via custom tools</td>
+              </tr>
+              <tr>
+                <td><strong>Multi-Provider Workflows</strong></td>
+                <td>Built-in, per-step LLM switching</td>
+                <td>Manual configuration</td>
+                <td>Supported via chains</td>
+              </tr>
+              <tr>
+                <td><strong>Advanced Patterns</strong></td>
+                <td>Parallel, branching, loops, sub-agents</td>
+                <td>Manual implementation</td>
+                <td>Via agents framework</td>
+              </tr>
+              <tr>
+                <td><strong>Retry Strategies</strong></td>
+                <td>3 modes: immediate, delayed, exponential</td>
+                <td>Basic retry</td>
+                <td>Via callbacks</td>
+              </tr>
+              <tr>
+                <td><strong>Streaming</strong></td>
+                <td><code>stream()</code> method (async generator)</td>
+                <td><code>streamText()</code></td>
+                <td>Via callbacks</td>
+              </tr>
+              <tr>
+                <td><strong>Type Safety</strong></td>
+                <td>Full TypeScript with inference</td>
+                <td>Full TypeScript</td>
+                <td>TypeScript available</td>
+              </tr>
+              <tr>
+                <td><strong>Error Handling</strong></td>
+                <td>Typed errors with metadata (stepId, provider, retryable)</td>
+                <td>Standard errors</td>
+                <td>Custom error handlers</td>
+              </tr>
+              <tr>
+                <td><strong>Context Management</strong></td>
+                <td>Automatic with tunable limits</td>
+                <td>Manual memory</td>
+                <td>Built-in memory</td>
+              </tr>
+              <tr>
+                <td><strong>Step Hooks</strong></td>
+                <td>Pre/post hooks per step</td>
+                <td>Not available</td>
+                <td>Via callbacks</td>
+              </tr>
+              <tr>
+                <td><strong>Connection Pooling</strong></td>
+                <td>Automatic for MCP</td>
+                <td>N/A</td>
+                <td>Manual</td>
+              </tr>
+              <tr>
+                <td><strong>Bundle Size</strong></td>
+                <td>Minimal (peer deps only)</td>
+                <td>Minimal</td>
+                <td>Large (~500KB+)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>When to Choose Volcano</h3>
+          <ul class="benefits-list">
+            <li><strong>MCP-first applications:</strong> Native support for Model Context Protocol</li>
+            <li><strong>Multi-provider workflows:</strong> Need to mix different LLMs in one workflow</li>
+            <li><strong>Complex control flow:</strong> Parallel execution, branching, loops required</li>
+            <li><strong>Production reliability:</strong> Need retries, timeouts, and error metadata</li>
+            <li><strong>TypeScript projects:</strong> Want excellent type inference and IntelliSense</li>
+          </ul>
         </section>
 
         <!-- Core Concepts -->
@@ -326,6 +546,34 @@ await agent()
               <li>Local Llama for preprocessing, GPT-4 for final processing</li>
               <li>Test different models to optimize cost and quality</li>
             </ul>
+          </div>
+        </section>
+
+        <!-- Questions & Features -->
+        <section id="questions" class="doc-section">
+          <h2>Questions or Feature Requests?</h2>
+          <p>We'd love to hear from you!</p>
+          
+          <div class="highlight-box blue">
+            <h3>GitHub Repository</h3>
+            <p>Visit our GitHub repository for:</p>
+            <ul style="margin: 12px 0 0; padding-left: 24px;">
+              <li>📝 <a href="https://github.com/Kong/volcano-sdk/issues" target="_blank">Report bugs or issues</a></li>
+              <li>💡 <a href="https://github.com/Kong/volcano-sdk/discussions" target="_blank">Request features or ask questions</a></li>
+              <li>⭐ <a href="https://github.com/Kong/volcano-sdk" target="_blank">Star the project</a> if you find it useful</li>
+              <li>🤝 <a href="https://github.com/Kong/volcano-sdk/blob/main/CONTRIBUTING.md" target="_blank">Contribute code or documentation</a></li>
+            </ul>
+          </div>
+
+          <div class="nav-cards">
+            <a href="https://github.com/Kong/volcano-sdk" target="_blank" class="nav-card">
+              <h3>⭐ View on GitHub</h3>
+              <p>Source code, issues, and discussions</p>
+            </a>
+            <a href="https://www.npmjs.com/package/volcano-sdk" target="_blank" class="nav-card">
+              <h3>📦 NPM Package</h3>
+              <p>Install via npm and view package details</p>
+            </a>
           </div>
         </section>
 

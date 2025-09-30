@@ -39,10 +39,15 @@ html {
 
 body {
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--text-primary);
   background: var(--bg-primary);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Layout */
@@ -110,7 +115,7 @@ body {
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: color 0.15s, background 0.15s;
   border-left: 2px solid transparent;
 }
 
@@ -124,6 +129,7 @@ body {
   background: rgba(255, 77, 77, 0.05);
   border-left-color: var(--primary);
   font-weight: 500;
+  transition: none;
 }
 
 /* Main Content */
@@ -252,12 +258,14 @@ h4 {
 p {
   margin-bottom: 16px;
   color: var(--text-secondary);
+  font-size: 16px;
 }
 
 .lead {
   font-size: 18px;
   color: var(--text-secondary);
   margin-bottom: 32px;
+  line-height: 1.6;
 }
 
 a {
@@ -274,10 +282,12 @@ ul, ol {
   margin: 16px 0;
   padding-left: 24px;
   color: var(--text-secondary);
+  font-size: 16px;
 }
 
 li {
   margin: 8px 0;
+  line-height: 1.6;
 }
 
 code {
@@ -348,6 +358,7 @@ pre code {
 }
 
 .feature-card {
+  display: block;
   padding: 20px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -355,6 +366,8 @@ pre code {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .feature-card::before {
@@ -468,12 +481,15 @@ pre code {
 }
 
 .provider-card {
+  display: block;
   padding: 18px;
   background: var(--bg-secondary);
   border: 2px solid var(--border);
   border-radius: 10px;
   transition: all 0.3s ease;
   position: relative;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .provider-card::before {
@@ -496,13 +512,13 @@ pre code {
   opacity: 1;
 }
 
-.provider-card:nth-child(1):hover { border-color: #10a37f; }
-.provider-card:nth-child(2):hover { border-color: #cc785c; }
-.provider-card:nth-child(3):hover { border-color: #ff7000; }
-.provider-card:nth-child(4):hover { border-color: var(--accent-purple); }
-.provider-card:nth-child(5):hover { border-color: #ff9900; }
-.provider-card:nth-child(6):hover { border-color: #4285f4; }
-.provider-card:nth-child(7):hover { border-color: #0078d4; }
+a.provider-card:nth-child(1):hover { border-color: #10a37f; }
+a.provider-card:nth-child(2):hover { border-color: #cc785c; }
+a.provider-card:nth-child(3):hover { border-color: #ff7000; }
+a.provider-card:nth-child(4):hover { border-color: var(--accent-purple); }
+a.provider-card:nth-child(5):hover { border-color: #ff9900; }
+a.provider-card:nth-child(6):hover { border-color: #4285f4; }
+a.provider-card:nth-child(7):hover { border-color: #0078d4; }
 
 .provider-card h3 {
   font-size: 15px;
@@ -579,6 +595,14 @@ pre code {
   color: var(--text-primary);
 }
 
+.info-box p {
+  font-size: 14px;
+}
+
+.info-box div {
+  font-size: 14px;
+}
+
 /* Tables */
 .params-table {
   width: 100%;
@@ -588,6 +612,7 @@ pre code {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+  line-height: 1.5;
 }
 
 .params-table thead {
@@ -777,6 +802,39 @@ pre code {
 .highlight-box.orange {
   background: rgba(255, 122, 26, 0.05);
   border-color: #ff7a1a;
+}
+
+.highlight-box p,
+.highlight-box div,
+.highlight-box ul,
+.highlight-box li {
+  font-size: 16px;
+}
+
+/* Example Cards */
+.example-card {
+  padding: 20px;
+  margin: 20px 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-left: 4px solid var(--primary);
+}
+
+.example-card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.example-card p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.example-card .code-block {
+  margin: 12px 0;
 }
 
 /* Benefits list */

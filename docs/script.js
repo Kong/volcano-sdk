@@ -1,4 +1,4 @@
-/* global Prism, document, window, IntersectionObserver */
+/* global Prism, document, window, IntersectionObserver, setTimeout, history, navigator, console */
 (function() {
   'use strict';
 
@@ -24,7 +24,7 @@
         const text = heading.textContent.trim();
         // Remove emojis, special chars, convert to lowercase, replace spaces with hyphens
         heading.id = text
-          .replace(/[🌋⚡️✨🔧🛡️🔄⏱️📡🎯🧩🔍💡✓⚠️🚀]/g, '')
+          .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Remove all emojis
           .toLowerCase()
           .trim()
           .replace(/[^\w\s-]/g, '')
@@ -35,7 +35,7 @@
       const link = document.createElement('a');
       link.href = `#${heading.id}`;
       link.className = 'toc-link';
-      link.textContent = heading.textContent.replace(/[🌋⚡️✨🔧🛡️🔄⏱️📡🎯🧩🔍💡✓⚠️🚀]/g, '').trim();
+      link.textContent = heading.textContent.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
       tocNav.appendChild(link);
     });
   }
@@ -45,40 +45,73 @@
 
   // Set active state based on current page URL
   function setActiveSidebarLink() {
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const currentPath = window.location.pathname.split('/').pop() || 'index.html';
     const currentHash = window.location.hash;
     
-    // Remove all active classes first
-    document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
-      link.classList.remove('active');
-    });
+    let hasActiveLink = false;
     
-    // Find and activate matching links
+    // Update all at once to prevent flashing
     document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
       const href = link.getAttribute('href');
-      if (!href) return;
+      if (!href) {
+        link.classList.remove('active');
+        return;
+      }
       
-      // Check if link matches current page (with or without hash)
-      const linkPage = href.split('#')[0] || 'index.html';
-      const linkHash = href.includes('#') ? '#' + href.split('#')[1] : '';
+      let isActive = false;
       
-      // Exact match with hash, or page match if no hash in URL
-      if (href === currentPage + currentHash || 
-          (linkPage === currentPage && !currentHash) ||
-          (href.includes('#') && href === currentPage.replace('.html', '') + '.html' + currentHash)) {
+      // Parse link href
+      const hrefParts = href.split('#');
+      const hrefPage = hrefParts[0] || currentPath;
+      const hrefHash = hrefParts.length > 1 ? '#' + hrefParts[1] : '';
+      
+      // Check if this link should be active
+      if (currentHash) {
+        // We have a hash - match both page and hash
+        if (hrefPage === currentPath && hrefHash === currentHash) {
+          isActive = true;
+        }
+      } else {
+        // No hash - match page only (prefer links without hash)
+        if (hrefPage === currentPath && !hrefHash) {
+          isActive = true;
+        }
+      }
+      
+      if (isActive) {
         link.classList.add('active');
-      } else if (linkPage === currentPage && href.includes('#')) {
-        // Also match page-level links (like "providers.html")
-        link.classList.add('active');
+        hasActiveLink = true;
+      } else {
+        link.classList.remove('active');
       }
     });
+    
+    // If no link was activated and we have a hash, try to activate it
+    if (!hasActiveLink && currentHash) {
+      document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && href.endsWith(currentHash)) {
+          link.classList.add('active');
+        }
+      });
+    }
   }
   
   // Scroll active sidebar link into view on page load
   function scrollActiveNavIntoView() {
     setActiveSidebarLink(); // Set active state first
     
-    const activeLink = document.querySelector('.sidebar-nav .nav-link.active');
+    // If no active link and we're on a page without hash, activate first section link
+    let activeLink = document.querySelector('.sidebar-nav .nav-link.active');
+    if (!activeLink && !window.location.hash) {
+      const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+      const firstSectionLink = document.querySelector(`.sidebar-nav .nav-link[href^="${currentPage}#"]`);
+      if (firstSectionLink) {
+        firstSectionLink.classList.add('active');
+        activeLink = firstSectionLink;
+      }
+    }
+    
     if (activeLink) {
       setTimeout(() => {
         activeLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -86,6 +119,18 @@
     }
   }
   scrollActiveNavIntoView();
+
+  // Add click handlers to sidebar links to update active state immediately
+  document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
+    link.addEventListener('click', function() {
+      // Remove active from all
+      document.querySelectorAll('.sidebar-nav .nav-link').forEach(l => {
+        l.classList.remove('active');
+      });
+      // Add active to clicked link
+      this.classList.add('active');
+    });
+  });
 
   // Smooth scrolling for anchor links
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -118,29 +163,25 @@
     threshold: 0
   };
 
+  let activeId = null;
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const id = entry.target.getAttribute('id');
-        if (!id) return;
+    // Find the first intersecting entry
+    const intersecting = entries.find(entry => entry.isIntersecting);
+    if (intersecting) {
+      const id = intersecting.target.getAttribute('id');
+      if (!id || id === activeId) return;
+      
+      activeId = id;
 
-        // Update sidebar nav
-        document.querySelectorAll('.nav-link').forEach(link => {
+      // Update TOC nav only (not sidebar nav to prevent flashing)
+      document.querySelectorAll('.toc-link').forEach(link => {
+        if (link.getAttribute('href') === `#${id}`) {
+          link.classList.add('active');
+        } else {
           link.classList.remove('active');
-          if (link.getAttribute('href') === `#${id}` || link.getAttribute('href').endsWith(`#${id}`)) {
-            link.classList.add('active');
-          }
-        });
-
-        // Update TOC nav
-        document.querySelectorAll('.toc-link').forEach(link => {
-          link.classList.remove('active');
-          if (link.getAttribute('href') === `#${id}`) {
-            link.classList.add('active');
-          }
-        });
-      }
-    });
+        }
+      });
+    }
   }, observerOptions);
 
   // Observe all sections with IDs

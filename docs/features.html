@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Features - Volcano SDK</title>
+  <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
   <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
   <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
@@ -32,7 +33,10 @@
           <a href="index.html#introduction" class="nav-link">Introduction</a>
           <a href="index.html#installation" class="nav-link">Installation</a>
           <a href="index.html#quick-start" class="nav-link">Quick Start</a>
+          <a href="index.html#use-cases" class="nav-link">Use Cases</a>
+          <a href="index.html#comparison" class="nav-link">Volcano vs Others</a>
           <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
+          <a href="examples.html" class="nav-link">Examples</a>
         </div>
 
         <div class="nav-section">
@@ -45,6 +49,7 @@
           <a href="providers.html#bedrock" class="nav-link">AWS Bedrock</a>
           <a href="providers.html#vertex" class="nav-link">Google Vertex Studio</a>
           <a href="providers.html#azure" class="nav-link">Azure AI</a>
+          <a href="providers.html#custom" class="nav-link">Custom Provider</a>
         </div>
 
         <div class="nav-section">
@@ -59,7 +64,8 @@
         <div class="nav-section">
           <div class="nav-section-title">Features</div>
           <a href="features.html" class="nav-link active">Overview</a>
-          <a href="#streaming" class="nav-link">Streaming</a>
+          <a href="#run" class="nav-link">run() Method</a>
+          <a href="#streaming" class="nav-link">stream() Method</a>
           <a href="#retries" class="nav-link">Retries & Timeouts</a>
           <a href="#hooks" class="nav-link">Step Hooks</a>
           <a href="#errors" class="nav-link">Error Handling</a>
@@ -81,12 +87,85 @@
       <div class="content-inner">
         <section class="doc-section">
           <h1>Features</h1>
-          <p class="lead">Core features for building AI agents: streaming, retries, timeouts, hooks, error handling, and MCP tool integration.</p>
+          <p class="lead">Core features for building AI agents: execution methods, streaming, retries, timeouts, hooks, error handling, and MCP tool integration.</p>
+        </section>
+
+        <!-- run() Method -->
+        <section id="run" class="doc-section">
+          <h2>run() Method</h2>
+          <p>Execute the complete agent workflow and return all step results at once.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">const results = await agent({ llm })
+  .then({ prompt: "Analyze user data", mcps: [analytics] })
+  .then({ prompt: "Generate insights" })
+  .then({ prompt: "Create recommendations" })
+  .run();
+
+// All steps complete before results are returned
+console.log(results); // Array of all StepResult objects
+console.log(results[0].llmOutput); // First step output
+console.log(results[1].llmOutput); // Second step output
+console.log(results[results.length - 1].totalDurationMs); // Total time</code></pre>
+          </div>
+
+          <h3>With Logging Callback</h3>
+          <p>Pass a callback function to log each step as it completes:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">const results = await agent({ llm })
+  .then({ prompt: "Step 1" })
+  .then({ prompt: "Step 2" })
+  .then({ prompt: "Step 3" })
+  .run((stepResult, stepIndex) => {
+    console.log(`Step ${stepIndex + 1} completed`);
+    console.log(`Duration: ${stepResult.durationMs}ms`);
+    console.log(`Output: ${stepResult.llmOutput}`);
+  });
+
+// Callback is called for each step as it completes
+// Final results array is returned when all steps finish</code></pre>
+          </div>
+
+          <h3>Return Value</h3>
+          <p>Returns <code>Promise&lt;StepResult[]&gt;</code> with all step results:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">type StepResult = {
+  prompt?: string;
+  llmOutput?: string;
+  durationMs?: number;
+  llmMs?: number;
+  toolCalls?: Array<{ name: string; result: any; ms?: number }>;
+  // Aggregated metrics (on final step only):
+  totalDurationMs?: number;
+  totalLlmMs?: number;
+  totalMcpMs?: number;
+};</code></pre>
+          </div>
+
+          <h3>Characteristics</h3>
+          <ul class="benefits-list">
+            <li><strong>Waits for completion:</strong> Returns only after all steps finish</li>
+            <li><strong>Aggregated metrics:</strong> Final step includes total duration, LLM time, and MCP time</li>
+            <li><strong>Error handling:</strong> Throws on first failure (use try/catch)</li>
+            <li><strong>Sequential execution:</strong> Steps run in order, one after another</li>
+            <li><strong>Full results:</strong> Access all step data for analysis or debugging</li>
+          </ul>
+
+          <h3>When to Use run()</h3>
+          <ul>
+            <li>Batch processing where you need complete results</li>
+            <li>Scripts that can wait for full completion</li>
+            <li>Analysis workflows needing aggregated metrics</li>
+            <li>APIs returning complete responses</li>
+            <li>Testing and debugging (inspect all steps together)</li>
+          </ul>
         </section>
 
         <!-- Streaming -->
         <section id="streaming" class="doc-section">
-          <h2>Streaming</h2>
+          <h2>stream() Method</h2>
           <p>Stream step results in real-time as they complete using the <code>stream()</code> method.</p>
           
           <div class="code-block">
