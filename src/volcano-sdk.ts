@@ -2,6 +2,7 @@
 import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { llmOpenAI as llmOpenAIProvider } from "./llms/openai.js";
+import { executeParallel, executeBranch, executeSwitch, executeWhile, executeForEach, executeRetryUntil, executeRunAgent } from "./patterns.js";
 export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
@@ -289,6 +290,9 @@ export type StepResult = {
   llmMs?: number;
   mcp?: { endpoint: string; tool: string; result: any; ms?: number };
   toolCalls?: Array<{ name: string; endpoint: string; result: any } & { ms?: number }>;
+  // Parallel execution results (for parallel steps)
+  parallel?: Record<string, StepResult>;
+  parallelResults?: StepResult[];
   // Aggregated metrics (populated on the final step of a run)
   totalDurationMs?: number;
   totalLlmMs?: number;
@@ -296,6 +300,21 @@ export type StepResult = {
 };
 
 type StepFactory = (history: StepResult[]) => Step;
+
+// Agent builder interface for type safety
+export interface AgentBuilder {
+  resetHistory(): AgentBuilder;
+  then(s: Step | StepFactory): AgentBuilder;
+  parallel(stepsOrDict: Step[] | Record<string, Step>): AgentBuilder;
+  branch(condition: (history: StepResult[]) => boolean, branches: { true: (agent: AgentBuilder) => AgentBuilder; false: (agent: AgentBuilder) => AgentBuilder }): AgentBuilder;
+  switch<T = string>(selector: (history: StepResult[]) => T, cases: Record<string, (agent: AgentBuilder) => AgentBuilder> & { default?: (agent: AgentBuilder) => AgentBuilder }): AgentBuilder;
+  while(condition: (history: StepResult[]) => boolean, body: (agent: AgentBuilder) => AgentBuilder, opts?: { maxIterations?: number; timeout?: number }): AgentBuilder;
+  forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder): AgentBuilder;
+  retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number }): AgentBuilder;
+  runAgent(subAgent: AgentBuilder, input?: { context?: Record<string, any> }): AgentBuilder;
+  run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]>;
+  stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown>;
+}
 
 function buildHistoryContextChunked(history: StepResult[], maxToolResults: number, maxChars: number): string {
   if (history.length === 0) return '';
@@ -342,7 +361,7 @@ type AgentOptions = {
   contextMaxToolResults?: number;      // number of recent tool results to include (default 3)
 };
 
-export function agent(opts?: AgentOptions) {
+export function agent(opts?: AgentOptions): AgentBuilder {
   const steps: Array<Step | StepFactory | { __reset: true }> = [];
   const defaultLlm = opts?.llm;
   let contextHistory: StepResult[] = [];
@@ -352,9 +371,50 @@ export function agent(opts?: AgentOptions) {
   const contextMaxChars = typeof opts?.contextMaxChars === 'number' ? opts!.contextMaxChars! : 20480;
   const contextMaxToolResults = typeof opts?.contextMaxToolResults === 'number' ? opts!.contextMaxToolResults! : 8;
   let isRunning = false;
-  return {
-    resetHistory() { steps.push({ __reset: true }); return this; },
-    then(s: Step | StepFactory) { steps.push(s); return this; },
+  
+  const builder: AgentBuilder = {
+    resetHistory() { steps.push({ __reset: true }); return builder; },
+    then(s: Step | StepFactory) { steps.push(s); return builder; },
+    
+    // Parallel execution
+    parallel(stepsOrDict: Step[] | Record<string, Step>) {
+      steps.push({ __parallel: stepsOrDict } as any);
+      return builder;
+    },
+    
+    // Conditional branching
+    branch(condition: (history: StepResult[]) => boolean, branches: { true: (agent: AgentBuilder) => AgentBuilder; false: (agent: AgentBuilder) => AgentBuilder }) {
+      steps.push({ __branch: { condition, branches } } as any);
+      return builder;
+    },
+    
+    switch<T = string>(selector: (history: StepResult[]) => T, cases: Record<string, (agent: AgentBuilder) => AgentBuilder> & { default?: (agent: AgentBuilder) => AgentBuilder }) {
+      steps.push({ __switch: { selector, cases } } as any);
+      return builder;
+    },
+    
+    // Loops
+    while(condition: (history: StepResult[]) => boolean, body: (agent: AgentBuilder) => AgentBuilder, opts?: { maxIterations?: number; timeout?: number }) {
+      steps.push({ __while: { condition, body, opts } } as any);
+      return builder;
+    },
+    
+    forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder) {
+      steps.push({ __forEach: { items, body } } as any);
+      return builder;
+    },
+    
+    retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number }) {
+      steps.push({ __retryUntil: { body, successCondition, opts } } as any);
+      return builder;
+    },
+    
+    // Sub-agent composition
+    runAgent(subAgent: AgentBuilder, input?: { context?: Record<string, any> }) {
+      steps.push({ __runAgent: { subAgent, input } } as any);
+      return builder;
+    },
+    
     async run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]> {
       if (isRunning) {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
@@ -366,6 +426,77 @@ export function agent(opts?: AgentOptions) {
         const planned = [...steps];
         for (const raw of planned) {
           if ((raw as any).__reset) { contextHistory = []; continue; }
+          
+          // Handle advanced pattern steps
+          if ((raw as any).__parallel) {
+            const parallelResult = await executeParallel(
+              (raw as any).__parallel,
+              async (step: any) => {
+                const subAgent = agent(opts).then(step);
+                const results = await subAgent.run();
+                return results[0];
+              }
+            );
+            out.push(parallelResult);
+            contextHistory.push(parallelResult);
+            log?.(parallelResult, out.length - 1);
+            continue;
+          }
+          
+          if ((raw as any).__branch) {
+            const { condition, branches } = (raw as any).__branch;
+            const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
+            out.push(...branchResults);
+            contextHistory.push(...branchResults);
+            branchResults.forEach((r, i) => log?.(r, out.length - branchResults.length + i));
+            continue;
+          }
+          
+          if ((raw as any).__switch) {
+            const { selector, cases } = (raw as any).__switch;
+            const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
+            out.push(...switchResults);
+            contextHistory.push(...switchResults);
+            switchResults.forEach((r, i) => log?.(r, out.length - switchResults.length + i));
+            continue;
+          }
+          
+          if ((raw as any).__while) {
+            const { condition, body, opts: whileOpts } = (raw as any).__while;
+            const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
+            out.push(...whileResults);
+            contextHistory.push(...whileResults);
+            whileResults.forEach((r, i) => log?.(r, out.length - whileResults.length + i));
+            continue;
+          }
+          
+          if ((raw as any).__forEach) {
+            const { items, body } = (raw as any).__forEach;
+            const forEachResults = await executeForEach(items, body, () => agent(opts));
+            out.push(...forEachResults);
+            contextHistory.push(...forEachResults);
+            forEachResults.forEach((r, i) => log?.(r, out.length - forEachResults.length + i));
+            continue;
+          }
+          
+          if ((raw as any).__retryUntil) {
+            const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
+            const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
+            out.push(...retryResults);
+            contextHistory.push(...retryResults);
+            retryResults.forEach((r, i) => log?.(r, out.length - retryResults.length + i));
+            continue;
+          }
+          
+          if ((raw as any).__runAgent) {
+            const { subAgent } = (raw as any).__runAgent;
+            const subResults = await executeRunAgent(subAgent);
+            out.push(...subResults);
+            contextHistory.push(...subResults);
+            subResults.forEach((r, i) => log?.(r, out.length - subResults.length + i));
+            continue;
+          }
+          
           const s = typeof raw === 'function' ? (raw as StepFactory)(out) : (raw as Step);
           const stepTimeoutMs = (s as any).timeout != null ? (s as any).timeout * 1000 : defaultTimeoutMs; // seconds -> ms
           const retryCfg: RetryConfig = (s as any).retry ?? defaultRetry;
@@ -587,6 +718,96 @@ export function agent(opts?: AgentOptions) {
         const planned = [...steps];
         for (const raw of planned) {
           if ((raw as any).__reset) { contextHistory = []; continue; }
+          
+          // Handle advanced pattern steps (same as run())
+          if ((raw as any).__parallel) {
+            const parallelResult = await executeParallel(
+              (raw as any).__parallel,
+              async (step: any) => {
+                const subAgent = agent(opts).then(step);
+                const results = await subAgent.run();
+                return results[0];
+              }
+            );
+            out.push(parallelResult);
+            contextHistory.push(parallelResult);
+            log?.(parallelResult, out.length - 1);
+            yield parallelResult;
+            continue;
+          }
+          
+          if ((raw as any).__branch) {
+            const { condition, branches } = (raw as any).__branch;
+            const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
+            out.push(...branchResults);
+            contextHistory.push(...branchResults);
+            for (const r of branchResults) {
+              log?.(r, out.length - branchResults.length + branchResults.indexOf(r));
+              yield r;
+            }
+            continue;
+          }
+          
+          if ((raw as any).__switch) {
+            const { selector, cases } = (raw as any).__switch;
+            const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
+            out.push(...switchResults);
+            contextHistory.push(...switchResults);
+            for (const r of switchResults) {
+              log?.(r, out.length - switchResults.length + switchResults.indexOf(r));
+              yield r;
+            }
+            continue;
+          }
+          
+          if ((raw as any).__while) {
+            const { condition, body, opts: whileOpts } = (raw as any).__while;
+            const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
+            out.push(...whileResults);
+            contextHistory.push(...whileResults);
+            for (const r of whileResults) {
+              log?.(r, out.length - whileResults.length + whileResults.indexOf(r));
+              yield r;
+            }
+            continue;
+          }
+          
+          if ((raw as any).__forEach) {
+            const { items, body } = (raw as any).__forEach;
+            const forEachResults = await executeForEach(items, body, () => agent(opts));
+            out.push(...forEachResults);
+            contextHistory.push(...forEachResults);
+            for (const r of forEachResults) {
+              log?.(r, out.length - forEachResults.length + forEachResults.indexOf(r));
+              yield r;
+            }
+            continue;
+          }
+          
+          if ((raw as any).__retryUntil) {
+            const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
+            const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
+            out.push(...retryResults);
+            contextHistory.push(...retryResults);
+            for (const r of retryResults) {
+              log?.(r, out.length - retryResults.length + retryResults.indexOf(r));
+              yield r;
+            }
+            continue;
+          }
+          
+          if ((raw as any).__runAgent) {
+            const { subAgent } = (raw as any).__runAgent;
+            const subResults = await executeRunAgent(subAgent);
+            out.push(...subResults);
+            contextHistory.push(...subResults);
+            for (const r of subResults) {
+              log?.(r, out.length - subResults.length + subResults.indexOf(r));
+              yield r;
+            }
+            continue;
+          }
+          
           const s = typeof raw === 'function' ? (raw as StepFactory)(out) : (raw as Step);
           const stepTimeoutMs = (s as any).timeout != null ? (s as any).timeout * 1000 : defaultTimeoutMs; // seconds -> ms
           const retryCfg: RetryConfig = (s as any).retry ?? defaultRetry;
@@ -786,4 +1007,6 @@ export function agent(opts?: AgentOptions) {
       }
     },
   };
+  
+  return builder;
 }
