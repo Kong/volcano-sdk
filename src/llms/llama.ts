@@ -1,18 +1,39 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
+import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
 
 type OpenAILikeClient = {
   chat: { completions: { create: (args: any) => Promise<any> } };
 };
 
+export type LlamaOptions = {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  top_k?: number;
+  stop?: string | string[];
+  repeat_penalty?: number;
+  seed?: number;
+  num_predict?: number; // Ollama-specific
+};
+
 export type LlamaConfig = {
-  model?: string;
+  model: string; // Required - be explicit about which model to use
   client?: OpenAILikeClient; // e.g., local OpenAI-compatible server (Ollama/OpenRouter/etc.)
   apiKey?: string;           // optional; if provided, we use fetch with Authorization: Bearer
   baseURL?: string;          // optional; default http://localhost:11434 or provider endpoint
+  options?: LlamaOptions;
 };
 
 export function llmLlama(cfg: LlamaConfig): LLMHandle {
-  const model = cfg.model || "llama3-8b-instruct";
+  if (!cfg.model) {
+    throw new Error(
+      "llmLlama: Missing required 'model' parameter. " +
+      "Please specify which Llama model to use. " +
+      "Example: llmLlama({ baseURL: 'http://localhost:11434', model: 'llama3.2:3b' })"
+    );
+  }
+  const model = cfg.model;
+  const options = cfg.options || {};
   let client = cfg.client;
 
   if (!client && (cfg.apiKey || cfg.baseURL)) {
@@ -51,7 +72,11 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
   }
 
   if (!client) {
-    throw new Error("llmLlama: provide either client or (apiKey/baseURL) for an OpenAI-compatible endpoint");
+    throw new Error(
+      "llmLlama: Missing configuration. " +
+      "Please provide either 'client' or 'baseURL' for an OpenAI-compatible endpoint (e.g., Ollama). " +
+      "Example: llmLlama({ baseURL: 'http://localhost:11434', model: 'llama3.2:3b' })"
+    );
   }
 
   return {
@@ -59,52 +84,34 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
     model,
     client,
     async gen(prompt: string): Promise<string> {
-      const resp = await client!.chat.completions.create({ model, messages: [{ role: "user", content: prompt }] });
+      const resp = await client!.chat.completions.create({ 
+        model, 
+        messages: [{ role: "user", content: prompt }],
+        ...options,
+      });
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
     },
     async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
-      const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
-      const openaiTools = tools.map((tool) => {
-        const dottedName = tool.name;
-        const sanitized = dottedName.replace(/[^a-zA-Z0-9_-]/g, "_");
-        nameMap.set(sanitized, { dottedName, def: tool });
-        return {
-          type: "function" as const,
-          function: {
-            name: sanitized,
-            description: tool.description,
-            parameters: tool.parameters,
-          },
-        };
-      });
+      const { nameMap, formattedTools } = createOpenAICompatibleTools(tools);
+      
       const resp = await client!.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
-        tools: openaiTools as any,
+        tools: formattedTools as any,
         tool_choice: "auto" as any,
+        ...options,
       } as any);
-      const message: any = resp?.choices?.[0]?.message ?? {};
-      const rawCalls: any[] = (message?.tool_calls ?? []) as any[];
-      const toolCalls = rawCalls.map((call: any) => {
-        const sanitizedName: string = call?.function?.name ?? call?.name ?? "";
-        const mapped = nameMap.get(sanitizedName);
-        const argsJson: string = call?.function?.arguments ?? call?.arguments ?? "{}";
-        const parsedArgs = (() => { try { return JSON.parse(argsJson); } catch { return {}; } })();
-        const mcpHandle = mapped?.def.mcpHandle;
-        return {
-          name: mapped?.dottedName ?? sanitizedName,
-          arguments: parsedArgs,
-          mcpHandle,
-        };
-      });
-      return { content: message?.content || undefined, toolCalls };
+      
+      const message = resp?.choices?.[0]?.message;
+      return parseOpenAICompatibleResponse(message, nameMap);
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       const streamResponse: any = await client!.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
         stream: true,
+        ...options,
       });
       
       // Handle Server-Sent Events streaming

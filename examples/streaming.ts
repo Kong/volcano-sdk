@@ -11,7 +11,7 @@ import { agent, llmOpenAI, llmVertexStudio, mcp } from "../dist/volcano-sdk.js";
   // Configure LLM provider
   const llm = llmOpenAI({ 
     apiKey: process.env.OPENAI_API_KEY!, 
-    model: "gpt-4o-mini" 
+    model: "gpt-5-mini" 
   });
 
   // Alternative: Use Vertex Studio

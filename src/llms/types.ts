@@ -1,5 +1,3 @@
-export type LLMConfig = { provider: "openai"; apiKey: string; model?: string; baseURL?: string };
-
 export type ToolDefinition = {
   name: string;
   description: string;

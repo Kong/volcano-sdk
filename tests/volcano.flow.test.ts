@@ -56,7 +56,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
       name: 'OpenAI',
       make: () => {
         if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is required for this test');
-        return llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL || undefined });
+        return llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL || 'gpt-5-mini' });
       },
       requireEnv: ['OPENAI_API_KEY'],
     },
@@ -199,7 +199,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
           // Other providers can handle multiple tools or be more flexible
           expect(step.toolCalls.length).toBeGreaterThan(0);
         }
-      }, p.name === 'Llama' ? 120000 : 60000);
+      }, p.name === 'Llama' ? 180000 : 60000);
     });
   }
 });

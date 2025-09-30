@@ -6,7 +6,7 @@ describe('OpenAI provider (integration)', () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
-    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL });
+    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL || 'gpt-5-mini' });
     const tools: any = [{
       name: 'astro.get_sign',
       description: 'Return sign for birthdate',
@@ -20,7 +20,7 @@ describe('OpenAI provider (integration)', () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
-    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL });
+    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL || 'gpt-5-mini' });
     const prompt = 'Reply ONLY with STREAM_OK';
     const nonStream = await llm.gen(prompt);
     const normalizedA = nonStream.trim().replace(/[^A-Za-z0-9_]/g, '').toUpperCase();
@@ -40,7 +40,7 @@ describe('OpenAI provider (integration)', () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
-    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL });
+    const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: process.env.OPENAI_MODEL || 'gpt-5-mini' });
     const prompt = 'Return ONLY valid minified JSON: {"ok":true,"provider":"openai"}';
     const out = await llm.gen(prompt);
     const text = out.trim();
