@@ -41,9 +41,7 @@
   "peerDependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.895.0",
     "@aws-sdk/credential-providers": "^3.895.0",
-    "@modelcontextprotocol/sdk": "^1.18.1",
-    "ajv": "^8.17.1",
-    "openai": "^5.22.0"
+    "@azure/identity": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
@@ -70,6 +68,8 @@
   ],
   "author": "Marco Palladino <marco@konghq.com>",
   "dependencies": {
-    "ajv": "^8.17.1"
+    "@modelcontextprotocol/sdk": "^1.18.1",
+    "ajv": "^8.17.1",
+    "openai": "^5.22.0"
   }
 }

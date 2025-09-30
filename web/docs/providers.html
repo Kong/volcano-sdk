@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Providers - Volcano SDK</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://unpkg.com/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="index.html" class="logo">
+          <span class="emoji">🌋</span>
+          <span class="text">Volcano SDK</span>
+        </a>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Getting Started</div>
+          <a href="index.html#introduction" class="nav-link">Introduction</a>
+          <a href="index.html#installation" class="nav-link">Installation</a>
+          <a href="index.html#quick-start" class="nav-link">Quick Start</a>
+          <a href="index.html#core-concepts" class="nav-link">Core Concepts</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Providers</div>
+          <a href="providers.html" class="nav-link active">Overview</a>
+          <a href="#openai" class="nav-link">OpenAI</a>
+          <a href="#anthropic" class="nav-link">Anthropic (Claude)</a>
+          <a href="#mistral" class="nav-link">Mistral</a>
+          <a href="#llama" class="nav-link">Llama</a>
+          <a href="#bedrock" class="nav-link">AWS Bedrock</a>
+          <a href="#vertex" class="nav-link">Google Vertex Studio</a>
+          <a href="#azure" class="nav-link">Azure AI</a>
+          <a href="#custom" class="nav-link">Custom Provider</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Advanced Patterns</div>
+          <a href="patterns.html" class="nav-link">Overview</a>
+          <a href="patterns.html#parallel" class="nav-link">Parallel Execution</a>
+          <a href="patterns.html#branching" class="nav-link">Conditional Branching</a>
+          <a href="patterns.html#loops" class="nav-link">Loops</a>
+          <a href="patterns.html#sub-agents" class="nav-link">Sub-Agent Composition</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Features</div>
+          <a href="features.html" class="nav-link">Overview</a>
+          <a href="features.html#run" class="nav-link">run() Method</a>
+          <a href="features.html#streaming" class="nav-link">stream() Method</a>
+          <a href="features.html#retries" class="nav-link">Retries & Timeouts</a>
+          <a href="features.html#hooks" class="nav-link">Step Hooks</a>
+          <a href="features.html#errors" class="nav-link">Error Handling</a>
+          <a href="features.html#mcp-tools" class="nav-link">MCP Tools</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">API Reference</div>
+          <a href="api.html" class="nav-link">Overview</a>
+          <a href="api.html#agent" class="nav-link">agent()</a>
+          <a href="api.html#step" class="nav-link">Step Types</a>
+          <a href="api.html#results" class="nav-link">Step Results</a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-inner">
+        <section class="doc-section">
+          <h1>LLM Providers</h1>
+          <p class="lead">Volcano SDK supports 7 LLM providers with function calling and MCP integration. Providers can be mixed within a single workflow.</p>
+          
+          <h3>Provider Support Matrix</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Basic Generation</th>
+                <th>Function Calling</th>
+                <th>Streaming</th>
+                <th>MCP Integration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>OpenAI</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Native</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+              <tr>
+                <td><strong>Anthropic</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Native (tool_use)</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+              <tr>
+                <td><strong>Mistral</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Native</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+              <tr>
+                <td><strong>Llama</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Via Ollama</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+              <tr>
+                <td><strong>AWS Bedrock</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Native (Converse API)</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+              <tr>
+                <td><strong>Google Vertex Studio</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Native (Function calling)</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+              <tr>
+                <td><strong>Azure AI</strong></td>
+                <td>✅ Full</td>
+                <td>✅ Native (Responses API)</td>
+                <td>✅ Native</td>
+                <td>✅ Complete</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p><strong>All providers support automatic tool selection and multi-step workflows.</strong></p>
+          
+          <div class="provider-grid">
+            <a href="#openai" class="provider-card">
+              <h3>✅ OpenAI</h3>
+              <p>GPT-4o, GPT-4o-mini with native function calling</p>
+            </a>
+            <a href="#anthropic" class="provider-card">
+              <h3>✅ Anthropic</h3>
+              <p>Claude 3.5 Sonnet/Haiku with tool_use</p>
+            </a>
+            <a href="#mistral" class="provider-card">
+              <h3>✅ Mistral</h3>
+              <p>Mistral models with OpenAI-compatible API</p>
+            </a>
+            <a href="#llama" class="provider-card">
+              <h3>✅ Llama</h3>
+              <p>Local Llama via Ollama or cloud endpoints</p>
+            </a>
+            <a href="#bedrock" class="provider-card">
+              <h3>✅ AWS Bedrock</h3>
+              <p>Foundation models with Converse API</p>
+            </a>
+            <a href="#vertex" class="provider-card">
+              <h3>✅ Google Vertex</h3>
+              <p>Gemini models with function calling</p>
+            </a>
+            <a href="#azure" class="provider-card">
+              <h3>✅ Azure AI</h3>
+              <p>Azure OpenAI with enterprise auth</p>
+            </a>
+          </div>
+        </section>
+
+        <!-- OpenAI Provider -->
+        <section id="openai" class="doc-section">
+          <h2>OpenAI Provider</h2>
+          <p>Full support for OpenAI's GPT models with function calling and streaming.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmOpenAI } from "volcano-sdk";
+
+const openai = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+  baseURL: "https://api.openai.com/v1", // Optional
+  options: {
+    temperature: 0.7,
+    max_completion_tokens: 2000,
+    top_p: 0.9,
+    seed: 42
+  }
+});</code></pre>
+          </div>
+
+          <h3>Authentication</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>OpenAI API key from platform.openai.com</td>
+              </tr>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Custom API endpoint (default: https://api.openai.com/v1)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Model identifier (e.g., gpt-4o-mini, gpt-4o)</td>
+              </tr>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>OpenAI API key</td>
+              </tr>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Custom API endpoint</td>
+              </tr>
+              <tr>
+                <td><code>options</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Model-specific parameters (see below)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-2</td>
+                <td>Controls randomness. Higher = more creative, lower = more focused</td>
+              </tr>
+              <tr>
+                <td><code>max_completion_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate (recommended for all models)</td>
+              </tr>
+              <tr>
+                <td><code>max_tokens</code></td>
+                <td>number</td>
+                <td>Legacy parameter (use max_completion_tokens instead)</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling - alternative to temperature</td>
+              </tr>
+              <tr>
+                <td><code>frequency_penalty</code></td>
+                <td>-2 to 2</td>
+                <td>Reduces repetition based on token frequency</td>
+              </tr>
+              <tr>
+                <td><code>presence_penalty</code></td>
+                <td>-2 to 2</td>
+                <td>Encourages topic diversity</td>
+              </tr>
+              <tr>
+                <td><code>stop</code></td>
+                <td>string | string[]</td>
+                <td>Stop sequences to end generation</td>
+              </tr>
+              <tr>
+                <td><code>seed</code></td>
+                <td>number</td>
+                <td>For deterministic outputs (same seed = same output)</td>
+              </tr>
+              <tr>
+                <td><code>response_format</code></td>
+                <td>object</td>
+                <td>Force JSON output: { type: "json_object" }</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </section>
+
+        <!-- Anthropic Provider -->
+        <section id="anthropic" class="doc-section">
+          <h2>Anthropic (Claude) Provider</h2>
+          <p>Native support for Claude models with tool calling.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmAnthropic } from "volcano-sdk";
+
+const claude = llmAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-3-5-sonnet-20241022",
+  baseURL: "https://api.anthropic.com", // Optional
+  version: "2023-06-01", // Optional
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_k: 50,
+    top_p: 0.9,
+    stop_sequences: ["\n\n"]
+  }
+});</code></pre>
+          </div>
+
+          <h3>Authentication</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Anthropic API key from console.anthropic.com</td>
+              </tr>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Custom API endpoint (default: https://api.anthropic.com)</td>
+              </tr>
+              <tr>
+                <td><code>version</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>API version header (default: 2023-06-01)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Model identifier (e.g., claude-3-5-sonnet-20241022)</td>
+              </tr>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Anthropic API key</td>
+              </tr>
+              <tr>
+                <td><code>options</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Model-specific parameters</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-1</td>
+                <td>Controls randomness (note: range is 0-1, not 0-2)</td>
+              </tr>
+              <tr>
+                <td><code>max_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>top_k</code></td>
+                <td>number</td>
+                <td>Sample from top K options</td>
+              </tr>
+              <tr>
+                <td><code>stop_sequences</code></td>
+                <td>string[]</td>
+                <td>Array of stop sequences</td>
+              </tr>
+              <tr>
+                <td><code>thinking</code></td>
+                <td>object</td>
+                <td>Extended thinking configuration (Claude-specific)</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </section>
+
+        <!-- Mistral Provider -->
+        <section id="mistral" class="doc-section">
+          <h2>Mistral Provider</h2>
+          <p>Support for Mistral's open and proprietary models via OpenAI-compatible API.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmMistral } from "volcano-sdk";
+
+const mistral = llmMistral({
+  apiKey: process.env.MISTRAL_API_KEY!,
+  model: "mistral-small-latest",
+  baseURL: "https://api.mistral.ai", // Optional
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_p: 0.9,
+    safe_prompt: true,
+    random_seed: 42
+  }
+});</code></pre>
+          </div>
+
+          <h3>Authentication</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Mistral API key from console.mistral.ai</td>
+              </tr>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Custom API endpoint (default: https://api.mistral.ai)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Model identifier</td>
+              </tr>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Mistral API key</td>
+              </tr>
+              <tr>
+                <td><code>options</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Model-specific parameters</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-1</td>
+                <td>Controls randomness</td>
+              </tr>
+              <tr>
+                <td><code>max_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>stop</code></td>
+                <td>string | string[]</td>
+                <td>Stop sequences</td>
+              </tr>
+              <tr>
+                <td><code>safe_prompt</code></td>
+                <td>boolean</td>
+                <td>Enable safety mode</td>
+              </tr>
+              <tr>
+                <td><code>random_seed</code></td>
+                <td>number</td>
+                <td>For deterministic outputs</td>
+              </tr>
+              <tr>
+                <td><code>response_format</code></td>
+                <td>object</td>
+                <td>For JSON mode: { type: "json_object" }</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </section>
+
+        <!-- Llama Provider -->
+        <section id="llama" class="doc-section">
+          <h2>Llama Provider</h2>
+          <p>Run Llama models locally with Ollama or via OpenAI-compatible endpoints.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmLlama } from "volcano-sdk";
+
+// Local Ollama setup
+const llama = llmLlama({
+  baseURL: "http://127.0.0.1:11434",
+  model: "llama3.2:3b",
+  apiKey: "", // Optional, not needed for local Ollama
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_p: 0.9,
+    top_k: 40,
+    repeat_penalty: 1.1,
+    seed: 42,
+    num_predict: 2000
+  }
+});</code></pre>
+          </div>
+
+          <div class="info-box">
+            <div class="info-icon">💡</div>
+            <div>
+              <strong>Setup:</strong> Install Ollama from <a href="https://ollama.ai" target="_blank">ollama.ai</a> and run <code>ollama pull llama3.2:3b</code>
+            </div>
+          </div>
+
+          <h3>Authentication</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>OpenAI-compatible endpoint (default: http://localhost:11434 for Ollama)</td>
+              </tr>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>API key if your endpoint requires authentication</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Model identifier (e.g., llama3.2:3b for Ollama)</td>
+              </tr>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Server endpoint</td>
+              </tr>
+              <tr>
+                <td><code>options</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Model-specific parameters</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-2</td>
+                <td>Controls randomness</td>
+              </tr>
+              <tr>
+                <td><code>max_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>top_k</code></td>
+                <td>number</td>
+                <td>Sample from top K options</td>
+              </tr>
+              <tr>
+                <td><code>stop</code></td>
+                <td>string | string[]</td>
+                <td>Stop sequences</td>
+              </tr>
+              <tr>
+                <td><code>repeat_penalty</code></td>
+                <td>number</td>
+                <td>Penalize repetitions (Ollama-specific, default: 1.1)</td>
+              </tr>
+              <tr>
+                <td><code>seed</code></td>
+                <td>number</td>
+                <td>For deterministic outputs</td>
+              </tr>
+              <tr>
+                <td><code>num_predict</code></td>
+                <td>number</td>
+                <td>Number of tokens to predict (Ollama-specific)</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </section>
+
+        <!-- AWS Bedrock Provider -->
+        <section id="bedrock" class="doc-section">
+          <h2>AWS Bedrock Provider</h2>
+          <p>Access foundation models via AWS Bedrock with native tool calling support using the Converse API.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmBedrock } from "volcano-sdk";
+
+const bedrock = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1",
+  // Uses AWS credential chain by default
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_p: 0.9,
+    stop_sequences: ["\n\n"]
+  }
+});</code></pre>
+          </div>
+
+          <h3>Authentication</h3>
+          <p>AWS Bedrock supports multiple authentication methods (in priority order):</p>
+          
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Parameters</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Explicit Credentials</td>
+                <td><code>accessKeyId</code>, <code>secretAccessKey</code>, <code>sessionToken</code></td>
+                <td>Directly provide AWS credentials</td>
+              </tr>
+              <tr>
+                <td>Bearer Token</td>
+                <td><code>bearerToken</code></td>
+                <td>Use bearer token authentication</td>
+              </tr>
+              <tr>
+                <td>AWS Profile</td>
+                <td><code>profile</code></td>
+                <td>Use credentials from ~/.aws/credentials</td>
+              </tr>
+              <tr>
+                <td>IAM Role</td>
+                <td><code>roleArn</code></td>
+                <td>Assume an IAM role</td>
+              </tr>
+              <tr>
+                <td>Default Chain</td>
+                <td>(none)</td>
+                <td>Environment variables, instance profiles, ECS/EKS roles</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Authentication Examples</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// 1. Explicit credentials
+const bedrock1 = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1",
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  sessionToken: process.env.AWS_SESSION_TOKEN // Optional
+});
+
+// 2. Bearer token
+const bedrock2 = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1",
+  bearerToken: process.env.AWS_BEARER_TOKEN_BEDROCK!
+});
+
+// 3. AWS Profile
+const bedrock3 = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1",
+  profile: "my-aws-profile"
+});
+
+// 4. IAM Role
+const bedrock4 = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1",
+  roleArn: "arn:aws:iam::123456789012:role/my-bedrock-role"
+});
+
+// 5. Default chain (recommended)
+const bedrock5 = llmBedrock({
+  model: "anthropic.claude-3-sonnet-20240229-v1:0",
+  region: "us-east-1"
+  // Automatically uses environment, instance profiles, etc.
+});</code></pre>
+          </div>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Bedrock model identifier</td>
+              </tr>
+              <tr>
+                <td><code>region</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>AWS region (default: us-east-1)</td>
+              </tr>
+              <tr>
+                <td><code>options</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Model-specific parameters</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-1</td>
+                <td>Controls randomness</td>
+              </tr>
+              <tr>
+                <td><code>max_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>stop_sequences</code></td>
+                <td>string[]</td>
+                <td>Array of stop sequences</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </section>
+
+        <!-- Google Vertex Studio Provider -->
+        <section id="vertex" class="doc-section">
+          <h2>Google Vertex Studio Provider</h2>
+          <p>Google's Gemini models with function calling via AI Studio API.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmVertexStudio } from "volcano-sdk";
+
+const vertex = llmVertexStudio({
+  model: "gemini-2.0-flash-exp",
+  apiKey: process.env.GCP_VERTEX_API_KEY!,
+  baseURL: "https://aiplatform.googleapis.com/v1", // Optional
+  options: {
+    temperature: 0.8,
+    max_output_tokens: 2048,
+    top_k: 40,
+    top_p: 0.95,
+    stop_sequences: ["\n\n"],
+    candidate_count: 1,
+    response_mime_type: "text/plain"
+  }
+});</code></pre>
+          </div>
+
+          <h3>Authentication</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Google AI Studio API key</td>
+              </tr>
+              <tr>
+                <td><code>baseURL</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Custom API endpoint (default: https://aiplatform.googleapis.com/v1)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Gemini model identifier</td>
+              </tr>
+              <tr>
+                <td><code>apiKey</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Google AI Studio API key</td>
+              </tr>
+              <tr>
+                <td><code>options</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>Model-specific parameters</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>temperature</code></td>
+                <td>0-2</td>
+                <td>Controls randomness</td>
+              </tr>
+              <tr>
+                <td><code>max_output_tokens</code></td>
+                <td>number</td>
+                <td>Maximum tokens to generate</td>
+              </tr>
+              <tr>
+                <td><code>top_p</code></td>
+                <td>0-1</td>
+                <td>Nucleus sampling</td>
+              </tr>
+              <tr>
+                <td><code>top_k</code></td>
+                <td>number</td>
+                <td>Sample from top K options</td>
+              </tr>
+              <tr>
+                <td><code>stop_sequences</code></td>
+                <td>string[]</td>
+                <td>Array of stop sequences</td>
+              </tr>
+              <tr>
+                <td><code>candidate_count</code></td>
+                <td>number</td>
+                <td>Number of response variations (usually 1)</td>
+              </tr>
+              <tr>
+                <td><code>response_mime_type</code></td>
+                <td>string</td>
+                <td>For JSON mode: "application/json"</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="info-box warning">
+            <div class="info-icon">⚠️</div>
+            <div>
+              <strong>Function calling limitations:</strong> Multiple tools per call only supported for search tools. Use multi-step workflows for complex tool orchestration.
+            </div>
+          </div>
+        </section>
+
+        <!-- Azure AI Provider -->
+        <section id="azure" class="doc-section">
+          <h2>Azure AI Provider</h2>
+          <p>Azure OpenAI Service with enterprise authentication via the Responses API.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmAzure } from "volcano-sdk";
+
+const azure = llmAzure({
+  model: "gpt-4o-mini",
+  endpoint: "https://your-resource.openai.azure.com/openai/responses",
+  apiKey: process.env.AZURE_AI_API_KEY!,
+  apiVersion: "2025-04-01-preview" // Optional
+});</code></pre>
+          </div>
+
+          <h3>Authentication</h3>
+          <p>Azure AI supports three authentication methods (in priority order):</p>
+          
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Parameters</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>API Key</td>
+                <td><code>apiKey</code></td>
+                <td>Simplest method - use your Azure resource key</td>
+              </tr>
+              <tr>
+                <td>Entra ID Token</td>
+                <td><code>accessToken</code></td>
+                <td>Use Microsoft Entra ID (Azure AD) access token</td>
+              </tr>
+              <tr>
+                <td>Default Credential Chain</td>
+                <td>(none)</td>
+                <td>Uses Azure SDK: Managed Identity, Service Principal, CLI credentials</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Authentication Examples</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// 1. API Key (simplest)
+const azure1 = llmAzure({
+  model: "gpt-4o-mini",
+  endpoint: "https://your-resource.openai.azure.com/openai/responses",
+  apiKey: process.env.AZURE_AI_API_KEY!
+});
+
+// 2. Entra ID Access Token
+const azure2 = llmAzure({
+  model: "gpt-4o-mini",
+  endpoint: "https://your-resource.openai.azure.com/openai/responses",
+  accessToken: process.env.AZURE_ACCESS_TOKEN!
+});
+
+// 3. Azure Default Credential Chain
+const azure3 = llmAzure({
+  model: "gpt-4o-mini",
+  endpoint: "https://your-resource.openai.azure.com/openai/responses"
+  // Uses Azure SDK credential providers automatically
+});</code></pre>
+          </div>
+
+          <h3>Configuration</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>model</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Deployment model name</td>
+              </tr>
+              <tr>
+                <td><code>endpoint</code></td>
+                <td><span class="badge required">Required</span></td>
+                <td>Azure resource URL</td>
+              </tr>
+              <tr>
+                <td><code>apiVersion</code></td>
+                <td><span class="badge optional">Optional</span></td>
+                <td>API version (default: 2025-04-01-preview)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Options Parameters</h3>
+          <div class="info-box warning">
+            <div class="info-icon">⚠️</div>
+            <div>
+              <strong>Important:</strong> Azure Responses API currently does <strong>not support</strong> optional configuration parameters. All inference parameters (<code>temperature</code>, <code>max_tokens</code>, <code>seed</code>, etc.) are rejected with HTTP 400 errors. This is a limitation of Azure's Responses API endpoint.
+            </div>
+          </div>
+
+          <p>The <code>AzureOptions</code> type is defined for API consistency but parameters cannot be used in practice.</p>
+        </section>
+
+        <!-- Custom Provider -->
+        <section id="custom" class="doc-section">
+          <h2>Creating a Custom Provider</h2>
+          <p>You can create your own LLM provider by implementing the <code>LLMHandle</code> interface:</p>
+          
+          <h3>LLMHandle Interface</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">type LLMHandle = {
+  id: string;
+  model: string;
+  gen: (prompt: string) => Promise<string>;
+  genWithTools: (prompt: string, tools: ToolDefinition[]) => Promise<LLMToolResult>;
+  genStream: (prompt: string) => AsyncGenerator<string, void, unknown>;
+  client: any; // Your provider-specific client
+};</code></pre>
+          </div>
+
+          <h3>Example: Custom Provider</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">import type { LLMHandle, ToolDefinition, LLMToolResult } from "volcano-sdk";
+
+export function llmCustom(config: {
+  apiKey: string;
+  model: string;
+  baseURL: string;
+}): LLMHandle {
+  
+  return {
+    id: "custom",
+    model: config.model,
+    client: null, // Your HTTP client or SDK instance
+    
+    async gen(prompt: string): Promise<string> {
+      // Call your LLM API
+      const response = await fetch(`${config.baseURL}/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: config.model,
+          prompt: prompt
+        })
+      });
+      
+      const data = await response.json();
+      return data.text;
+    },
+    
+    async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
+      // Call your LLM API with tool definitions
+      const response = await fetch(`${config.baseURL}/generate-with-tools`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: config.model,
+          prompt: prompt,
+          tools: tools.map(t => ({
+            name: t.name,
+            description: t.description,
+            parameters: t.parameters
+          }))
+        })
+      });
+      
+      const data = await response.json();
+      
+      // Map your API response to LLMToolResult format
+      return {
+        content: data.text,
+        toolCalls: data.tool_calls?.map((tc: any) => ({
+          name: tc.name,
+          arguments: tc.arguments,
+          mcpHandle: tools.find(t => t.name === tc.name)?.mcpHandle
+        })) || []
+      };
+    },
+    
+    async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
+      // Implement streaming if your provider supports it
+      const response = await fetch(`${config.baseURL}/stream`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: config.model,
+          prompt: prompt
+        })
+      });
+      
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        yield decoder.decode(value);
+      }
+    }
+  };
+}</code></pre>
+          </div>
+
+          <h3>Using Your Custom Provider</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">import { agent } from "volcano-sdk";
+import { llmCustom } from "./my-custom-provider";
+
+const customLLM = llmCustom({
+  apiKey: process.env.CUSTOM_API_KEY!,
+  model: "my-model-v1",
+  baseURL: "https://api.myservice.com/v1"
+});
+
+const results = await agent({ llm: customLLM })
+  .then({ prompt: "Hello from custom provider!" })
+  .run();
+
+console.log(results[0].llmOutput);</code></pre>
+          </div>
+
+          <h3>Requirements</h3>
+          <ul class="benefits-list">
+            <li><strong>gen():</strong> Basic text generation method (required)</li>
+            <li><strong>genWithTools():</strong> Function calling support (required for MCP tools)</li>
+            <li><strong>genStream():</strong> Streaming support (optional)</li>
+            <li><strong>id & model:</strong> Identifiers for logging and error messages</li>
+          </ul>
+
+          <div class="info-box tip">
+            <div class="info-icon">💡</div>
+            <div>
+              <strong>Tip:</strong> Look at existing providers in <code>src/llms/</code> for reference implementations. The OpenAI provider is a good starting point.
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Table of Contents (Right Sidebar) -->
+      <aside class="toc">
+        <div class="toc-header">On this page</div>
+        <nav class="toc-nav" id="toc-nav">
+          <!-- Dynamically populated by script.js -->
+        </nav>
+      </aside>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

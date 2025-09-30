@@ -12,6 +12,12 @@ Build AI agents that seamlessly combine LLM reasoning with real-world actions vi
 - [Quick Start](#quick-start-hello-world)
 - [Supported Providers](#supported-providers)
 - [Why Volcano SDK](#why-volcano-sdk)
+- [Advanced Workflow Patterns](#advanced-workflow-patterns) 🆕
+  - [Parallel Execution](#parallel-execution)
+  - [Conditional Branching](#conditional-branching)
+  - [Loops](#loops)
+  - [Sub-Agent Composition](#sub-agent-composition)
+  - [Combined Patterns](#combined-patterns)
 - [API Reference](#api-tiny-and-familiar)
 - [LLM Providers](#llm-providers)
 - [Concurrency & Performance](#concurrency--performance)
@@ -484,11 +490,195 @@ await agent({ llm, instructions: "GLOBAL INSTR" })
   .run();
 ```
 
+## Advanced Workflow Patterns
+
+Volcano SDK supports powerful control flow patterns for building complex AI agents:
+
+### Parallel Execution
+
+Execute multiple steps simultaneously for faster workflows:
+
+```ts
+// Array mode - run multiple tasks in parallel
+await agent({ llm })
+  .parallel([
+    { prompt: "Analyze sentiment" },
+    { prompt: "Extract entities" },
+    { prompt: "Categorize topic" }
+  ])
+  .then({ prompt: "Combine all analysis results" })
+  .run();
+
+// Named dictionary mode - access results by key
+await agent({ llm })
+  .parallel({
+    sentiment: { prompt: "What's the sentiment?" },
+    entities: { prompt: "Extract key entities" },
+    summary: { prompt: "Summarize in 5 words" }
+  })
+  .then((history) => {
+    const results = history[0].parallel;
+    // Access specific results: results.sentiment, results.entities, results.summary
+    return { prompt: "Generate report based on analysis" };
+  })
+  .run();
+```
+
+### Conditional Branching
+
+Route workflows based on conditions:
+
+```ts
+// If/else branching
+await agent({ llm })
+  .then({ prompt: "Is this email spam? Reply YES or NO" })
+  .branch(
+    (history) => history[0].llmOutput?.includes("YES") || false,
+    {
+      true: (a) => a
+        .then({ prompt: "Categorize spam type" })
+        .then({ mcp: notifications, tool: "alert" }),
+      false: (a) => a
+        .then({ prompt: "Extract action items" })
+        .then({ prompt: "Draft reply" })
+    }
+  )
+  .run();
+
+// Switch/case for multiple branches
+await agent({ llm })
+  .then({ prompt: "Classify ticket priority: HIGH, MEDIUM, or LOW" })
+  .switch(
+    (history) => history[0].llmOutput?.toUpperCase().trim() || '',
+    {
+      'HIGH': (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+      'MEDIUM': (a) => a.then({ mcp: jira, tool: "create_ticket" }),
+      'LOW': (a) => a.then({ mcp: email, tool: "queue_for_review" }),
+      default: (a) => a.then({ prompt: "Escalate unknown priority" })
+    }
+  )
+  .run();
+```
+
+### Loops
+
+Iterate until conditions are met:
+
+```ts
+// While loop - continue until done
+await agent({ llm })
+  .while(
+    (history) => {
+      if (history.length === 0) return true;
+      const last = history[history.length - 1];
+      return !last.llmOutput?.includes("COMPLETE");
+    },
+    (a) => a.then({ prompt: "Process next chunk", mcps: [database] }),
+    { maxIterations: 10 }
+  )
+  .then({ prompt: "Generate final summary" })
+  .run();
+
+// For-each loop - process array of items
+const customers = ["alice@example.com", "bob@example.com", "charlie@example.com"];
+await agent({ llm })
+  .forEach(customers, (email, a) => 
+    a.then({ prompt: `Generate personalized email for ${email}` })
+     .then({ mcp: sendgrid, tool: "send", args: { to: email } })
+  )
+  .then({ prompt: "Summarize campaign results" })
+  .run();
+
+// Retry until success - self-correcting agents
+await agent({ llm })
+  .retryUntil(
+    (a) => a.then({ prompt: "Generate a haiku about AI" }),
+    (result) => {
+      // Validate 5-7-5 syllable structure
+      const lines = result.llmOutput?.split('\n') || [];
+      return lines.length === 3; // Simple validation
+    },
+    { maxAttempts: 5, backoff: 1.5 }
+  )
+  .run();
+```
+
+### Sub-Agent Composition
+
+Build reusable agent components:
+
+```ts
+// Define reusable sub-agents
+const emailAnalyzer = agent({ llm: claude })
+  .then({ prompt: "Extract sender intent" })
+  .then({ prompt: "Classify urgency level" });
+
+const responseGenerator = agent({ llm: openai })
+  .then({ prompt: "Draft professional response" })
+  .then({ prompt: "Add signature" });
+
+// Compose them in larger workflows
+await agent({ llm })
+  .then({ mcp: gmail, tool: "fetch_unread" })
+  .runAgent(emailAnalyzer)  // Run first sub-agent
+  .runAgent(responseGenerator)  // Run second sub-agent
+  .then({ mcp: gmail, tool: "send_reply" })
+  .run();
+```
+
+### Combined Patterns
+
+Mix and match for powerful workflows:
+
+```ts
+await agent({ llm })
+  // Parallel analysis
+  .parallel({
+    sentiment: { prompt: "Analyze sentiment" },
+    intent: { prompt: "Extract intent" },
+    priority: { prompt: "Determine priority" }
+  })
+  
+  // Route based on priority
+  .switch(
+    (h) => h[0].parallel?.priority.llmOutput?.trim() || '',
+    {
+      'URGENT': (a) => a
+        .then({ mcp: slack, tool: "alert_team" })
+        .runAgent(escalationAgent),
+      
+      'NORMAL': (a) => a
+        .forEach(responders, (person, ag) => 
+          ag.then({ prompt: `Assign to ${person}` })
+        ),
+      
+      default: (a) => a.then({ prompt: "Queue for review" })
+    }
+  )
+  
+  // Final step
+  .then({ prompt: "Log outcome" })
+  .run();
+```
+
 ## API (tiny and familiar)
 
 - **LLM Providers**: `llmOpenAI()`, `llmAnthropic()`, `llmMistral()`, `llmLlama()`, `llmBedrock()`, `llmVertexStudio()`, `llmAzure()`
 - **MCP Tools**: `mcp(url) => MCPHandle`
-- **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => { resetHistory(), then(step), run(log?), stream(log?) }`
+- **Agent**: `agent({ llm?, instructions?, timeout?, retry? }) => AgentBuilder`
+  - **Basic Methods**:
+    - `then(step)` - Add sequential step
+    - `resetHistory()` - Clear context
+    - `run(log?)` - Execute and return all results
+    - `stream(log?)` - Execute and yield results incrementally
+  - **Advanced Patterns**:
+    - `parallel(steps[] | { [key]: step })` - Execute steps concurrently
+    - `branch(condition, { true, false })` - Conditional routing
+    - `switch(selector, cases)` - Multi-way branching
+    - `while(condition, body, opts?)` - Loop until false
+    - `forEach(items, body)` - Iterate over array
+    - `retryUntil(body, success, opts?)` - Retry until condition met
+    - `runAgent(subAgent)` - Compose sub-agents
   - Steps:
     - `{ prompt, llm?, instructions?, timeout?, retry? }` (LLM only)
     - `{ mcp, tool, args?, timeout?, retry? }` (MCP tool only)
