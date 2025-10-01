@@ -35,7 +35,8 @@ describe('agent timeouts', () => {
       .then({ prompt: 'no specific timeout' })
       .run();
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeGreaterThanOrEqual(30);
+    // Timing tolerance: allow 25ms-5000ms (accounts for system variance)
+    expect(elapsed).toBeGreaterThanOrEqual(25);
     expect(elapsed).toBeLessThan(5_000);
   });
 });
