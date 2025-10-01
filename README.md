@@ -17,19 +17,19 @@ Build agents that chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistra
 <td width="33%">
 
 ### ⚡️ Chainable API
-Chain steps with `.then()` and `.run()`. Promise-like syntax for multi-step workflows.
+Chain steps with `.then()` and `.run()`. Promise-like syntax for building multi-step workflows.
 
 </td>
 <td width="33%">
 
 ### ✨ Automatic Tool Selection
-LLM automatically selects and calls MCP tools based on prompt. No manual routing.
+LLM automatically selects and calls appropriate MCP tools based on the prompt. No manual routing required.
 
 </td>
 <td width="33%">
 
 ### 🔧 100s of Models
-OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch per-step.
+OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-step or use globally.
 
 </td>
 </tr>
@@ -38,19 +38,19 @@ OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch per-step.
 <td width="33%">
 
 ### 🛡️ TypeScript-First
-Full TypeScript with type inference and IntelliSense.
+Full TypeScript support with type inference and IntelliSense for all APIs.
 
 </td>
 <td width="33%">
 
 ### 🔄 Advanced Patterns
-Parallel execution, branching, loops, sub-agents.
+Parallel execution, conditional branching, loops, and sub-agent composition for complex workflows.
 
 </td>
 <td width="33%">
 
 ### ⏱️ Retries & Timeouts
-Three retry strategies: immediate, delayed, exponential backoff.
+Three retry strategies: immediate, delayed, and exponential backoff. Per-step timeout configuration.
 
 </td>
 </tr>
@@ -59,19 +59,19 @@ Three retry strategies: immediate, delayed, exponential backoff.
 <td width="33%">
 
 ### 📡 Streaming Workflows
-Stream results as they complete. Real-time updates.
+Stream step results as they complete using async generators. Perfect for real-time UIs and long-running tasks.
 
 </td>
 <td width="33%">
 
 ### 🎯 MCP Integration
-Native MCP with connection pooling and tool discovery.
+Native Model Context Protocol support with connection pooling, tool discovery, and authentication.
 
 </td>
 <td width="33%">
 
 ### 🧩 Sub-Agent Composition
-Reusable components you can compose together.
+Build reusable agent components and compose them into larger workflows. Modular and testable.
 
 </td>
 </tr>
@@ -79,20 +79,20 @@ Reusable components you can compose together.
 <tr>
 <td width="33%">
 
-### 📊 OTEL Observability
-Traces and metrics. Jaeger, Prometheus, DataDog support.
+### 📊 OpenTelemetry Observability
+Production-ready distributed tracing and metrics. Monitor performance, debug failures. Export to Jaeger, Prometheus, DataDog, NewRelic.
 
 </td>
 <td width="33%">
 
-### 🔐 OAuth Authentication
-OAuth 2.1 per MCP spec. Auto token caching and refresh.
+### 🔐 MCP OAuth Authentication
+OAuth 2.1 and Bearer token authentication per MCP specification. Agent-level or handle-level configuration with automatic token refresh.
 
 </td>
 <td width="33%">
 
 ### ⚡ Performance Optimized
-Connection pooling, caching, schema validation.
+Intelligent connection pooling for MCP servers, tool discovery caching with TTL, and JSON schema validation for reliability.
 
 </td>
 </tr>
@@ -115,18 +115,27 @@ That's it! Includes MCP support and all common LLM providers (OpenAI, Anthropic,
 ### Hello World
 
 ```ts
-import { agent, llmOpenAI } from "volcano-sdk";
+import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
 const llm = llmOpenAI({ 
   apiKey: process.env.OPENAI_API_KEY!, 
-  model: "gpt-5-mini" 
+  model: "gpt-4o-mini" 
 });
 
+const astro = mcp("http://localhost:3211/mcp");
+
 const results = await agent({ llm })
-  .then({ prompt: "Say hello to Marco in one short sentence." })
+  .then({ 
+    prompt: "Find the astrological sign for birthdate 1993-07-11",
+    mcps: [astro]  // Automatic tool selection
+  })
+  .then({ 
+    prompt: "Write a one-line fortune for that sign" 
+  })
   .run();
 
-console.log(results[0].llmOutput);
+console.log(results[1].llmOutput);
+// Output: "Fortune based on the astrological sign"
 ```
 
 ### Multi-Provider Workflow
@@ -175,56 +184,3 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## License
 
 Apache 2.0 - see [LICENSE](LICENSE) file for details.
-
----
-
-**[Get started with Volcano SDK →](https://volcano.dev/)**
-
-const llm = llmOpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY!, 
-  model: "gpt-5-mini" 
-});
-
-const astro = mcp("http://localhost:3211/mcp");
-const favorites = mcp("http://localhost:3212/mcp");
-
-const results = await agent({ llm })
-  .then({
-    prompt: "For birthdate 1993-07-11, determine the sign and then my favorite food and drink.",
-    mcps: [astro, favorites]
-  })
-  .run();
-```
-
-Multi-provider workflow:
-
-
-**Dependencies:**
-```bash
-npm install @azure/identity  # for Entra ID and credential chain
-```
-
-**Environment variables:**
-- `AZURE_AI_API_KEY` (required for API key auth)
-- `AZURE_AI_ENDPOINT` (required)
-- Optional: `AZURE_AI_MODEL`, `AZURE_AI_API_VERSION`
-- For Entra ID: `AZURE_ACCESS_TOKEN`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`
-
-## Requirements
-
-- Node.js 18.17+
-- `OPENAI_API_KEY` (for LLM usage)
-- MCP services (for tool execution)
-
-## Run locally
-
-```bash
-npm install
-npm run build
-# try the examples (set OPENAI_API_KEY)
-npx tsx examples/automatic.ts
-```
-
----
-
-Questions or ideas? Open an issue — we’d love to hear how you’re using Volcano SDK.
