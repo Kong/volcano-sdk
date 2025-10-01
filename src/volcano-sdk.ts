@@ -3,12 +3,15 @@ import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { llmOpenAI as llmOpenAIProvider } from "./llms/openai.js";
 import { executeParallel, executeBranch, executeSwitch, executeWhile, executeForEach, executeRetryUntil, executeRunAgent } from "./patterns.js";
+import { createHash } from "node:crypto";
 export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
 export { llmBedrock } from "./llms/bedrock.js";
 export { llmVertexStudio } from "./llms/vertex-studio.js";
 export { llmAzure } from "./llms/azure.js";
+export { createVolcanoTelemetry, noopTelemetry } from "./telemetry.js";
+export type { VolcanoTelemetryConfig, VolcanoTelemetry } from "./telemetry.js";
 export type { OpenAIConfig, OpenAIOptions } from "./llms/openai.js";
 export type { AnthropicConfig, AnthropicOptions } from "./llms/anthropic.js";
 export type { LlamaConfig, LlamaOptions } from "./llms/llama.js";
@@ -96,11 +99,10 @@ export type MCPHandle = {
 };
 
 export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle {
-  const u = new URL(url);
-  const host = (u.hostname || 'host').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const port = u.port || (u.protocol === 'https:' ? '443' : '80');
-  const path = (u.pathname || '/').replace(/\//g, '_').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const id = `${host}_${port}${path}`.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  // Use hash-based ID to keep tool names under OpenAI's 64-char limit
+  // Tool names are: ${id}.${toolName}, so short ID = more room for tool names
+  const hash = createHash('md5').update(url).digest('hex').substring(0, 8);
+  const id = `mcp_${hash}`; // e.g., "mcp_f3c8a9b1" (12 chars, deterministic)
   return { id, url, auth: options?.auth };
 }
 
@@ -291,19 +293,32 @@ export function __internal_getOAuthTokenCache() {
   })); 
 }
 
-async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>): Promise<T> {
+async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>, telemetry?: any, operation?: string): Promise<T> {
   ensurePoolSweeper();
   const poolKey = h.auth ? `${h.url}::auth` : h.url;
   const entry = await getPooledClient(h.url, h.auth);
   
+  // Start MCP span if telemetry configured
+  const mcpSpan = telemetry && operation ? telemetry.startMCPSpan(null, h, operation) : null;
+  
   try {
+    let result: T;
     // Always wrap with auth if configured (for both connect and tool calls)
     if (h.auth || entry.auth) {
       const authConfig = h.auth || entry.auth!;
-      return await executeWithAuth(authConfig, h.url, () => fn(entry.client));
+      result = await executeWithAuth(authConfig, h.url, () => fn(entry.client));
     } else {
-      return await fn(entry.client);
+      result = await fn(entry.client);
     }
+    
+    telemetry?.endSpan(mcpSpan);
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: false });
+    
+    return result;
+  } catch (error) {
+    telemetry?.endSpan(mcpSpan, undefined, error);
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: true });
+    throw error;
   } finally { 
     const e = MCP_POOL.get(poolKey);
     if (e) {
@@ -392,9 +407,13 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
       });
       allTools.push(...tools);
     } catch (error) {
-      // Invalidate on failure
+      // Invalidate cache on failure
       TOOL_CACHE.delete(handle.url);
-      console.warn(`Failed to discover tools from ${handle.id}:`, error);
+      // Fail fast - throw connection error
+      throw normalizeError(error, 'mcp-conn', { 
+        provider: classifyProviderFromMcp(handle),
+        retryable: true  // Connection errors are retryable
+      });
     }
   }
   
@@ -450,7 +469,7 @@ export type Step =
   | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
   | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
   | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void };
+  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
   prompt?: string;
@@ -532,6 +551,10 @@ type AgentOptions = {
   contextMaxToolResults?: number;      // number of recent tool results to include (default 3)
   // MCP authentication configuration per endpoint
   mcpAuth?: Record<string, MCPAuthConfig>;
+  // OpenTelemetry observability (opt-in)
+  telemetry?: import('./telemetry.js').VolcanoTelemetry;
+  // Maximum tool calling iterations for automatic selection (default 4)
+  maxToolIterations?: number;
 };
 
 export function agent(opts?: AgentOptions): AgentBuilder {
@@ -544,6 +567,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const contextMaxChars = typeof opts?.contextMaxChars === 'number' ? opts!.contextMaxChars! : 20480;
   const contextMaxToolResults = typeof opts?.contextMaxToolResults === 'number' ? opts!.contextMaxToolResults! : 8;
   const agentMcpAuth = opts?.mcpAuth || {};
+  const telemetry = opts?.telemetry;
+  const defaultMaxToolIterations = typeof opts?.maxToolIterations === 'number' ? opts!.maxToolIterations! : 4;
   let isRunning = false;
   
   // Helper to apply agent-level auth to MCP handle
@@ -604,6 +629,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
       isRunning = true;
+      
+      // Start agent span
+      const agentSpan = telemetry?.startAgentSpan(steps.length) || null;
+      
       try {
         const out: StepResult[] = [];
         // snapshot steps array to make run isolated from later .then() calls
@@ -794,6 +823,15 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               }
             }
             
+            // Determine step type for telemetry
+            let stepType = 'unknown';
+            if ("mcps" in s) stepType = 'mcp_auto';
+            else if ("mcp" in s) stepType = 'mcp_explicit';
+            else if ("prompt" in s) stepType = 'llm';
+            
+            // Start step span
+            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType) || null;
+            
             const r: StepResult = {};
             const stepStart = Date.now();
             let llmTotalMs = 0;
@@ -814,7 +852,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 r.llmOutput = "No tools available for this request.";
               } else {
                 const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
-                const maxIterations = 4;
+                const maxIterations = (s as any).maxToolIterations ?? defaultMaxToolIterations;
                 let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
                 for (let i = 0; i < maxIterations; i++) {
                   const llmStart = Date.now();
@@ -846,7 +884,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                     const mcpStart = Date.now();
                     let result: any;
                     try {
-                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }));
+                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), telemetry, 'call_tool');
                     } catch (e) {
                       const provider = classifyProviderFromMcp(handle);
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
@@ -874,10 +912,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr2, cmc2);
               const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
               r.prompt = (s as any).prompt;
+              const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
                 r.llmOutput = await usedLlm.gen(finalPrompt);
+                telemetry?.endSpan(llmSpan);
+                telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {
+                telemetry?.endSpan(llmSpan, undefined, e);
+                telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: true });
+                telemetry?.recordMetric('error', 1, { type: 'llm', provider: (usedLlm as any).id || usedLlm.model });
                 const provider = classifyProviderFromLlm(usedLlm);
                 throw normalizeError(e, 'llm', { stepId: out.length, provider });
               }
@@ -907,7 +951,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const mcpStart = Date.now();
               let res: any;
               try {
-                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }), telemetry, 'call_tool');
               } catch (e) {
                 const provider = classifyProviderFromMcp(mcpHandle);
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
@@ -918,6 +962,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   
             r.llmMs = llmTotalMs;
             r.durationMs = Date.now() - stepStart;
+            
+            // End step span
+            telemetry?.endSpan(stepSpan, r);
+            telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
             
             // Execute post-step hook
             if ((s as any).post) {
@@ -987,8 +1035,17 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           last.totalDurationMs = totalDuration;
           last.totalLlmMs = totalLlm;
           last.totalMcpMs = totalMcp;
+          
+          // End agent span and record metrics
+          telemetry?.endSpan(agentSpan, last);
+          telemetry?.recordMetric('agent.duration', totalDuration, { steps: out.length });
         }
         return out;
+      } catch (error) {
+        // End agent span with error
+        telemetry?.endSpan(agentSpan, undefined, error);
+        telemetry?.recordMetric('error', 1, { type: 'agent', level: 'workflow' });
+        throw error;
       } finally {
         isRunning = false;
       }
@@ -998,6 +1055,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
       isRunning = true;
+      
+      // Start agent span
+      const agentSpan = telemetry?.startAgentSpan(steps.length) || null;
+      
       try {
         const out: StepResult[] = [];
         // snapshot steps array to make run isolated from later .then() calls
@@ -1145,6 +1206,15 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               }
             }
             
+            // Determine step type for telemetry
+            let stepType = 'unknown';
+            if ("mcps" in s) stepType = 'mcp_auto';
+            else if ("mcp" in s) stepType = 'mcp_explicit';
+            else if ("prompt" in s) stepType = 'llm';
+            
+            // Start step span
+            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType) || null;
+            
             const r: StepResult = {};
             const stepStart = Date.now();
             let llmTotalMs = 0;
@@ -1165,7 +1235,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 r.llmOutput = "No tools available for this request.";
               } else {
                 const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
-                const maxIterations = 4;
+                const maxIterations = (s as any).maxToolIterations ?? defaultMaxToolIterations;
                 let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
                 for (let i = 0; i < maxIterations; i++) {
                   const llmStart = Date.now();
@@ -1197,7 +1267,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                     const mcpStart = Date.now();
                     let result: any;
                     try {
-                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }));
+                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), telemetry, 'call_tool');
                     } catch (e) {
                       const provider = classifyProviderFromMcp(handle);
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
@@ -1225,10 +1295,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr2, cmc2);
               const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
               r.prompt = (s as any).prompt;
+              const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
                 r.llmOutput = await usedLlm.gen(finalPrompt);
+                telemetry?.endSpan(llmSpan);
+                telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {
+                telemetry?.endSpan(llmSpan, undefined, e);
+                telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: true });
+                telemetry?.recordMetric('error', 1, { type: 'llm', provider: (usedLlm as any).id || usedLlm.model });
                 const provider = classifyProviderFromLlm(usedLlm);
                 throw normalizeError(e, 'llm', { stepId: out.length, provider });
               }
@@ -1258,7 +1334,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const mcpStart = Date.now();
               let res: any;
               try {
-                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }));
+                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }), telemetry, 'call_tool');
               } catch (e) {
                 const provider = classifyProviderFromMcp(mcpHandle);
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
@@ -1269,6 +1345,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   
             r.llmMs = llmTotalMs;
             r.durationMs = Date.now() - stepStart;
+            
+            // End step span
+            telemetry?.endSpan(stepSpan, r);
+            telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
             
             // Execute post-step hook
             if ((s as any).post) {

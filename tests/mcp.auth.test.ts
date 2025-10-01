@@ -89,33 +89,30 @@ describe('MCP OAuth Authentication', () => {
       expect(error.message).toMatch(/401|unauthorized|authentication/i);
     }, 20000);
     
-    it('discovery fails silently but returns no tools when auth missing', async () => {
+    it('throws MCPConnectionError when discovery fails due to missing auth', async () => {
       const authMcp = mcp('http://localhost:3402/mcp');
       const llm: any = {
         id: 'mock',
         model: 'mock',
         client: {},
         gen: async () => 'OK',
-        genWithTools: async (_prompt: string, tools: any[]) => {
-          // Check that no tools were discovered
-          expect(tools.length).toBe(0);
-          return {
-            content: 'No tools available',
-            toolCalls: []
-          };
-        },
+        genWithTools: async () => ({ content: '', toolCalls: [] }),
         genStream: async function*(){}
       };
       
-      // Discovery will fail silently (logged as warning)
-      // The workflow should complete but with no tools
-      const results = await agent({ llm })
-        .then({ prompt: 'Get weather for London', mcps: [authMcp] })
-        .run();
+      // Discovery should now throw instead of silently failing
+      let error: any;
+      try {
+        await agent({ llm })
+          .then({ prompt: 'Get weather for London', mcps: [authMcp] })
+          .run();
+      } catch (e) {
+        error = e;
+      }
       
-      expect(results[0].llmOutput).toBe('No tools available for this request.');
-      // toolCalls is undefined when LLM isn't called with tools
-      expect(results[0].toolCalls).toBeUndefined();
+      expect(error).toBeDefined();
+      expect(error.name).toBe('MCPConnectionError');
+      expect(error.message).toMatch(/401|unauthorized/i);
     }, 20000);
   });
   

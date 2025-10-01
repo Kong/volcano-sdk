@@ -99,22 +99,22 @@ describe('Bedrock provider (unit)', () => {
         return {
           output: {
             message: {
-              content: [
-                {
-                  toolUse: {
-                    name: 'localhost_3211_mcp_get_sign',
-                    input: { birthdate: '1993-07-11' }
-                  }
+              content: [{
+                toolUse: {
+                  toolUseId: 'tooluse_1',
+                  name: 'astro_get_sign',  // Sanitized (dots → underscores)
+                  input: { birthdate: '1993-07-11' }
                 }
-              ]
-            }
+              }]
+            },
+            stopReason: 'tool_use'
           }
         };
       }
     };
 
     const tools = [{
-      name: 'localhost_3211_mcp.get_sign',
+      name: 'astro.get_sign',
       description: 'Get astrological sign',
       parameters: { type: 'object', properties: { birthdate: { type: 'string' } } }
     }];
@@ -122,11 +122,11 @@ describe('Bedrock provider (unit)', () => {
     const llm = llmBedrock({ client: mockClient, model: 'anthropic.claude-sonnet-4-20250514-v1:0' });
     const result = await llm.genWithTools('Get sign', tools);
     
-    // Check that the tool name was sanitized for Bedrock
-    expect(mockCalls[0].toolConfig.tools[0].toolSpec.name).toBe('localhost_3211_mcp_get_sign');
+    // Check that the tool name was sanitized for Bedrock (dots become underscores)
+    expect(mockCalls[0].toolConfig.tools[0].toolSpec.name).toBe('astro_get_sign');
     
-    // But the result should have the original dotted name
-    expect(result.toolCalls[0].name).toBe('localhost_3211_mcp.get_sign');
+    // But the result should have the original dotted name (matches input)
+    expect(result.toolCalls[0].name).toBe('astro.get_sign');
   });
 
   it('supports bearer token authentication', () => {

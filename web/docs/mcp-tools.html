@@ -83,7 +83,16 @@
         </div>
 
         <div class="nav-section">
-          <div class="nav-section-title">API Reference</div>
+        <div class="nav-section">
+          <div class="nav-section-title">Observability</div>
+          <a href="observability.html" class="nav-link">Overview</a>
+          <a href="observability.html#opentelemetry" class="nav-link">OpenTelemetry</a>
+          <a href="observability.html#traces" class="nav-link">Distributed Tracing</a>
+          <a href="observability.html#metrics" class="nav-link">Metrics</a>
+          <a href="observability.html#backends" class="nav-link">Observability Backends</a>
+        </div>
+
+                  <div class="nav-section-title">API Reference</div>
           <a href="api.html" class="nav-link">Overview</a>
           <a href="api.html#agent" class="nav-link">agent()</a>
           <a href="api.html#step" class="nav-link">Step Types</a>
@@ -135,9 +144,75 @@ await agent({ llm })
             <li><strong>Tool Discovery:</strong> Volcano fetches available tools from MCP servers (cached with TTL)</li>
             <li><strong>LLM Selection:</strong> The LLM analyzes the prompt and chooses relevant tools</li>
             <li><strong>Schema Validation:</strong> Arguments are validated against JSON Schema before execution</li>
-            <li><strong>Iterative Calling:</strong> The LLM can make multiple tool calls in sequence (up to 4 iterations)</li>
+            <li><strong>Iterative Calling:</strong> The LLM can make multiple tool calls in sequence (default: 4 iterations)</li>
             <li><strong>Context Flow:</strong> Tool results are automatically included in subsequent steps</li>
           </ul>
+
+          <h3>Controlling Tool Iterations</h3>
+          <p>For complex tasks, the LLM may need multiple tool calls. Configure how many iterations are allowed:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">// Agent-level (default for all steps)
+await agent({ 
+  llm,
+  maxToolIterations: 2  // Limit to 2 iterations (faster)
+})
+  .then({ prompt: "Task", mcps: [tools] })
+  .run();
+
+// Per-step override
+await agent({ llm, maxToolIterations: 4 })  // Default 4
+  .then({ 
+    prompt: "Simple task",
+    mcps: [tools],
+    maxToolIterations: 1  // Fast: only 1 tool call
+  })
+  .then({ 
+    prompt: "Complex task",
+    mcps: [tools],
+    maxToolIterations: 4  // More iterations for complexity
+  })
+  .run();</code></pre>
+          </div>
+
+          <h3>Iteration Trade-offs</h3>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>maxToolIterations</th>
+                <th>Speed</th>
+                <th>Capability</th>
+                <th>Use Case</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>1</code></td>
+                <td>⚡ Fastest</td>
+                <td>Single tool call</td>
+                <td>Simple, direct tasks</td>
+              </tr>
+              <tr>
+                <td><code>2</code></td>
+                <td>🏃 Fast</td>
+                <td>Tool + follow-up</td>
+                <td>Two-step operations</td>
+              </tr>
+              <tr>
+                <td><code>4</code> (default)</td>
+                <td>⏱️ Moderate</td>
+                <td>Multi-step workflows</td>
+                <td>Complex orchestration</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="info-box tip">
+            <div class="info-icon">💡</div>
+            <div>
+              <strong>Performance tip:</strong> Start with <code>maxToolIterations: 1</code> for simple tasks. Increase only if the LLM needs multiple tool calls to complete the task.
+            </div>
+          </div>
 
           <h3>Multiple MCP Servers</h3>
           <p>Provide multiple MCP servers and the LLM will use tools from any of them:</p>

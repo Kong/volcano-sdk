@@ -83,7 +83,16 @@
         </div>
 
         <div class="nav-section">
-          <div class="nav-section-title">API Reference</div>
+        <div class="nav-section">
+          <div class="nav-section-title">Observability</div>
+          <a href="observability.html" class="nav-link">Overview</a>
+          <a href="observability.html#opentelemetry" class="nav-link">OpenTelemetry</a>
+          <a href="observability.html#traces" class="nav-link">Distributed Tracing</a>
+          <a href="observability.html#metrics" class="nav-link">Metrics</a>
+          <a href="observability.html#backends" class="nav-link">Observability Backends</a>
+        </div>
+
+                  <div class="nav-section-title">API Reference</div>
           <a href="api.html" class="nav-link">Overview</a>
           <a href="api.html#agent" class="nav-link">agent()</a>
           <a href="api.html#step" class="nav-link">Step Types</a>
@@ -113,12 +122,12 @@
             <a href="mcp-tools.html#automatic" class="feature-card">
               <div class="feature-icon">✨</div>
               <h3>Automatic Tool Selection</h3>
-              <p>The LLM selects and calls appropriate MCP tools based on the prompt. No manual routing required.</p>
+              <p>LLM automatically selects and calls appropriate MCP tools based on the prompt. No manual routing required.</p>
             </a>
             <a href="providers.html" class="feature-card">
               <div class="feature-icon">🔧</div>
               <h3>100s of Models</h3>
-              <p>Supports OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, and Azure. Switch providers per-step or globally.</p>
+              <p>OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-step or use globally.</p>
             </a>
             <a href="api.html#types" class="feature-card">
               <div class="feature-icon">🛡️</div>
@@ -133,22 +142,37 @@
             <a href="features.html#retries" class="feature-card">
               <div class="feature-icon">⏱️</div>
               <h3>Retries & Timeouts</h3>
-              <p>Configurable retry strategies (immediate, delayed, exponential backoff) and per-step timeouts.</p>
+              <p>Three retry strategies: immediate, delayed, and exponential backoff. Per-step timeout configuration.</p>
             </a>
             <a href="features.html#streaming" class="feature-card">
               <div class="feature-icon">📡</div>
               <h3>Streaming Workflows</h3>
-              <p>Stream step results as they complete using async generators. Useful for long-running tasks and real-time UIs.</p>
+              <p>Stream step results as they complete using async generators. Perfect for real-time UIs and long-running tasks.</p>
             </a>
-            <a href="features.html#mcp-tools" class="feature-card">
+            <a href="mcp-tools.html" class="feature-card">
               <div class="feature-icon">🎯</div>
               <h3>MCP Integration</h3>
-              <p>Native Model Context Protocol support with connection pooling, tool discovery, and authentication support.</p>
+              <p>Native Model Context Protocol support with connection pooling, tool discovery, and authentication.</p>
             </a>
             <a href="patterns.html#sub-agents" class="feature-card">
               <div class="feature-icon">🧩</div>
               <h3>Sub-Agent Composition</h3>
-              <p>Define reusable agent components and compose them into larger workflows.</p>
+              <p>Build reusable agent components and compose them into larger workflows. Modular and testable.</p>
+            </a>
+            <a href="observability.html" class="feature-card">
+              <div class="feature-icon">📊</div>
+              <h3>OpenTelemetry Observability</h3>
+              <p>Production-ready distributed tracing and metrics. Monitor performance, debug failures. Export to Jaeger, Prometheus, DataDog, NewRelic.</p>
+            </a>
+            <a href="mcp-tools.html#authentication" class="feature-card">
+              <div class="feature-icon">🔐</div>
+              <h3>MCP OAuth Authentication</h3>
+              <p>OAuth 2.1 and Bearer token authentication per MCP specification. Agent-level or handle-level configuration with automatic token refresh.</p>
+            </a>
+            <a href="mcp-tools.html#connection-pooling" class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <h3>Performance Optimized</h3>
+              <p>Intelligent connection pooling for MCP servers, tool discovery caching with TTL, and JSON schema validation for reliability.</p>
             </a>
           </div>
         </section>
@@ -174,6 +198,18 @@ npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 # For Azure AI (if using credential chain)
 npm install @azure/identity</code></pre>
           </div>
+
+          <h3>Optional Observability</h3>
+          <p>For production observability with OpenTelemetry:</p>
+          
+          <div class="code-block">
+            <pre><code class="language-bash"># For distributed tracing and metrics
+npm install @opentelemetry/api
+npm install @opentelemetry/sdk-node
+npm install @opentelemetry/exporter-trace-otlp-http</code></pre>
+          </div>
+
+          <p>See the <a href="observability.html">Observability guide</a> for complete setup and backend configuration.</p>
 
           <div class="info-box success">
             <div class="info-icon">✓</div>

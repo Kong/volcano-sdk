@@ -107,15 +107,19 @@ console.log(steps[1].llmOutput); // fortune that uses prior step context
 - **MCP connection pooling**: TCP sessions are pooled per MCP endpoint and reused across steps. Idle connections are evicted automatically.
 - **Tool discovery cache**: `listTools()` results are cached per endpoint with a short TTL and invalidated on failures.
 - **Validation & safety**: When MCP tools expose JSON Schemas for their inputs, Volcano SDK validates tool arguments before calling the tool and rejects invalid payloads early.
+- **Tool iteration limit**: For automatic tool selection, the LLM can call tools iteratively (default: 4 iterations). Lower this for faster execution:
+```ts
+agent({ llm, maxToolIterations: 2 })  // Faster, but less capable
+```
 - **Context size limits (tunable)**: To avoid oversized prompts, history context is compacted.
-  - Defaults: `contextMaxChars = 20480`, `contextMaxToolResults = 8` (most recent tool results).
+  - Defaults: `contextMaxChars = 20480`, `contextMaxToolResults = 8`, `maxToolIterations = 4`.
   - Override at agent level:
 ```ts
-agent({ llm, contextMaxChars: 40000, contextMaxToolResults: 12 })
+agent({ llm, contextMaxChars: 40000, contextMaxToolResults: 12, maxToolIterations: 2 })
 ```
   - Override per step:
 ```ts
-.then({ prompt: "...", contextMaxChars: 12000, contextMaxToolResults: 4 })
+.then({ prompt: "...", contextMaxChars: 12000, contextMaxToolResults: 4, maxToolIterations: 1 })
 ```
 
 ## Errors & diagnostics

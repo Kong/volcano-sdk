@@ -15,7 +15,8 @@ vi.mock('openai', () => {
                 message: {
                   content: null,
                   tool_calls: [
-                    { id: 't1', function: { name: 'astro_get_sign', arguments: '{"birthdate":"1993-07-11"}' } }
+                    // Return the sanitized version of the input tool name
+                    { id: 't1', function: { name: 'mcp_abc123_get_sign', arguments: '{"birthdate":"1993-07-11"}' } }
                   ]
                 }
               }
@@ -36,7 +37,7 @@ describe('OpenAI provider (unit)', () => {
     const llm: any = llmOpenAI({ apiKey: 'sk-test', model: 'gpt-5-mini' });
     const tools = [
       {
-        name: 'astro.get_sign',
+        name: 'mcp_abc123.get_sign', // Hash-based ID format
         description: 'Get sign',
         parameters: { type: 'object', properties: { birthdate: { type: 'string' } } }
       }
@@ -45,7 +46,9 @@ describe('OpenAI provider (unit)', () => {
     const res = await llm.genWithTools('Do task', tools as any);
 
     expect(calls.length).toBe(1);
-    expect(calls[0].tools[0].function.name).toBe('astro_get_sign');
-    expect(res.toolCalls[0].name).toBe('astro.get_sign');
+    // Sanitized: dots become underscores for OpenAI
+    expect(calls[0].tools[0].function.name).toBe('mcp_abc123_get_sign');
+    // Result: maps back to original dotted name
+    expect(res.toolCalls[0].name).toBe('mcp_abc123.get_sign');
   });
 });
