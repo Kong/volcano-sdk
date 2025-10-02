@@ -2,7 +2,7 @@ import tseslint from 'typescript-eslint';
 import eslint from '@eslint/js';
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'examples/**', 'eslint.config.*', 'mcp/**', 'tests/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'examples/**', 'eslint.config.*', 'mcp/**', 'tests/**', 'summit-demo/**'] },
   // JS base rules for JS files (none currently, but safe)
   { files: ['**/*.{js,cjs,mjs}'], ...eslint.configs.recommended },
   // TS recommended (no type-checking) applied to TS files

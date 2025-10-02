@@ -1,9 +1,12 @@
 // src/volcano-sdk.ts
 import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { llmOpenAI as llmOpenAIProvider } from "./llms/openai.js";
 import { executeParallel, executeBranch, executeSwitch, executeWhile, executeForEach, executeRetryUntil, executeRunAgent } from "./patterns.js";
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
@@ -63,7 +66,16 @@ function classifyProviderFromLlm(usedLlm?: LLMHandle): string | undefined {
 }
 function classifyProviderFromMcp(handle?: MCPHandle): string | undefined {
   if (!handle) return undefined;
+  if (handle.stdio) return `mcp:stdio:${handle.id}`;
+  if (!handle.url) return `mcp:${handle.id}`;
   try { const u = new URL(handle.url); return `mcp:${u.host}`; } catch { return `mcp:${handle.id}`; }
+}
+
+function getMcpEndpoint(handle: MCPHandle): string {
+  if (handle.stdio) {
+    return `stdio://${handle.stdio.command}`;
+  }
+  return handle.url || handle.id;
 }
 function normalizeError(e: any, kind: 'timeout'|'validation'|'llm'|'mcp-conn'|'mcp-tool'|'retry', meta: VolcanoErrorMeta): VolcanoError {
   if (kind === 'timeout') return new TimeoutError(e?.message || 'Step timed out', { ...meta, retryable: true }, { cause: e });
@@ -83,7 +95,7 @@ function normalizeError(e: any, kind: 'timeout'|'validation'|'llm'|'mcp-conn'|'m
   return new MCPToolError(e?.message || 'MCP tool error', { ...meta, retryable: false }, { cause: e });
 }
 
-/* ---------- MCP (Streamable HTTP) ---------- */
+/* ---------- MCP (HTTP & STDIO) ---------- */
 export type MCPAuthConfig = {
   type: 'oauth' | 'bearer';
   token?: string;           // For bearer auth: direct token
@@ -92,17 +104,34 @@ export type MCPAuthConfig = {
   tokenEndpoint?: string;   // OAuth token endpoint (for OAuth)
 };
 
-export type MCPHandle = { 
-  id: string; 
-  url: string; 
-  auth?: MCPAuthConfig;
+export type MCPStdioConfig = {
+  command: string;          // Command to spawn (e.g., "node", "python")
+  args?: string[];          // Arguments (e.g., ["server.js"])
+  env?: Record<string, string>;  // Environment variables
 };
 
-export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle {
-  // Use hash-based ID to keep tool names under OpenAI's 64-char limit
-  // Tool names are: ${id}.${toolName}, so short ID = more room for tool names
+export type MCPHandle = { 
+  id: string; 
+  url?: string;             // For HTTP transport
+  stdio?: MCPStdioConfig;   // For STDIO transport
+  auth?: MCPAuthConfig;     // Only used for HTTP
+};
+
+export function mcp(urlOrConfig: string | MCPStdioConfig, options?: { auth?: MCPAuthConfig }): MCPHandle {
+  // STDIO transport (process-based)
+  if (typeof urlOrConfig === 'object' && 'command' in urlOrConfig) {
+    const config = urlOrConfig;
+    // Create deterministic ID from command + args
+    const cmdString = `${config.command} ${(config.args || []).join(' ')}`;
+    const hash = createHash('md5').update(cmdString).digest('hex').substring(0, 8);
+    const id = `mcp_stdio_${hash}`;
+    return { id, stdio: config };
+  }
+  
+  // HTTP transport (network-based)
+  const url = urlOrConfig as string;
   const hash = createHash('md5').update(url).digest('hex').substring(0, 8);
-  const id = `mcp_${hash}`; // e.g., "mcp_f3c8a9b1" (12 chars, deterministic)
+  const id = `mcp_${hash}`;
   return { id, url, auth: options?.auth };
 }
 
@@ -126,10 +155,12 @@ export function __internal_validateToolArgs(schema: any, args: any) { validateWi
 
 type MCPPoolEntry = {
   client: MCPClient;
-  transport: StreamableHTTPClientTransport;
+  transport: StreamableHTTPClientTransport | StdioClientTransport;
   lastUsed: number;
   busyCount: number;
   auth?: MCPAuthConfig;
+  process?: ChildProcess;   // For STDIO transport
+  isStdio?: boolean;
 };
 
 const MCP_POOL = new Map<string, MCPPoolEntry>();
@@ -140,7 +171,9 @@ let MCP_POOL_IDLE_MS = 30_000;
 type TokenCacheEntry = { token: string; expiresAt: number };
 const OAUTH_TOKEN_CACHE = new Map<string, TokenCacheEntry>();
 
-async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<string> {
+async function getOAuthToken(auth: MCPAuthConfig, endpoint: string | undefined): Promise<string> {
+  if (!endpoint) throw new Error('OAuth requires HTTP endpoint');
+  
   // Check cache first
   const cached = OAUTH_TOKEN_CACHE.get(endpoint);
   if (cached && cached.expiresAt > Date.now() + 60000) { // 60s buffer before expiration
@@ -180,8 +213,15 @@ async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<str
 }
 
 
-async function getPooledClient(url: string, auth?: MCPAuthConfig): Promise<MCPPoolEntry> {
-  const poolKey = auth ? `${url}::auth` : url; // Separate pool entries for auth vs non-auth
+async function getPooledClient(handle: MCPHandle): Promise<MCPPoolEntry> {
+  const url = handle.url || '';
+  const stdio = handle.stdio;
+  const auth = handle.auth;
+  
+  const poolKey = stdio 
+    ? `stdio::${handle.id}`  // STDIO uses command-based key
+    : (auth ? `${url}::auth` : url);  // HTTP uses URL-based key
+  
   let entry = MCP_POOL.get(poolKey);
   if (!entry) {
     // Evict LRU idle if over max
@@ -190,24 +230,71 @@ async function getPooledClient(url: string, auth?: MCPAuthConfig): Promise<MCPPo
       idleEntries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
       const toEvict = idleEntries.slice(0, Math.max(0, MCP_POOL.size - MCP_POOL_MAX + 1));
       for (const [k, e] of toEvict) {
-        try { await e.client.close(); } catch {}
+        try { 
+          await e.client.close();
+          if (e.process) {
+            e.process.kill();
+          }
+        } catch {}
         MCP_POOL.delete(k);
       }
     }
     
-    // Create transport
-    const transport = new StreamableHTTPClientTransport(new URL(url));
-    
     const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
+    let transport: StreamableHTTPClientTransport | StdioClientTransport;
+    let childProcess: ChildProcess | undefined;
     
-    // Connect with auth if needed
-    if (auth) {
-      await connectWithAuth(transport, client, auth, url);
+    if (stdio) {
+      // STDIO transport - spawn process
+      try {
+        childProcess = spawn(stdio.command, stdio.args || [], {
+          env: { ...globalThis.process.env, ...stdio.env },
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+        
+        // Handle spawn errors
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => resolve(), 100); // Give it 100ms to fail
+          childProcess!.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
+          childProcess!.on('spawn', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+        
+        transport = new StdioClientTransport({
+          command: stdio.command,
+          args: stdio.args || [],
+          env: stdio.env
+        });
+        
+        await client.connect(transport);
+        entry = { client, transport, lastUsed: Date.now(), busyCount: 0, process: childProcess, isStdio: true };
+      } catch (error) {
+        if (childProcess) {
+          childProcess.kill();
+        }
+        throw error;
+      }
     } else {
-      await client.connect(transport);
+      // HTTP transport
+      if (!url) throw new Error('HTTP transport requires URL');
+      
+      transport = new StreamableHTTPClientTransport(new URL(url));
+      
+      // Connect with auth if needed
+      if (auth) {
+        await connectWithAuth(transport as StreamableHTTPClientTransport, client, auth, url);
+      } else {
+        await client.connect(transport);
+      }
+      
+      entry = { client, transport, lastUsed: Date.now(), busyCount: 0, auth };
     }
     
-    entry = { client, transport, lastUsed: Date.now(), busyCount: 0, auth };
     MCP_POOL.set(poolKey, entry);
   }
   entry.busyCount++;
@@ -215,7 +302,13 @@ async function getPooledClient(url: string, auth?: MCPAuthConfig): Promise<MCPPo
   return entry;
 }
 
-async function connectWithAuth(transport: any, client: MCPClient, auth: MCPAuthConfig, endpoint: string) {
+async function connectWithAuth(transport: any, client: MCPClient, auth: MCPAuthConfig, endpoint: string | undefined) {
+  if (!endpoint) {
+    // STDIO doesn't use auth
+    await client.connect(transport);
+    return;
+  }
+  
   // Get auth headers
   const authHeaders: Record<string, string> = {};
   
@@ -257,10 +350,15 @@ async function connectWithAuth(transport: any, client: MCPClient, auth: MCPAuthC
 
 async function cleanupIdlePool() {
   const now = Date.now();
-  for (const [url, entry] of MCP_POOL) {
+  for (const [poolKey, entry] of MCP_POOL) {
     if (entry.busyCount === 0 && now - entry.lastUsed > MCP_POOL_IDLE_MS) {
-      try { await entry.client.close(); } catch {}
-      MCP_POOL.delete(url);
+      try { 
+        await entry.client.close();
+        if (entry.process) {
+          entry.process.kill();
+        }
+      } catch {}
+      MCP_POOL.delete(poolKey);
     }
   }
 }
@@ -295,8 +393,10 @@ export function __internal_getOAuthTokenCache() {
 
 async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>, telemetry?: any, operation?: string): Promise<T> {
   ensurePoolSweeper();
-  const poolKey = h.auth ? `${h.url}::auth` : h.url;
-  const entry = await getPooledClient(h.url, h.auth);
+  const poolKey = h.stdio 
+    ? `stdio::${h.id}`
+    : (h.auth ? `${h.url}::auth` : (h.url || h.id));
+  const entry = await getPooledClient(h);
   
   // Start MCP span if telemetry configured
   const mcpSpan = telemetry && operation ? telemetry.startMCPSpan(null, h, operation) : null;
@@ -304,7 +404,8 @@ async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>, teleme
   try {
     let result: T;
     // Always wrap with auth if configured (for both connect and tool calls)
-    if (h.auth || entry.auth) {
+    // Note: Auth only applies to HTTP transport, not STDIO
+    if ((h.auth || entry.auth) && h.url) {
       const authConfig = h.auth || entry.auth!;
       result = await executeWithAuth(authConfig, h.url, () => fn(entry.client));
     } else {
@@ -312,12 +413,12 @@ async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>, teleme
     }
     
     telemetry?.endSpan(mcpSpan);
-    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: false });
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: getMcpEndpoint(h), error: false });
     
     return result;
   } catch (error) {
     telemetry?.endSpan(mcpSpan, undefined, error);
-    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: true });
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: getMcpEndpoint(h), error: true });
     throw error;
   } finally { 
     const e = MCP_POOL.get(poolKey);
@@ -328,8 +429,13 @@ async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>, teleme
   }
 }
 
-async function executeWithAuth<T>(auth: MCPAuthConfig, endpoint: string, fn: () => Promise<T>): Promise<T> {
-  // Get auth headers
+async function executeWithAuth<T>(auth: MCPAuthConfig, endpoint: string | undefined, fn: () => Promise<T>): Promise<T> {
+  if (!endpoint) {
+    // STDIO doesn't use auth
+    return await fn();
+  }
+  
+  // Get auth headers for HTTP
   const authHeaders: Record<string, string> = {};
   
   if (auth.type === 'oauth') {
@@ -339,7 +445,7 @@ async function executeWithAuth<T>(auth: MCPAuthConfig, endpoint: string, fn: () 
     authHeaders['Authorization'] = `Bearer ${auth.token}`;
   }
   
-  // Wrap fetch
+  // Wrap fetch to add auth headers
   const originalFetch = global.fetch;
   global.fetch = async (url: any, init: any = {}) => {
     let mergedHeaders: any = {};
@@ -387,8 +493,10 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
   const allTools: ToolDefinition[] = [];
   
   for (const handle of handles) {
+    const cacheKey = getMcpEndpoint(handle);
+    
     try {
-      const cached = TOOL_CACHE.get(handle.url);
+      const cached = TOOL_CACHE.get(cacheKey);
       if (cached && (Date.now() - cached.ts) < TOOL_CACHE_TTL_MS) {
         // reuse cached with endpoint-specific names
         allTools.push(...cached.tools);
@@ -402,13 +510,13 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
           parameters: tool.inputSchema || { type: "object", properties: {} },
           mcpHandle: handle,
         }));
-        TOOL_CACHE.set(handle.url, { tools: mapped, ts: Date.now() });
+        TOOL_CACHE.set(cacheKey, { tools: mapped, ts: Date.now() });
         return mapped;
       });
       allTools.push(...tools);
     } catch (error) {
       // Invalidate cache on failure
-      TOOL_CACHE.delete(handle.url);
+      TOOL_CACHE.delete(cacheKey);
       // Fail fast - throw connection error
       throw normalizeError(error, 'mcp-conn', { 
         provider: classifyProviderFromMcp(handle),
@@ -423,18 +531,20 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
 export function __internal_clearDiscoveryCache() { TOOL_CACHE.clear(); }
 export function __internal_setDiscoveryTtl(ms: number) { TOOL_CACHE_TTL_MS = ms; }
 export function __internal_primeDiscoveryCache(handle: MCPHandle, rawTools: Array<{ name: string; inputSchema?: any; description?: string }>) {
+  const cacheKey = getMcpEndpoint(handle);
   const tools: ToolDefinition[] = rawTools.map(t => ({
     name: `${handle.id}.${t.name}`,
     description: t.description || `Tool: ${t.name}`,
     parameters: t.inputSchema || { type: 'object', properties: {} },
     mcpHandle: handle,
   }));
-  TOOL_CACHE.set(handle.url, { tools, ts: Date.now() });
+  TOOL_CACHE.set(cacheKey, { tools, ts: Date.now() });
 }
 
 // helper to fetch tool schema for explicit calls
 async function getToolSchema(handle: MCPHandle, toolName: string): Promise<any | undefined> {
-  const cached = TOOL_CACHE.get(handle.url);
+  const cacheKey = getMcpEndpoint(handle);
+  const cached = TOOL_CACHE.get(cacheKey);
   if (cached) {
     const found = cached.tools.find(t => t.name === `${handle.id}.${toolName}`);
     return found?.parameters as any;
@@ -448,7 +558,7 @@ async function getToolSchema(handle: MCPHandle, toolName: string): Promise<any |
         parameters: tool.inputSchema || { type: 'object', properties: {} },
         mcpHandle: handle,
       }));
-      TOOL_CACHE.set(handle.url, { tools: mapped, ts: Date.now() });
+      TOOL_CACHE.set(cacheKey, { tools: mapped, ts: Date.now() });
       return mapped;
     });
     const found = tools.find(t => t.name === `${handle.id}.${toolName}`);
@@ -574,6 +684,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   // Helper to apply agent-level auth to MCP handle
   function applyAgentAuth(handle: MCPHandle): MCPHandle {
     if (handle.auth) return handle; // Handle-level auth takes precedence
+    if (!handle.url) return handle; // STDIO doesn't use auth
     const authConfig = agentMcpAuth[handle.url];
     if (authConfig) {
       return { ...handle, auth: authConfig };
@@ -890,7 +1001,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
                     }
                     const mcpMs = Date.now() - mcpStart;
-                    aggregated.push({ name: mapped.name, endpoint: handle.url, result, ms: mcpMs });
+                    aggregated.push({ name: mapped.name, endpoint: getMcpEndpoint(handle), result, ms: mcpMs });
                     toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
                   }
                   if (aggregated.length) r.toolCalls = aggregated;
@@ -957,7 +1068,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
               }
               const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
+              r.mcp = { endpoint: getMcpEndpoint(mcpHandle), tool: (s as any).tool, result: res, ms: mcpMs };
             }
   
             r.llmMs = llmTotalMs;
@@ -1273,7 +1384,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
                     }
                     const mcpMs = Date.now() - mcpStart;
-                    aggregated.push({ name: mapped.name, endpoint: handle.url, result, ms: mcpMs });
+                    aggregated.push({ name: mapped.name, endpoint: getMcpEndpoint(handle), result, ms: mcpMs });
                     toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
                   }
                   if (aggregated.length) r.toolCalls = aggregated;
@@ -1340,7 +1451,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
               }
               const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
+              r.mcp = { endpoint: getMcpEndpoint(mcpHandle), tool: (s as any).tool, result: res, ms: mcpMs };
             }
   
             r.llmMs = llmTotalMs;

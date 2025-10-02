@@ -122,7 +122,14 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
+// HTTP MCP server
 const astro = mcp("http://localhost:3211/mcp");
+
+// OR: STDIO MCP server (local process)
+const localMcp = mcp({
+  command: 'node',
+  args: ['./my-mcp-server.js']
+});
 
 const results = await agent({ llm })
   .then({ 

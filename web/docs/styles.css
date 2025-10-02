@@ -840,16 +840,16 @@ a.provider-card:nth-child(7):hover { border-color: #0078d4; }
 /* Benefits list */
 .benefits-list {
   list-style: none;
-  padding: 0;
+  padding: 20px;
   margin: 20px 0;
-}
-
-.benefits-list li {
-  padding: 12px;
-  margin: 8px 0;
   background: var(--bg-secondary);
   border-left: 4px solid var(--accent-green);
   border-radius: 6px;
+}
+
+.benefits-list li {
+  padding: 8px 0;
+  margin: 0;
   display: flex;
   align-items: start;
   gap: 12px;
