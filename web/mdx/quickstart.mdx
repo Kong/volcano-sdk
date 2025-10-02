@@ -1,0 +1,175 @@
+# Quick Start
+
+Get up and running with Volcano SDK in just a few minutes.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- Node.js 18.17 or later installed
+- An API key from at least one LLM provider (OpenAI, Anthropic, etc.)
+- Basic knowledge of TypeScript/JavaScript
+
+## Installation
+
+Install the Volcano SDK package:
+
+```bash
+npm install volcano-sdk
+```
+
+## Your First Agent
+
+Let's create a simple agent that can answer questions:
+
+```typescript
+import { agent, llmOpenAI } from "volcano-sdk";
+
+// Configure your LLM provider
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini" 
+});
+
+// Create and run an agent
+const results = await agent({ llm })
+  .then({ 
+    prompt: "What is the capital of France?" 
+  })
+  .run();
+
+console.log(results[0].llmOutput);
+// Output: "The capital of France is Paris."
+```
+
+## Multi-Step Workflows
+
+Chain multiple steps together to create more complex workflows:
+
+```typescript
+const results = await agent({ llm })
+  .then({ 
+    prompt: "List 3 interesting facts about Tokyo" 
+  })
+  .then({ 
+    prompt: "Now turn those facts into a haiku" 
+  })
+  .run();
+
+// The second step automatically has context from the first
+console.log(results[1].llmOutput);
+```
+
+## Using MCP Tools
+
+Connect to MCP servers to give your agents real-world capabilities:
+
+```typescript
+import { agent, llmOpenAI, mcp } from "volcano-sdk";
+
+const llm = llmOpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY! 
+});
+
+// Connect to an MCP server
+const weather = mcp("http://localhost:3000/weather");
+
+const results = await agent({ llm })
+  .then({ 
+    prompt: "What's the weather in New York?",
+    mcps: [weather]  // The agent will automatically use weather tools
+  })
+  .run();
+
+console.log(results[0].toolCalls);  // See which tools were called
+console.log(results[0].llmOutput);  // Get the natural language response
+```
+
+## Parallel Execution
+
+Run multiple steps concurrently for better performance:
+
+```typescript
+const results = await agent({ llm })
+  .parallel([
+    { prompt: "Generate a product name for a fitness app" },
+    { prompt: "Write a tagline for a fitness app" },
+    { prompt: "List 3 key features for a fitness app" }
+  ])
+  .then({ 
+    prompt: "Combine these into a product pitch" 
+  })
+  .run();
+```
+
+## Error Handling
+
+Add retry logic and timeouts for robust agents:
+
+```typescript
+const results = await agent({ 
+  llm,
+  timeout: 30,  // 30 second timeout per step
+  retry: { 
+    retries: 3,
+    delay: 1000  // Wait 1 second between retries
+  }
+})
+  .then({ prompt: "Perform a complex task..." })
+  .run()
+  .catch(error => {
+    console.error("Agent failed:", error);
+  });
+```
+
+## Streaming Results
+
+Stream results as they complete for real-time updates:
+
+```typescript
+const myAgent = agent({ llm })
+  .then({ prompt: "Step 1: Analyze the market" })
+  .then({ prompt: "Step 2: Generate recommendations" })
+  .then({ prompt: "Step 3: Create action plan" });
+
+// Stream results as each step completes
+for await (const step of myAgent.stream()) {
+  console.log(`Step ${step.index + 1} complete:`, step.llmOutput);
+  // Update your UI in real-time
+}
+```
+
+## Environment Variables
+
+Set up your environment variables in a `.env` file:
+
+```bash
+# .env
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+MISTRAL_API_KEY=...
+```
+
+Then load them in your application:
+
+```typescript
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Now you can use process.env.OPENAI_API_KEY
+```
+
+## Next Steps
+
+Now that you've built your first agent, explore more advanced features:
+
+- [Multiple Providers](/docs/providers) - Use different LLMs in the same workflow
+- [Advanced Patterns](/docs/patterns) - Branching, loops, and sub-agents
+- [MCP Tools](/docs/features#mcp-tools) - Give agents real-world capabilities
+- [Production Tips](/docs/features#production) - Best practices for deployment
+
+## Need Help?
+
+- Check the [API Reference](/docs/api) for detailed documentation
+- Visit our [GitHub Discussions](https://github.com/Kong/volcano-sdk/discussions) for Q&A
+- Report issues on [GitHub Issues](https://github.com/Kong/volcano-sdk/issues)
