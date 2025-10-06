@@ -13,3 +13,4 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 examples/summit.ts
+summit-demo
