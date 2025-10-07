@@ -1,0 +1,399 @@
+---
+title: Advanced Patterns
+description: Control flow patterns for building multi-step agents - parallel execution, conditional branching, loops, sub-agent composition, and multi-LLM workflows.
+---
+
+# Advanced Patterns
+
+Control flow patterns for building multi-step agents: parallel execution, conditional branching, loops, sub-agent composition, and multi-LLM workflows.
+
+## Multi-LLM Workflows
+
+One of Volcano's most powerful features: use different LLM providers for different steps in the same workflow. Mix and match to leverage each model's strengths.
+
+:::note[Why use multiple LLMs?]
+Different models excel at different tasks. GPT-4 for complex reasoning, Claude for detailed analysis, Mistral for creative writing, local Llama for cost-effective preprocessing. Volcano makes it seamless.
+:::
+
+### Basic Multi-Provider Workflow
+
+```typescript
+import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
+
+const gpt = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+});
+
+const claude = llmAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-3-5-haiku-20241022",
+});
+
+const mistral = llmMistral({
+  apiKey: process.env.MISTRAL_API_KEY!,
+  model: "mistral-small-latest",
+});
+
+// Each step uses a different LLM
+await agent()
+  .then({ llm: gpt, prompt: "Extract key data from this report..." })
+  .then({ llm: claude, prompt: "Analyze the extracted data for patterns" })
+  .then({ llm: mistral, prompt: "Write a creative summary in French" })
+  .run();
+
+// Context flows automatically between steps, regardless of provider
+```
+
+### Cost-Optimized Pipeline
+
+Use local models for preprocessing, expensive models for critical tasks:
+
+```typescript
+import { agent, llmLlama, llmOpenAI } from "volcano-sdk";
+
+const llama = llmLlama({
+  baseURL: "http://127.0.0.1:11434",
+  model: "llama3.2:3b", // Free, local
+});
+
+const gpt4 = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o", // Expensive, high-quality
+});
+
+// Process 100 documents
+await agent()
+  .forEach(
+    documents,
+    (doc, a) => a.then({ llm: llama, prompt: `Summarize: ${doc}` }) // Cheap preprocessing
+  )
+  .then({ llm: gpt4, prompt: "Analyze all summaries and create final report" }) // Quality output
+  .run();
+```
+
+### Multi-Provider with MCP Tools
+
+Combine different LLMs with automatic MCP tool selection:
+
+```typescript
+const database = mcp("http://localhost:5000/mcp");
+const analytics = mcp("http://localhost:5001/mcp");
+
+await agent()
+  .then({
+    llm: gpt,
+    prompt: "Query user data from database",
+    mcps: [database],
+  })
+  .then({
+    llm: claude,
+    prompt: "Perform statistical analysis",
+    mcps: [analytics],
+  })
+  .then({
+    llm: mistral,
+    prompt: "Generate executive summary",
+  })
+  .run();
+```
+
+### Conditional Provider Switching
+
+Route to different LLMs based on complexity:
+
+```typescript
+await agent()
+  .then({ llm: gpt, prompt: "Classify this task as SIMPLE or COMPLEX" })
+  .switch((h) => (h[0].llmOutput?.includes("COMPLEX") ? "complex" : "simple"), {
+    complex: (a) =>
+      a
+        .then({ llm: gpt4, prompt: "Handle complex reasoning" })
+        .then({ llm: claude, prompt: "Verify the analysis" }),
+
+    simple: (a) => a.then({ llm: llama, prompt: "Handle simple task quickly" }),
+  })
+  .run();
+```
+
+### Global Default with Per-Step Overrides
+
+```typescript
+// Set default LLM at agent level
+await agent({ llm: gpt })
+  .then({ prompt: "Step 1 uses default GPT" })
+  .then({ llm: claude, prompt: "Step 2 overrides with Claude" })
+  .then({ prompt: "Step 3 back to default GPT" })
+  .then({ llm: mistral, prompt: "Step 4 uses Mistral" })
+  .run();
+```
+
+### Benefits
+
+- **Best-of-breed:** Use the best model for each specific task
+- **Cost optimization:** Expensive models only where needed
+- **Automatic context:** Results flow between providers seamlessly
+- **A/B testing:** Compare model outputs in production
+- **Fallback strategies:** Switch to backup provider if primary fails
+
+## Parallel Execution
+
+Execute multiple steps simultaneously for faster workflows.
+
+### Array Mode
+
+Run multiple tasks in parallel and get results as an array:
+
+```typescript
+await agent({ llm })
+  .parallel([
+    { prompt: "Analyze sentiment" },
+    { prompt: "Extract entities" },
+    { prompt: "Categorize topic" },
+  ])
+  .then({ prompt: "Combine all analysis results" })
+  .run();
+```
+
+### Named Dictionary Mode
+
+Access results by key for better organization:
+
+```typescript
+await agent({ llm })
+  .parallel({
+    sentiment: { prompt: "What's the sentiment?" },
+    entities: { prompt: "Extract key entities" },
+    summary: { prompt: "Summarize in 5 words" },
+  })
+  .then((history) => {
+    const results = history[0].parallel;
+    // Access: results.sentiment, results.entities, results.summary
+    return { prompt: "Generate report based on analysis" };
+  })
+  .run();
+```
+
+### Benefits
+
+- **Speed:** Tasks run simultaneously, reducing total execution time
+- **Independence:** Suitable for independent analysis tasks
+- **Organization:** Named mode provides structured result access
+
+## Conditional Branching
+
+Route workflows based on conditions.
+
+### If/Else Branching
+
+Binary decision based on a condition:
+
+```typescript
+await agent({ llm })
+  .then({ prompt: "Is this email spam? Reply YES or NO" })
+  .branch((history) => history[0].llmOutput?.includes("YES") || false, {
+    true: (a) =>
+      a
+        .then({ prompt: "Categorize spam type" })
+        .then({ mcp: notifications, tool: "alert" }),
+    false: (a) =>
+      a
+        .then({ prompt: "Extract action items" })
+        .then({ prompt: "Draft reply" }),
+  })
+  .run();
+```
+
+### Switch/Case Branching
+
+Handle multiple branches with a default fallback:
+
+```typescript
+await agent({ llm })
+  .then({ prompt: "Classify ticket priority: HIGH, MEDIUM, or LOW" })
+  .switch((history) => history[0].llmOutput?.toUpperCase().trim() || "", {
+    HIGH: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+    MEDIUM: (a) => a.then({ mcp: jira, tool: "create_ticket" }),
+    LOW: (a) => a.then({ mcp: email, tool: "queue_for_review" }),
+    default: (a) => a.then({ prompt: "Escalate unknown priority" }),
+  })
+  .run();
+```
+
+### Use Cases
+
+- Email triage and routing
+- Content moderation with different actions
+- Customer support ticket classification
+- Approval workflows
+
+## Loops
+
+Iterate until conditions are met.
+
+### While Loop
+
+Continue until a condition becomes false:
+
+```typescript
+await agent({ llm })
+  .while(
+    (history) => {
+      if (history.length === 0) return true;
+      const last = history[history.length - 1];
+      return !last.llmOutput?.includes("COMPLETE");
+    },
+    (a) => a.then({ prompt: "Process next chunk", mcps: [database] }),
+    { maxIterations: 10 }
+  )
+  .then({ prompt: "Generate final summary" })
+  .run();
+```
+
+### For-Each Loop
+
+Process an array of items:
+
+```typescript
+const customers = [
+  "alice@example.com",
+  "bob@example.com",
+  "charlie@example.com",
+];
+
+await agent({ llm })
+  .forEach(customers, (email, a) =>
+    a
+      .then({ prompt: `Generate personalized email for ${email}` })
+      .then({ mcp: sendgrid, tool: "send", args: { to: email } })
+  )
+  .then({ prompt: "Summarize campaign results" })
+  .run();
+```
+
+### Retry Until Success
+
+Self-correcting agents that retry until a success condition is met:
+
+```typescript
+await agent({ llm })
+  .retryUntil(
+    (a) => a.then({ prompt: "Generate a haiku about AI" }),
+    (result) => {
+      // Validate 5-7-5 syllable structure
+      const lines = result.llmOutput?.split("\n") || [];
+      return lines.length === 3; // Simple validation
+    },
+    { maxAttempts: 5, backoff: 1.5 }
+  )
+  .run();
+```
+
+### Use Cases
+
+- Batch processing of items
+- Data pagination and processing
+- Email campaigns
+- Self-correcting content generation
+- Iterative refinement
+
+## Sub-Agent Composition
+
+Build reusable agent components and compose them into larger workflows.
+
+### Defining Reusable Sub-Agents
+
+```typescript
+// Define specialized sub-agents
+const emailAnalyzer = agent({ llm: claude })
+  .then({ prompt: "Extract sender intent" })
+  .then({ prompt: "Classify urgency level" });
+
+const responseGenerator = agent({ llm: openai })
+  .then({ prompt: "Draft professional response" })
+  .then({ prompt: "Add signature" });
+
+const qualityChecker = agent({ llm: mistral })
+  .then({ prompt: "Check response quality" })
+  .then({ prompt: "Suggest improvements" });
+```
+
+### Composing Sub-Agents
+
+```typescript
+// Compose them in a larger workflow
+await agent({ llm })
+  .then({ mcp: gmail, tool: "fetch_unread" })
+  .runAgent(emailAnalyzer) // Run first sub-agent
+  .runAgent(responseGenerator) // Run second sub-agent
+  .runAgent(qualityChecker) // Run third sub-agent
+  .then({ mcp: gmail, tool: "send_reply" })
+  .run();
+```
+
+### Complex Composition
+
+Mix sub-agents with other patterns:
+
+```typescript
+const contentAnalyzer = agent({ llm }).parallel({
+  sentiment: { prompt: "Analyze sentiment" },
+  topics: { prompt: "Extract main topics" },
+  tone: { prompt: "Determine tone" },
+});
+
+const contentModerator = agent({ llm })
+  .then({ prompt: "Check for policy violations" })
+  .branch((h) => h[0].llmOutput?.includes("VIOLATION") || false, {
+    true: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
+    false: (a) => a.then({ prompt: "Approve content" }),
+  });
+
+// Main workflow
+await agent({ llm })
+  .then({ mcp: cms, tool: "fetch_pending_posts" })
+  .forEach(posts, (post, a) =>
+    a.runAgent(contentAnalyzer).runAgent(contentModerator)
+  )
+  .then({ prompt: "Generate moderation report" })
+  .run();
+```
+
+### Benefits
+
+- **Reusability:** Define once, use many times
+- **Modularity:** Each sub-agent has a clear responsibility
+- **Testing:** Test sub-agents in isolation
+- **Maintainability:** Changes in one place affect all uses
+- **Clarity:** High-level workflows read like documentation
+
+## Combined Patterns
+
+Mix and match patterns for powerful workflows:
+
+```typescript
+await agent({ llm })
+  // Parallel analysis
+  .parallel({
+    sentiment: { prompt: "Analyze sentiment" },
+    intent: { prompt: "Extract intent" },
+    priority: { prompt: "Determine priority" },
+  })
+
+  // Route based on priority
+  .switch((h) => h[0].parallel?.priority.llmOutput?.trim() || "", {
+    URGENT: (a) =>
+      a.then({ mcp: slack, tool: "alert_team" }).runAgent(escalationAgent),
+
+    NORMAL: (a) =>
+      a.forEach(responders, (person, ag) =>
+        ag.then({ prompt: `Assign to ${person}` })
+      ),
+
+    default: (a) => a.then({ prompt: "Queue for review" }),
+  })
+
+  // Final step
+  .then({ prompt: "Log outcome" })
+  .run();
+```

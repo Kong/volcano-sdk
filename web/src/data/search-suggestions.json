@@ -1,0 +1,126 @@
+{
+  "quickLinks": [
+    {
+      "label": "Quick Start",
+      "query": "quick start",
+      "path": "/docs#quick-start",
+      "description": "Get started with Volcano SDK in minutes"
+    },
+    {
+      "label": "Api",
+      "query": "api",
+      "path": "/docs/api"
+    },
+    {
+      "label": "Features",
+      "query": "features",
+      "path": "/docs/features",
+      "description": "Core features for building AI agents - execution methods, streaming, retries, timeouts, hooks, error handling, and MCP tool integration."
+    },
+    {
+      "label": "Providers",
+      "query": "providers",
+      "path": "/docs/providers"
+    },
+    {
+      "label": "MCP Tools",
+      "query": "mcp-tools",
+      "path": "/docs/mcp-tools",
+      "description": "The Model Context Protocol (MCP) enables AI agents to securely interact with external tools and data sources. Volcano SDK provides first-class MCP integration with automatic tool discovery, selection, and authentication."
+    }
+  ],
+  "popular": [
+    {
+      "label": "Installation",
+      "query": "install"
+    },
+    {
+      "label": "Getting Started",
+      "query": "getting started"
+    },
+    {
+      "label": "Configuration",
+      "query": "configuration"
+    },
+    {
+      "label": "Error Handling",
+      "query": "error handling"
+    },
+    {
+      "label": "Examples",
+      "query": "examples"
+    },
+    {
+      "label": "Authentication",
+      "query": "authentication"
+    }
+  ],
+  "api": [
+    {
+      "label": "StepResult",
+      "query": "StepResult",
+      "description": "API Method"
+    },
+    {
+      "label": "ToolDefinition",
+      "query": "ToolDefinition",
+      "description": "API Method"
+    },
+    {
+      "label": "llmOpenAI",
+      "query": "llmOpenAI",
+      "description": "API Method"
+    },
+    {
+      "label": "agent",
+      "query": "agent",
+      "description": "API Method"
+    },
+    {
+      "label": "metrics",
+      "query": "metrics",
+      "description": "API Method"
+    },
+    {
+      "label": "results",
+      "query": "results",
+      "description": "API Method"
+    },
+    {
+      "label": "calls",
+      "query": "calls",
+      "description": "API Method"
+    },
+    {
+      "label": "then",
+      "query": "then",
+      "description": "API Method"
+    }
+  ],
+  "concepts": [
+    {
+      "label": "Provider",
+      "query": "provider"
+    },
+    {
+      "label": "Agent",
+      "query": "agent"
+    },
+    {
+      "label": "Agents",
+      "query": "agents"
+    },
+    {
+      "label": "Tool",
+      "query": "tool"
+    },
+    {
+      "label": "Tools",
+      "query": "tools"
+    },
+    {
+      "label": "Mcp",
+      "query": "mcp"
+    }
+  ]
+}

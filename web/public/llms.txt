@@ -1,0 +1,105 @@
+# Volcano SDK
+
+> TypeScript-native framework for building AI agents with MCP tool integration, multi-provider LLM support, and built-in observability.
+
+## Overview
+
+Volcano SDK is a TypeScript framework for building AI agents that:
+- Integrates with Model Context Protocol (MCP) tools
+- Supports multiple LLM providers (OpenAI, Anthropic, Mistral, Llama, AWS Bedrock, Google Vertex AI, Azure)
+- Provides chainable API for sequential workflows
+- Includes built-in observability with OpenTelemetry
+- Offers streaming and batch execution modes
+
+## Key Features
+
+- **Chainable API**: Build sequential workflows with `.then()` chaining
+- **MCP Tool Integration**: Automatic tool selection and execution from MCP servers
+- **Multi-Provider Support**: Switch between 100+ LLMs without code changes
+- **Streaming & Batch**: Choose `stream()` for real-time or `run()` for complete results
+- **Built-in Observability**: OpenTelemetry integration for distributed tracing
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions
+- **Retries & Timeouts**: Configurable per-step or global settings
+- **Error Handling**: Graceful error handling with step hooks
+
+## Documentation
+
+Main documentation: https://volcano-sdk.dev/docs
+
+### Getting Started
+- Installation: https://volcano-sdk.dev/docs#installation
+- Quick Start: https://volcano-sdk.dev/docs#quick-start
+- Core Concepts: https://volcano-sdk.dev/docs#core-concepts
+- Examples: https://volcano-sdk.dev/docs/examples
+
+### Providers
+- Overview: https://volcano-sdk.dev/docs/providers
+- OpenAI: https://volcano-sdk.dev/docs/providers#openai-provider
+- Anthropic (Claude): https://volcano-sdk.dev/docs/providers#anthropic-claude-provider
+- Mistral: https://volcano-sdk.dev/docs/providers#mistral-provider
+- Llama: https://volcano-sdk.dev/docs/providers#llama-provider
+- AWS Bedrock: https://volcano-sdk.dev/docs/providers#aws-bedrock-provider
+- Google Vertex AI: https://volcano-sdk.dev/docs/providers#google-vertex-ai-provider
+- Azure AI: https://volcano-sdk.dev/docs/providers#azure-ai-provider
+- Custom Provider: https://volcano-sdk.dev/docs/providers#creating-a-custom-provider
+
+### MCP Tools
+- Overview: https://volcano-sdk.dev/docs/mcp-tools
+- Automatic Selection: https://volcano-sdk.dev/docs/mcp-tools#automatic-tool-selection
+- Explicit Calling: https://volcano-sdk.dev/docs/mcp-tools#explicit-tool-calling
+- Authentication: https://volcano-sdk.dev/docs/mcp-tools#mcp-authentication
+- Connection Pooling: https://volcano-sdk.dev/docs/mcp-tools#connection-pooling-performance
+
+### Advanced Patterns
+- Multi-LLM Workflows: https://volcano-sdk.dev/docs/patterns#multi-llm-workflows
+- Parallel Execution: https://volcano-sdk.dev/docs/patterns#parallel-execution
+- Conditional Branching: https://volcano-sdk.dev/docs/patterns#conditional-branching
+- Loops: https://volcano-sdk.dev/docs/patterns#loops
+- Sub-Agent Composition: https://volcano-sdk.dev/docs/patterns#sub-agent-composition
+
+### Features
+- run() Method: https://volcano-sdk.dev/docs/features#run-method
+- stream() Method: https://volcano-sdk.dev/docs/features#stream-method
+- Retries & Timeouts: https://volcano-sdk.dev/docs/features#retries-timeouts
+- Step Hooks: https://volcano-sdk.dev/docs/features#step-hooks
+- Error Handling: https://volcano-sdk.dev/docs/features#error-handling
+
+### Observability
+- Overview: https://volcano-sdk.dev/docs/observability
+- OpenTelemetry Integration: https://volcano-sdk.dev/docs/observability#opentelemetry-integration
+- Distributed Tracing: https://volcano-sdk.dev/docs/observability#distributed-tracing
+- Metrics: https://volcano-sdk.dev/docs/observability#metrics
+- Observability Backends: https://volcano-sdk.dev/docs/observability#observability-backends
+
+### API Reference
+- agent() function: https://volcano-sdk.dev/docs/api#agentoptions-agentbuilder
+- Step Types: https://volcano-sdk.dev/docs/api#step-types
+- Step Results: https://volcano-sdk.dev/docs/api#step-results
+- Utility Functions: https://volcano-sdk.dev/docs/api#utility-functions
+
+## Quick Example
+
+```typescript
+import { agent } from '@volcano-sdk/core';
+import { openai } from '@volcano-sdk/openai';
+import { createMcpClient } from '@volcano-sdk/mcp';
+
+const llm = openai('gpt-4');
+const weather = await createMcpClient({ name: 'weather', command: 'npx', args: ['-y', '@modelcontextprotocol/server-weather'] });
+
+const result = await agent({ llm })
+  .then({ prompt: 'What is the weather in San Francisco?', mcps: [weather] })
+  .run();
+
+console.log(result[0].llmOutput);
+```
+
+## Community
+
+- GitHub: https://github.com/volcano-sdk/volcano
+- NPM: https://www.npmjs.com/package/@volcano-sdk/core
+- Questions & Feature Requests: https://volcano-sdk.dev/docs#questions-or-feature-requests
+
+## License
+
+MIT License - see project repository for details
