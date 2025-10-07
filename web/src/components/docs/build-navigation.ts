@@ -25,6 +25,7 @@ export interface NavigationSection {
 // Icon mapping for different sections
 const sectionIcons: Record<string, LucideIcon> = {
   "Getting Started": BookOpenText,
+  Examples: Code2,
   Providers: Code2,
   "MCP Tools": Settings,
   "Advanced Patterns": GitBranch,
@@ -36,12 +37,13 @@ const sectionIcons: Record<string, LucideIcon> = {
 // Custom section ordering and titles
 const sectionConfig: Record<string, { title: string; order: number }> = {
   "/docs": { title: "Getting Started", order: 1 },
-  "/docs/providers": { title: "Providers", order: 2 },
-  "/docs/mcp-tools": { title: "MCP Tools", order: 3 },
-  "/docs/patterns": { title: "Advanced Patterns", order: 4 },
-  "/docs/features": { title: "Features", order: 5 },
-  "/docs/observability": { title: "Observability", order: 6 },
-  "/docs/api": { title: "API Reference", order: 7 },
+  "/docs/examples": { title: "Examples", order: 2 },
+  "/docs/providers": { title: "Providers", order: 3 },
+  "/docs/mcp-tools": { title: "MCP Tools", order: 4 },
+  "/docs/patterns": { title: "Advanced Patterns", order: 5 },
+  "/docs/features": { title: "Features", order: 6 },
+  "/docs/observability": { title: "Observability", order: 7 },
+  "/docs/api": { title: "API Reference", order: 8 },
 };
 
 export function buildNavigation(): NavigationSection[] {

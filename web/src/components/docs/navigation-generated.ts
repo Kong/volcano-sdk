@@ -200,11 +200,6 @@ export const generatedNavigation: NavigationDoc[] = [
         "id": "streaming.ts"
       },
       {
-        "level": 3,
-        "text": "summit.ts",
-        "id": "summit.ts"
-      },
-      {
         "level": 2,
         "text": "Running Examples",
         "id": "running-examples"
