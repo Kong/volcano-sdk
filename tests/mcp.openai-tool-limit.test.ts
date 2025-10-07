@@ -29,14 +29,6 @@ describe('OpenAI 64-Character Tool Name Limit', () => {
   });
   
   it('previously failing tool name now works', () => {
-    // The original error from summit.ts:
-    // "Invalid 'tools[0].function.name': string too long... got a string with length 66"
-    
-    // With old ID format:
-    // localhost_3000_mcp.order_coffee_for_customer = ~45 chars (was OK)
-    // But longer tool names broke it
-    
-    // With new hash-based ID:
     const handle = mcp('http://localhost:3000/mcp');
     
     // Even with a 48-char tool name:
