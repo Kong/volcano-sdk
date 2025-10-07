@@ -7,6 +7,7 @@ import {
   Settings,
   BarChart3,
   BookOpenText,
+  Braces,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -25,7 +26,7 @@ export interface NavigationSection {
 // Icon mapping for different sections
 const sectionIcons: Record<string, LucideIcon> = {
   "Getting Started": BookOpenText,
-  Examples: Code2,
+  Examples: Braces,
   Providers: Code2,
   "MCP Tools": Settings,
   "Advanced Patterns": GitBranch,
