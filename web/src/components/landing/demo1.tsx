@@ -93,7 +93,7 @@ function Demo1() {
           <div className="font-space-mono pb-4 text-lg font-bold sm:text-2xl xl:pb-8">
             Advanced Patterns
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             <div className="flex items-start gap-2">
               <Rows3 className="text-color-primary h-8 w-8" />
               <div className="flex flex-col items-start">
