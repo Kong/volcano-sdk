@@ -49,8 +49,8 @@ function Demo2() {
 
   return (
     <section className="my-16 overflow-hidden">
-      <div className="container flex flex-col px-4 sm:px-0 lg:flex-row lg:gap-10">
-        <div className="mb-8 flex grow flex-col lg:mb-0 lg:w-1/2">
+      <div className="container flex flex-col gap-8 px-4 sm:px-0">
+        <div className="flex grow flex-col">
           <div className="font-space-mono text-xl font-bold sm:text-4xl">
             Two-step MCP demo
           </div>
@@ -99,7 +99,7 @@ function Demo2() {
             </div>
           </div>
         </div>
-        <div className="w-full overflow-hidden border-2 lg:w-1/2">
+        <div className="w-full overflow-hidden border-2">
           <div className="p-4">
             <div className="font-space-mono text-lg font-bold sm:text-2xl">
               What's happening
