@@ -341,6 +341,134 @@ const openai = llmOpenAI({
             </tbody>
           </table>
 
+          <h3>Structured Outputs (JSON Schema Validation)</h3>
+          <p>Use <code>llmOpenAIResponses()</code> for guaranteed JSON output that matches your schema exactly. Unlike basic JSON mode, structured outputs enforce strict schema compliance.</p>
+
+          <div class="code-block">
+            <pre><code class="language-typescript">import { llmOpenAIResponses } from "volcano-sdk";
+
+const llm = llmOpenAIResponses({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+  options: {
+    jsonSchema: {
+      name: "order_response",
+      description: "Order information",
+      schema: {
+        type: "object",
+        properties: {
+          item: { type: "string" },
+          price: { type: "number" },
+          category: { type: "string" }
+        },
+        required: ["item", "price", "category"],
+        additionalProperties: false
+      }
+    }
+  }
+});
+
+const response = await llm.gen('Info for Espresso: $5.25, Coffee');
+const data = JSON.parse(response);
+// Guaranteed: { item: "Espresso", price: 5.25, category: "Coffee" }</code></pre>
+          </div>
+
+          <h4>Why Use Structured Outputs?</h4>
+          <ul class="benefits-list">
+            <li><strong>Guaranteed schema compliance:</strong> Model output always matches your JSON schema</li>
+            <li><strong>No hallucinated fields:</strong> Only defined fields appear in output</li>
+            <li><strong>Type safety:</strong> Numbers are numbers, strings are strings, arrays are arrays</li>
+            <li><strong>Required fields enforced:</strong> All required properties always present</li>
+            <li><strong>Reliable parsing:</strong> No unexpected JSON structures or parsing errors</li>
+          </ul>
+
+          <h4>Supported Models</h4>
+          <p>Structured outputs work with: <code>gpt-4o-mini</code>, <code>gpt-4o</code>, <code>gpt-4o-2024-08-06</code> and later, <code>o1-mini</code>, <code>o1-preview</code>, <code>o3-mini</code></p>
+
+          <h4>In Agent Workflows</h4>
+          <div class="code-block">
+            <pre><code class="language-typescript">const llm = llmOpenAIResponses({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+  options: {
+    jsonSchema: {
+      name: "analysis",
+      schema: {
+        type: "object",
+        properties: {
+          summary: { type: "string" },
+          sentiment: { type: "string", enum: ["positive", "negative", "neutral"] },
+          confidence: { type: "number" }
+        },
+        required: ["summary", "sentiment", "confidence"],
+        additionalProperties: false
+      }
+    }
+  }
+});
+
+const results = await agent({ llm })
+  .then({ prompt: 'Analyze: "The product is amazing!"' })
+  .then({ prompt: 'Analyze: "This is terrible."' })
+  .run();
+
+// Each step returns guaranteed valid JSON
+results.forEach(step => {
+  const analysis = JSON.parse(step.llmOutput!);
+  console.log(analysis.sentiment, analysis.confidence);
+});</code></pre>
+          </div>
+
+          <h4>Structured Outputs vs Regular JSON Mode</h4>
+          <table class="params-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>llmOpenAI()</th>
+                <th>llmOpenAIResponses()</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Output format</td>
+                <td>Free text or JSON</td>
+                <td><strong>Guaranteed valid JSON</strong></td>
+              </tr>
+              <tr>
+                <td>Schema validation</td>
+                <td>None</td>
+                <td><strong>Strict JSON Schema</strong></td>
+              </tr>
+              <tr>
+                <td>Use case</td>
+                <td>General purpose</td>
+                <td>Structured data extraction</td>
+              </tr>
+              <tr>
+                <td>Required fields</td>
+                <td>Not enforced</td>
+                <td><strong>Always present</strong></td>
+              </tr>
+              <tr>
+                <td>Extra fields</td>
+                <td>May appear</td>
+                <td><strong>Never appear (strict mode)</strong></td>
+              </tr>
+              <tr>
+                <td>Best for</td>
+                <td>Conversational AI</td>
+                <td>APIs, data extraction, structured tasks</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="info-box tip">
+            <div class="info-icon">💡</div>
+            <div>
+              <strong>Tip:</strong> Use <code>llmOpenAIResponses()</code> when building APIs or extracting structured data. Use regular <code>llmOpenAI()</code> for conversational responses and free-form text.
+            </div>
+          </div>
+
         </section>
 
         <!-- Anthropic Provider -->
