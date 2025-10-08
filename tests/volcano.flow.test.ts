@@ -141,9 +141,13 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
 
         const llm = p.make();
 
-        const results = await agent({ llm })
-          .then({ prompt: 'Call the get_sign tool with the birthdate parameter set to "1993-07-11". You must use the exact birthdate value "1993-07-11" as the birthdate parameter.', mcps: [astro] })
-          .then({ prompt: 'Based on the astrological sign Cancer, call the get_favorites tool with the sign parameter set to "Cancer". You must use the exact value "Cancer" as the sign parameter.', mcps: [favorites] })
+        const results = await agent({ 
+          llm,
+          instructions: 'You MUST use the provided tools. Do not answer without calling a tool. Always call exactly one tool per step.',
+          maxToolIterations: 2  // Give Llama more chances to use tools
+        })
+          .then({ prompt: 'Use the get_sign tool. Call it with: birthdate="1993-07-11"', mcps: [astro] })
+          .then({ prompt: 'Use the get_favorites tool. Call it with: sign="Cancer"', mcps: [favorites] })
           .run();
 
         expect(results.length).toBe(2);
