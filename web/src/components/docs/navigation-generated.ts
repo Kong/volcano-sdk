@@ -25,8 +25,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "agent(options?): AgentBuilder",
-        "id": "agentoptions-agentbuilder"
+        "text": "agent",
+        "id": "agent"
       },
       {
         "level": 3,
