@@ -17,22 +17,16 @@ export function Header() {
 
         <nav className="ml-auto hidden items-center gap-2 font-medium md:flex">
           <a
-            href="/docs#quick-start"
-            className="text-stroke-white-hover font-space-mono px-3 py-2 transition-all hover:font-bold"
-          >
-            Get Started
-          </a>
-          <a
-            href="/#demo"
-            className="text-stroke-white-hover font-space-mono px-3 py-2 transition-all hover:font-bold"
-          >
-            Demo
-          </a>
-          <a
-            href="/#features"
+            href="/docs#key-features"
             className="text-stroke-white-hover font-space-mono px-3 py-2 transition-all hover:font-bold"
           >
             Features
+          </a>
+          <a
+            href="/docs/examples"
+            className="text-stroke-white-hover font-space-mono px-3 py-2 transition-all hover:font-bold"
+          >
+            Examples
           </a>
           <Link
             to="/docs"
@@ -40,7 +34,7 @@ export function Header() {
             activeProps={{
               className: "px-3 py-2 font-bold text-black font-space-mono",
             }}
-            activeOptions={{ exact: true }}
+            // activeOptions={{ exact: true }}
           >
             Docs
           </Link>

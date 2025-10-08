@@ -19,21 +19,6 @@ const out = await agent({ llm })
 console.log(out[0].toolCalls);  // which tools were used
 console.log(out[1].llmOutput);   // fortune using step context`;
 
-const codeTelemetry = `// Example error (typed)
-{
-  name: 'ValidationError',
-  meta: { stepId: 0, provider: 'mcp:localhost:3211', retryable: false },
-  message: 'arguments failed schema validation: ...'
-}
-
-// A recorded tool call
-{
-  name: 'localhost_3211_mcp.get_sign',
-  endpoint: 'http://localhost:3211/mcp',
-  ms: 12,
-  result: { sign: 'Cancer' }
-}`;
-
 function Demo2() {
   const [copiedDemo, setCopiedDemo] = useState(false);
 
@@ -52,7 +37,7 @@ function Demo2() {
       <div className="container flex flex-col gap-8 px-4 sm:px-0">
         <div className="flex grow flex-col">
           <div className="font-space-mono text-xl font-bold sm:text-4xl">
-            Two-step MCP demo
+            MCP Native
           </div>
           <p className="py-2 text-base sm:text-xl">
             The agent finds the astrological sign via an MCP tool, then crafts a
@@ -99,9 +84,9 @@ function Demo2() {
             </div>
           </div>
         </div>
-        <div className="w-full overflow-hidden border-2">
-          <div className="p-4">
-            <div className="font-space-mono text-lg font-bold sm:text-2xl">
+        <div className="w-full overflow-hidden">
+          <div>
+            <div className="font-space-mono text-lg font-bold sm:text-2xl pb-2">
               What's happening
             </div>
             <div className="flex items-start gap-4 py-2 text-sm font-bold sm:text-xl">
@@ -152,29 +137,6 @@ function Demo2() {
                 </p>
               </div>
             </div>
-          </div>
-
-          <div className="relative">
-            <Highlight
-              theme={customThemeLight}
-              code={codeTelemetry}
-              language="typescript"
-            >
-              {({ style, tokens, getLineProps, getTokenProps }) => (
-                <pre
-                  className="overflow-x-auto p-4 text-sm sm:text-base"
-                  style={style}
-                >
-                  {tokens.map((line, i) => (
-                    <div key={i} {...getLineProps({ line })}>
-                      {line.map((token, key) => (
-                        <span key={key} {...getTokenProps({ token })} />
-                      ))}
-                    </div>
-                  ))}
-                </pre>
-              )}
-            </Highlight>
           </div>
         </div>
       </div>

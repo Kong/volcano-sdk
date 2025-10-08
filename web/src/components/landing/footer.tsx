@@ -20,14 +20,18 @@ export function Footer() {
     <footer className="border-t">
       <div className="container mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
-          <div>
+          <a
+            href="https://konghq.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <div className="mb-4 flex items-center space-x-2">
               <img src="/kong.svg" alt="Kong" className="h-10" />
             </div>
             <p className="text-sm leading-[1.3] font-bold tracking-[1.5px] text-[#062f4d] uppercase">
               Built with ❤️ By Kong
             </p>
-          </div>
+          </a>
           <div>
             <h3 className="mb-4 font-semibold">Documentation</h3>
             <ul className="space-y-2">

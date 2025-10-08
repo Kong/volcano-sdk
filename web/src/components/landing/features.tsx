@@ -43,7 +43,7 @@ function Features() {
               <img src="/03_models.svg" alt="Models" className="mb-4 h-full" />
             </div>
             <div className="font-space-mono mb-2 text-left text-lg font-bold sm:text-xl">
-              7 LLM Providers
+              Multi LLM Providers
             </div>
             <p className="text-sm sm:text-base">
               Supports OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, and
@@ -62,9 +62,7 @@ function Features() {
               OpenTelemetry Native
             </div>
             <p className="text-sm sm:text-base">
-              Production-ready distributed tracing and metrics. Monitor
-              performance, debug failures, Export to Jaeger, Prometheus,
-              DataDog, NewRelic.
+              Native distributed tracing and metrics that can be exported to Jaeger, Prometheus, DataDog, NewRelic.
             </p>
           </div>
         </div>

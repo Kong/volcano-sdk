@@ -76,7 +76,7 @@ export function Hero() {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-x-0 bottom-0 container">
+      <div className="absolute inset-x-0 bottom-0 w-full right-0">
         <video
           ref={videoRef}
           autoPlay
@@ -92,11 +92,6 @@ export function Hero() {
       </div>
       <div className="relative container px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
         <div className="max-w-4xl text-left">
-          <div className="mb-6 inline-flex items-center rounded-full px-4 py-2 text-sm font-medium sm:text-base">
-            <span className="mr-2">🌋</span>
-            TypeScript SDK for Multi-Provider AI Agents
-          </div>
-
           <h1 className="font-space-mono text-stroke-white mb-6 text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
             Build AI Agents That
             <span className=""> Actually Do Things</span>
