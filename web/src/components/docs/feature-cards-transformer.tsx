@@ -9,7 +9,7 @@ const featureLinkMap: Record<string, string> = {
   "100s of Models": "/docs/providers",
   "TypeScript-First": "/docs#quick-start",
   "Advanced Patterns": "/docs/patterns",
-  "Retries & Timeouts": "/docs/features",
+  "Retries & Timeouts": "/docs/features#retries--timeouts",
   "Streaming Workflows": "/docs/features",
   "MCP Integration": "/docs/mcp-tools",
   "Sub-Agent Composition": "/docs/patterns",
