@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 
 interface FeatureCardProps {
   icon?: string;
@@ -31,13 +32,17 @@ export function FeatureCard({
   );
 
   if (href) {
+    // Parse href to extract path and hash
+    const [path, hash] = href.split("#");
+
     return (
-      <a
-        href={href}
+      <Link
+        to={path}
+        hash={hash}
         className={`border-2 p-6 ${gradientClass} hover:border-color-primary flex h-full cursor-pointer flex-col no-underline transition-all`}
       >
         {content}
-      </a>
+      </Link>
     );
   }
 
