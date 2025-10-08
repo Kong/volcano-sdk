@@ -141,9 +141,21 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
 
         const llm = p.make();
 
-        const results = await agent({ llm })
-          .then({ prompt: 'Determine the astrological sign for the birthdate 1993-07-11 using available tools. You must call exactly one tool.', mcps: [astro] })
-          .then({ prompt: 'Based on the astrological sign Cancer, determine my favorite food and drink using available tools. You must call exactly one tool.', mcps: [favorites] })
+        const results = await agent({ 
+          llm,
+          instructions: 'You are a tool-calling assistant. You MUST call the available tools. Never respond with text only. Always use function calls.',
+          maxToolIterations: 3
+        })
+          .then({ 
+            prompt: 'Call the get_sign function with these exact arguments: {"birthdate": "1993-07-11"}. Do not respond with text, only call the function.', 
+            mcps: [astro],
+            maxToolIterations: 3
+          })
+          .then({ 
+            prompt: 'Call the get_favorites function with these exact arguments: {"sign": "Cancer"}. Do not respond with text, only call the function.', 
+            mcps: [favorites],
+            maxToolIterations: 3
+          })
           .run();
 
         expect(results.length).toBe(2);

@@ -1,7 +1,7 @@
 // src/volcano-sdk.ts
 import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { llmOpenAI as llmOpenAIProvider } from "./llms/openai.js";
+import { llmOpenAI as llmOpenAIProvider, llmOpenAIResponses as llmOpenAIResponsesProvider } from "./llms/openai.js";
 import { executeParallel, executeBranch, executeSwitch, executeWhile, executeForEach, executeRetryUntil, executeRunAgent } from "./patterns.js";
 import { createHash } from "node:crypto";
 export { llmAnthropic } from "./llms/anthropic.js";
@@ -25,6 +25,7 @@ import Ajv from "ajv";
 /* ---------- LLM ---------- */
 export type { LLMHandle, ToolDefinition, LLMToolResult };
 export const llmOpenAI = llmOpenAIProvider;
+export const llmOpenAIResponses = llmOpenAIResponsesProvider;
 
 /* ---------- Errors ---------- */
 export interface VolcanoErrorMeta {
