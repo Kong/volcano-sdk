@@ -19,7 +19,33 @@ export function TableOfContents({ className }: TableOfContentsProps) {
   const currentDoc = generatedNavigation.find(
     (doc) => doc.path === location.pathname
   );
-  const tocItems = currentDoc?.headings || [];
+
+  // Filter out sub-items (level 3+) under "Key Features"
+  const allHeadings = currentDoc?.headings || [];
+  const tocItems = allHeadings.filter((heading, index) => {
+    // Find the "Key Features" section
+    const keyFeaturesIndex = allHeadings.findIndex(
+      (h) => h.id === "key-features"
+    );
+
+    if (keyFeaturesIndex === -1) return true; // No Key Features section, keep all
+
+    // Find the next level 2 heading after Key Features
+    const nextLevel2Index = allHeadings.findIndex(
+      (h, i) => i > keyFeaturesIndex && h.level === 2
+    );
+
+    // If we're between Key Features and the next level 2 heading, and we're level 3+, filter out
+    const isAfterKeyFeatures = index > keyFeaturesIndex;
+    const isBeforeNextSection = nextLevel2Index === -1 || index < nextLevel2Index;
+    const isSubItem = heading.level >= 3;
+
+    if (isAfterKeyFeatures && isBeforeNextSection && isSubItem) {
+      return false; // Filter out level 3+ items under Key Features
+    }
+
+    return true; // Keep everything else
+  });
 
   // Update active ID based on URL hash
   useEffect(() => {
