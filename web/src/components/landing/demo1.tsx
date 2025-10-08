@@ -40,7 +40,7 @@ function Demo1() {
 
   return (
     <section className="overflow-hidden" id="demo">
-      <div className="container flex flex-col px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 xl:flex-row xl:gap-10">
+      <div className="container flex flex-col px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 xl:gap-10">
         <div className="mb-8 flex flex-1 flex-col xl:mb-0">
           <div className="font-space-mono text-2xl font-bold sm:text-4xl lg:text-5xl">
             Multi-Provider Workflow
@@ -93,72 +93,72 @@ function Demo1() {
           <div className="font-space-mono pb-4 text-lg font-bold sm:text-2xl xl:pb-8">
             Advanced Patterns
           </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
+            <div className="flex items-start gap-2">
               <Rows3 className="text-color-primary h-8 w-8" />
               <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-xl">
+                <p className="flex items-start gap-2 text-sm sm:text-lg">
                   <span className="flex items-center gap-2 whitespace-nowrap">
                     <code>.parallel()</code>
                   </span>
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-xl">
+                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
                   Run steps simultaneously
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <Split className="text-color-primary h-8 w-8" />
               <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-xl">
+                <p className="flex items-start gap-2 text-sm sm:text-lg">
                   <span className="flex items-center gap-2 whitespace-nowrap">
                     <code>.branch()/.switch()</code>
                   </span>
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-xl">
+                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
                   Conditional routing
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <Repeat2 className="text-color-primary h-8 w-8" />
               <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-xl">
+                <p className="flex items-start gap-2 text-sm sm:text-lg">
                   <span className="flex items-center gap-2 whitespace-nowrap">
                     <code>.while()/.forEach</code>
                   </span>
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-xl">
+                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
                   Loop constructs
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <Bot className="text-color-primary h-8 w-8" />
               <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-xl">
+                <p className="flex items-start gap-2 text-sm sm:text-lg">
                   <span className="flex items-center gap-2 whitespace-nowrap">
                     <code>.runAgent()</code>
                   </span>
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-xl">
+                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
                   Compose sub-agents
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <Radio className="text-color-primary h-8 w-8" />
               <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-xl">
+                <p className="flex items-start gap-2 text-sm sm:text-lg">
                   <span className="flex items-center gap-2 whitespace-nowrap">
                     <code>.stream()</code>
                   </span>
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-xl">
+                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
                   Real-time step results
                 </p>
               </div>
