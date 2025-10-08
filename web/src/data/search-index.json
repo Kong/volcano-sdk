@@ -14,7 +14,7 @@
       "advanced",
       "configuration"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "advanced-configuration",
     "parentTitle": "Observability"
   },
@@ -33,7 +33,7 @@
       "advanced",
       "patterns"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "advanced-patterns",
     "parentTitle": "Examples"
   },
@@ -87,7 +87,7 @@
       "sub-agents",
       "parallel"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { agent, llmOpenAI, llmAnthropic, llmMistral } from \"volcano-sdk\";\n\nconst gpt = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n});\n\nconst claude = llmAnthropic({\n  apiKey: process.env.ANTHROPIC_API_KEY!,\n  model: \"claude-3-5-haiku-20241022\",\n});\n\nconst mistral = llmMistral({\n  apiKey: process.env.MISTRAL_API_KEY!,\n  model: \"mistral-small-latest\",\n});\n\n// Each step uses a different LLM\nawait agent()\n  .then({ llm: gpt, prompt: \"Extract key data from this report...\" })\n  .then({ llm: claude, prompt: \"Analyze the extracted data for patterns\" })\n  .then({ llm: mistral, prompt: \"Write a creative summary in French\" })\n  .run();\n\n// Context flows automatically between steps, regardless of provider\n",
       "import { agent, llmLlama, llmOpenAI } from \"volcano-sdk\";\n\nconst llama = llmLlama({\n  baseURL: \"http://127.0.0.1:11434\",\n  model: \"llama3.2:3b\", // Free, local\n});\n\nconst gpt4 = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o\", // Expensive, high-quality\n});\n\n// Process 100 documents\nawait agent()\n  .forEach(\n    documents,\n    (doc, a) => a.then({ llm: llama, prompt: `Summarize: ${doc}` }) // Cheap preprocessing\n  )\n  .then({ llm: gpt4, prompt: \"Analyze all summaries and create final report\" }) // Quality output\n  .run();\n",
@@ -130,7 +130,7 @@
       "throughout.",
       "[code"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/advanced-patterns.ts\n"
     ],
@@ -160,7 +160,7 @@
       "multiple",
       "authenticated"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "// MCP handles without auth\nconst mcp1 = mcp(\"https://api.example.com/mcp\");\nconst mcp2 = mcp(\"https://api.other.com/mcp\");\n\n// Auth configured at agent level\nawait agent({\n  llm,\n  mcpAuth: {\n    \"https://api.example.com/mcp\": {\n      type: \"oauth\",\n      clientId: process.env.CLIENT_ID_1!,\n      clientSecret: process.env.CLIENT_SECRET_1!,\n      tokenEndpoint: \"https://api.example.com/oauth/token\",\n    },\n    \"https://api.other.com/mcp\": {\n      type: \"bearer\",\n      token: process.env.TOKEN_2!,\n    },\n  },\n})\n  .then({ prompt: \"Use tools from both servers\", mcps: [mcp1, mcp2] })\n  .run();\n"
     ],
@@ -188,7 +188,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import { agent, llmOpenAI } from \"volcano-sdk\";\n\nconst llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });\n\nconst myAgent = agent({\n  llm,\n  instructions: \"You are a helpful assistant\",\n  timeout: 60,\n  retry: { retries: 3 },\n});\n"
     ],
@@ -218,7 +218,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmAnthropic } from \"volcano-sdk\";\n\nconst claude = llmAnthropic({\n  apiKey: process.env.ANTHROPIC_API_KEY!,\n  model: \"claude-3-5-sonnet-20241022\",\n  baseURL: \"https://api.anthropic.com\", // Optional\n  version: \"2023-06-01\", // Optional\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_k: 50,\n    top_p: 0.9,\n    stop_sequences: [\"\\n\\n\"],\n  },\n});\n"
     ],
@@ -268,7 +268,7 @@
       "instructions",
       "timeout"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import { agent, llmOpenAI } from \"volcano-sdk\";\n\nconst llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });\n\nconst myAgent = agent({\n  llm,\n  instructions: \"You are a helpful assistant\",\n  timeout: 60,\n  retry: { retries: 3 },\n});\n",
       "{\n  prompt: string;\n  llm?: LLMHandle;\n  instructions?: string;\n  timeout?: number;\n  retry?: RetryConfig;\n  contextMaxChars?: number;\n  contextMaxToolResults?: number;\n  pre?: () => void;\n  post?: () => void;\n}\n",
@@ -307,7 +307,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  .parallel([\n    { prompt: \"Analyze sentiment\" },\n    { prompt: \"Extract entities\" },\n    { prompt: \"Categorize topic\" },\n  ])\n  .then({ prompt: \"Combine all analysis results\" })\n  .run();\n"
     ],
@@ -337,7 +337,7 @@
       "openai",
       "platform.openai.com"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -364,7 +364,7 @@
       "------------",
       "--------------------------------------------------------"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -391,7 +391,7 @@
       "mistral",
       "console.mistral.ai"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -418,7 +418,7 @@
       "-----------------------------------------------------------------------",
       "baseurl"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -445,7 +445,7 @@
       "methods",
       "priority"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -472,7 +472,7 @@
       "google",
       "studio"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -499,7 +499,7 @@
       "priority",
       "order):"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "authentication",
     "parentTitle": "providers"
   },
@@ -520,7 +520,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// 1. Explicit credentials\nconst bedrock1 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,\n  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,\n  sessionToken: process.env.AWS_SESSION_TOKEN, // Optional\n});\n\n// 2. Bearer token\nconst bedrock2 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  bearerToken: process.env.AWS_BEARER_TOKEN_BEDROCK!,\n});\n\n// 3. AWS Profile\nconst bedrock3 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  profile: \"my-aws-profile\",\n});\n\n// 4. IAM Role\nconst bedrock4 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  roleArn: \"arn:aws:iam::123456789012:role/my-bedrock-role\",\n});\n\n// 5. Default chain (recommended)\nconst bedrock5 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  // Automatically uses environment, instance profiles, etc.\n});\n"
     ],
@@ -544,7 +544,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// 1. API Key (simplest)\nconst azure1 = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  apiKey: process.env.AZURE_AI_API_KEY!,\n});\n\n// 2. Entra ID Access Token\nconst azure2 = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  accessToken: process.env.AZURE_ACCESS_TOKEN!,\n});\n\n// 3. Azure Default Credential Chain\nconst azure3 = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  // Uses Azure SDK credential providers automatically\n});\n"
     ],
@@ -574,7 +574,7 @@
       "until",
       "expiration"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "authentication-features",
     "parentTitle": "MCP Tools"
   },
@@ -600,7 +600,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "{\n  prompt: string;\n  mcps: MCPHandle[];\n  llm?: LLMHandle;\n  instructions?: string;\n  timeout?: number;\n  retry?: RetryConfig;\n  contextMaxChars?: number;\n  contextMaxToolResults?: number;\n  pre?: () => void;\n  post?: () => void;\n}\n"
     ],
@@ -631,7 +631,7 @@
       "approach",
       "cases."
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import { agent, llmOpenAI, mcp } from \"volcano-sdk\";\n\nconst weather = mcp(\"http://localhost:3000/mcp\");\nconst notifications = mcp(\"http://localhost:4000/mcp\");\nconst llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });\n\nawait agent({ llm })\n  .then({\n    prompt: \"Check SF weather for tomorrow and send me a notification.\",\n    mcps: [weather, notifications],\n  })\n  .run();\n\n// The LLM automatically:\n// 1. Discovers available tools from both servers\n// 2. Selects the appropriate tools\n// 3. Calls them with correct arguments\n// 4. Returns the results\n"
     ],
@@ -661,7 +661,7 @@
       "block]",
       "demonstrates:"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/automatic.ts\n"
     ],
@@ -691,7 +691,7 @@
       "description",
       "-------------------------"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "available-metrics",
     "parentTitle": "Observability"
   },
@@ -718,7 +718,7 @@
       "using",
       "converse"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmBedrock } from \"volcano-sdk\";\n\nconst bedrock = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  // Uses AWS credential chain by default\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_p: 0.9,\n    stop_sequences: [\"\\n\\n\"],\n  },\n});\n"
     ],
@@ -747,7 +747,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmAzure } from \"volcano-sdk\";\n\nconst azure = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  apiKey: process.env.AZURE_AI_API_KEY!,\n  apiVersion: \"2025-04-01-preview\", // Optional\n});\n"
     ],
@@ -769,7 +769,7 @@
       "basic",
       "examples"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "basic-examples",
     "parentTitle": "Examples"
   },
@@ -791,7 +791,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { agent, llmOpenAI, llmAnthropic, llmMistral } from \"volcano-sdk\";\n\nconst gpt = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n});\n\nconst claude = llmAnthropic({\n  apiKey: process.env.ANTHROPIC_API_KEY!,\n  model: \"claude-3-5-haiku-20241022\",\n});\n\nconst mistral = llmMistral({\n  apiKey: process.env.MISTRAL_API_KEY!,\n  model: \"mistral-small-latest\",\n});\n\n// Each step uses a different LLM\nawait agent()\n  .then({ llm: gpt, prompt: \"Extract key data from this report...\" })\n  .then({ llm: claude, prompt: \"Analyze the extracted data for patterns\" })\n  .then({ llm: mistral, prompt: \"Write a creative summary in French\" })\n  .run();\n\n// Context flows automatically between steps, regardless of provider\n"
     ],
@@ -821,7 +821,7 @@
       "demonstrates:",
       "creation,"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/basic.ts\n"
     ],
@@ -850,7 +850,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const authMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"bearer\",\n    token: process.env.MCP_BEARER_TOKEN!,\n  },\n});\n\nawait agent({ llm })\n  .then({ mcp: authMcp, tool: \"secure_action\", args: {} })\n  .run();\n"
     ],
@@ -880,7 +880,7 @@
       "automatic",
       "context:"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "benefits",
     "parentTitle": "Advanced Patterns"
   },
@@ -907,7 +907,7 @@
       "suitable",
       "independent"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "benefits",
     "parentTitle": "Advanced Patterns"
   },
@@ -934,7 +934,7 @@
       "responsibility",
       "testing:"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "benefits",
     "parentTitle": "Advanced Patterns"
   },
@@ -953,7 +953,7 @@
       "best",
       "practices"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "best-practices",
     "parentTitle": "Observability"
   },
@@ -981,7 +981,7 @@
       "production,",
       "disable"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "best-practices",
     "parentTitle": "Observability"
   },
@@ -1008,7 +1008,7 @@
       "selection.",
       "[code"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/branching-simple.ts\nnpx tsx examples/branching.ts\n"
     ],
@@ -1038,7 +1038,7 @@
       "metrics:",
       "final"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "characteristics",
     "parentTitle": "Features"
   },
@@ -1065,7 +1065,7 @@
       "memory",
       "efficient:"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "characteristics",
     "parentTitle": "Features"
   },
@@ -1089,7 +1089,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  // Parallel analysis\n  .parallel({\n    sentiment: { prompt: \"Analyze sentiment\" },\n    intent: { prompt: \"Extract intent\" },\n    priority: { prompt: \"Determine priority\" },\n  })\n\n  // Route based on priority\n  .switch((h) => h[0].parallel?.priority.llmOutput?.trim() || \"\", {\n    URGENT: (a) =>\n      a.then({ mcp: slack, tool: \"alert_team\" }).runAgent(escalationAgent),\n\n    NORMAL: (a) =>\n      a.forEach(responders, (person, ag) =>\n        ag.then({ prompt: `Assign to ${person}` })\n      ),\n\n    default: (a) => a.then({ prompt: \"Queue for review\" }),\n  })\n\n  // Final step\n  .then({ prompt: \"Log outcome\" })\n  .run();\n"
     ],
@@ -1121,7 +1121,7 @@
       "called",
       "execution"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "common-step-fields",
     "parentTitle": "api"
   },
@@ -1145,7 +1145,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "const contentAnalyzer = agent({ llm }).parallel({\n  sentiment: { prompt: \"Analyze sentiment\" },\n  topics: { prompt: \"Extract main topics\" },\n  tone: { prompt: \"Determine tone\" },\n});\n\nconst contentModerator = agent({ llm })\n  .then({ prompt: \"Check for policy violations\" })\n  .branch((h) => h[0].llmOutput?.includes(\"VIOLATION\") || false, {\n    true: (a) => a.then({ mcp: moderation, tool: \"flag_content\" }),\n    false: (a) => a.then({ prompt: \"Approve content\" }),\n  });\n\n// Main workflow\nawait agent({ llm })\n  .then({ mcp: cms, tool: \"fetch_pending_posts\" })\n  .forEach(posts, (post, a) =>\n    a.runAgent(contentAnalyzer).runAgent(contentModerator)\n  )\n  .then({ prompt: \"Generate moderation report\" })\n  .run();\n"
     ],
@@ -1169,7 +1169,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// Compose them in a larger workflow\nawait agent({ llm })\n  .then({ mcp: gmail, tool: \"fetch_unread\" })\n  .runAgent(emailAnalyzer) // Run first sub-agent\n  .runAgent(responseGenerator) // Run second sub-agent\n  .runAgent(qualityChecker) // Run third sub-agent\n  .then({ mcp: gmail, tool: \"send_reply\" })\n  .run();\n"
     ],
@@ -1195,7 +1195,7 @@
       "based",
       "conditions."
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "conditional-branching",
     "parentTitle": "Advanced Patterns"
   },
@@ -1221,7 +1221,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent()\n  .then({ llm: gpt, prompt: \"Classify this task as SIMPLE or COMPLEX\" })\n  .switch((h) => (h[0].llmOutput?.includes(\"COMPLEX\") ? \"complex\" : \"simple\"), {\n    complex: (a) =>\n      a\n        .then({ llm: gpt4, prompt: \"Handle complex reasoning\" })\n        .then({ llm: claude, prompt: \"Verify the analysis\" }),\n\n    simple: (a) => a.then({ llm: llama, prompt: \"Handle simple task quickly\" }),\n  })\n  .run();\n"
     ],
@@ -1251,7 +1251,7 @@
       "internal",
       "cases"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import {\n  __internal_setPoolConfig,\n  __internal_setDiscoveryTtl,\n  __internal_clearDiscoveryCache,\n  __internal_clearOAuthTokenCache,\n} from \"volcano-sdk\";\n\n// Configure connection pool\n__internal_setPoolConfig(32, 60_000); // max 32 connections, 60s idle\n\n// Configure tool discovery cache TTL\n__internal_setDiscoveryTtl(120_000); // 120s cache\n\n// Clear caches (useful for testing)\n__internal_clearDiscoveryCache();\n__internal_clearOAuthTokenCache();\n"
     ],
@@ -1281,7 +1281,7 @@
       "--------------------------------------------",
       "identifier"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1308,7 +1308,7 @@
       "identifier",
       "(e.g.,"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1335,7 +1335,7 @@
       "identifier",
       "apikey"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1362,7 +1362,7 @@
       "-----------------------------------------------",
       "identifier"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1389,7 +1389,7 @@
       "------------",
       "-------------------------------"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1416,7 +1416,7 @@
       "gemini",
       "identifier"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1443,7 +1443,7 @@
       "endpoint",
       "azure"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "configuration",
     "parentTitle": "providers"
   },
@@ -1470,7 +1470,7 @@
       "steps",
       "eviction:"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "connection-pooling",
     "parentTitle": "MCP Tools"
   },
@@ -1496,7 +1496,7 @@
       "optimal",
       "performance."
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "connection-pooling-performance",
     "parentTitle": "MCP Tools"
   },
@@ -1521,7 +1521,7 @@
       "other",
       "developers!"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "contributing-examples",
     "parentTitle": "Examples"
   },
@@ -1549,7 +1549,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "// Agent-level (default for all steps)\nawait agent({\n  llm,\n  maxToolIterations: 2, // Limit to 2 iterations (faster)\n})\n  .then({ prompt: \"Task\", mcps: [tools] })\n  .run();\n\n// Per-step override\nawait agent({ llm, maxToolIterations: 4 }) // Default 4\n  .then({\n    prompt: \"Simple task\",\n    mcps: [tools],\n    maxToolIterations: 1, // Fast: only 1 tool call\n  })\n  .then({\n    prompt: \"Complex task\",\n    mcps: [tools],\n    maxToolIterations: 4, // More iterations for complexity\n  })\n  .run();\n"
     ],
@@ -1579,7 +1579,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { agent, llmLlama, llmOpenAI } from \"volcano-sdk\";\n\nconst llama = llmLlama({\n  baseURL: \"http://127.0.0.1:11434\",\n  model: \"llama3.2:3b\", // Free, local\n});\n\nconst gpt4 = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o\", // Expensive, high-quality\n});\n\n// Process 100 documents\nawait agent()\n  .forEach(\n    documents,\n    (doc, a) => a.then({ llm: llama, prompt: `Summarize: ${doc}` }) // Cheap preprocessing\n  )\n  .then({ llm: gpt4, prompt: \"Analyze all summaries and create final report\" }) // Quality output\n  .run();\n"
     ],
@@ -1606,7 +1606,7 @@
       "llmhandle",
       "interface:"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "creating-a-custom-provider",
     "parentTitle": "providers"
   },
@@ -1630,7 +1630,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { trace, metrics } from \"@opentelemetry/api\";\nimport { createVolcanoTelemetry } from \"volcano-sdk\";\n\nconst tracer = trace.getTracer(\"my-custom-tracer\");\nconst meter = metrics.getMeter(\"my-custom-meter\");\n\nconst telemetry = createVolcanoTelemetry({\n  serviceName: \"my-agent\",\n  tracer,\n  meter,\n});\n"
     ],
@@ -1656,7 +1656,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { OTLPTraceExporter } from \"@opentelemetry/exporter-otlp-http\";\nimport { NodeSDK } from \"@opentelemetry/sdk-node\";\n\nconst sdk = new NodeSDK({\n  serviceName: \"my-agent\",\n  traceExporter: new OTLPTraceExporter({\n    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,\n    headers: {\n      \"DD-API-KEY\": process.env.DD_API_KEY, // DataDog\n      // or 'X-License-Key': process.env.NEW_RELIC_KEY\n      // or 'Authorization': `Bearer ${process.env.GRAFANA_TOKEN}`\n    },\n  }),\n});\n\nsdk.start();\n"
     ],
@@ -1681,7 +1681,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// Define specialized sub-agents\nconst emailAnalyzer = agent({ llm: claude })\n  .then({ prompt: \"Extract sender intent\" })\n  .then({ prompt: \"Classify urgency level\" });\n\nconst responseGenerator = agent({ llm: openai })\n  .then({ prompt: \"Draft professional response\" })\n  .then({ prompt: \"Add signature\" });\n\nconst qualityChecker = agent({ llm: mistral })\n  .then({ prompt: \"Check response quality\" })\n  .then({ prompt: \"Suggest improvements\" });\n"
     ],
@@ -1706,7 +1706,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// Only traces, no metrics\nconst telemetry = createVolcanoTelemetry({\n  serviceName: \"my-agent\",\n  traces: true,\n  metrics: false,\n});\n\n// Only metrics, no traces\nconst telemetry = createVolcanoTelemetry({\n  serviceName: \"my-agent\",\n  traces: false,\n  metrics: true,\n});\n"
     ],
@@ -1734,7 +1734,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import { discoverTools, mcp } from \"volcano-sdk\";\n\nconst handles = [\n  mcp(\"http://localhost:3211/mcp\"),\n  mcp(\"http://localhost:3212/mcp\"),\n];\n\nconst tools = await discoverTools(handles);\nconsole.log(tools); // Array of tool definitions\n"
     ],
@@ -1764,7 +1764,7 @@
       "execution",
       "agent"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "distributed-tracing",
     "parentTitle": "Observability"
   },
@@ -1787,7 +1787,7 @@
       "configuration:",
       "```bash"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "environment-variables",
     "parentTitle": "Observability"
   },
@@ -1812,7 +1812,7 @@
       "metadata",
       "debugging."
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "error-handling",
     "parentTitle": "Features"
   },
@@ -1837,7 +1837,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "try {\n  await agent({ llm, retry: { backoff: 2, retries: 4 }, timeout: 30 })\n    .then({ prompt: \"auto\", mcps: [mcp(\"http://localhost:3211/mcp\")] })\n    .run();\n} catch (err) {\n  if (err && typeof err === \"object\" && \"meta\" in err) {\n    const e = err as VolcanoError;\n\n    console.error(e.name, e.message);\n    console.error(\"Metadata:\", {\n      stepId: e.meta.stepId, // 0-based step index\n      provider: e.meta.provider, // llm:openai or mcp:localhost\n      requestId: e.meta.requestId, // Upstream request ID\n      retryable: e.meta.retryable, // Should retry?\n    });\n\n    if (e.meta?.retryable) {\n      // Maybe enqueue for retry later\n    }\n  }\n}\n"
     ],
@@ -1867,7 +1867,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// Errors are automatically recorded in spans\ntry {\n  await agent({ llm, telemetry }).then({ prompt: \"This might fail\" }).run();\n} catch (error) {\n  // Span will have:\n  // - status: ERROR\n  // - exception details\n  // - stack trace\n}\n"
     ],
@@ -1897,7 +1897,7 @@
       "twice",
       "instance"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "error-types",
     "parentTitle": "Features"
   },
@@ -1918,7 +1918,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const results = await agent({ llm })\n  .then({ prompt: \"Analyze sentiment\", mcps: [analytics] })\n  .then({ prompt: \"Generate summary\" })\n  .run();\n\n// Access first step results\nconsole.log(results[0].prompt); // \"Analyze sentiment\"\nconsole.log(results[0].llmOutput); // LLM response\nconsole.log(results[0].toolCalls); // Tools that were called\nconsole.log(results[0].durationMs); // Step duration\nconsole.log(results[0].llmMs); // LLM time\n\n// Access aggregated metrics (on last step)\nconst last = results[results.length - 1];\nconsole.log(last.totalDurationMs); // Total workflow time\nconsole.log(last.totalLlmMs); // Total LLM time\nconsole.log(last.totalMcpMs); // Total MCP time\n"
     ],
@@ -1943,7 +1943,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import type { LLMHandle, ToolDefinition, LLMToolResult } from \"volcano-sdk\";\n\nexport function llmCustom(config: {\n  apiKey: string;\n  model: string;\n  baseURL: string;\n}): LLMHandle {\n  return {\n    id: \"custom\",\n    model: config.model,\n    client: null, // Your HTTP client or SDK instance\n\n    async gen(prompt: string): Promise<string> {\n      // Call your LLM API\n      const response = await fetch(`${config.baseURL}/generate`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${config.apiKey}`,\n          \"Content-Type\": \"application/json\",\n        },\n        body: JSON.stringify({\n          model: config.model,\n          prompt: prompt,\n        }),\n      });\n\n      const data = await response.json();\n      return data.text;\n    },\n\n    async genWithTools(\n      prompt: string,\n      tools: ToolDefinition[]\n    ): Promise<LLMToolResult> {\n      // Call your LLM API with tool definitions\n      const response = await fetch(`${config.baseURL}/generate-with-tools`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${config.apiKey}`,\n          \"Content-Type\": \"application/json\",\n        },\n        body: JSON.stringify({\n          model: config.model,\n          prompt: prompt,\n          tools: tools.map((t) => ({\n            name: t.name,\n            description: t.description,\n            parameters: t.parameters,\n          })),\n        }),\n      });\n\n      const data = await response.json();\n\n      // Map your API response to LLMToolResult format\n      return {\n        content: data.text,\n        toolCalls:\n          data.tool_calls?.map((tc: any) => ({\n            name: tc.name,\n            arguments: tc.arguments,\n            mcpHandle: tools.find((t) => t.name === tc.name)?.mcpHandle,\n          })) || [],\n      };\n    },\n\n    async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {\n      // Implement streaming if your provider supports it\n      const response = await fetch(`${config.baseURL}/stream`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${config.apiKey}`,\n          \"Content-Type\": \"application/json\",\n        },\n        body: JSON.stringify({\n          model: config.model,\n          prompt: prompt,\n        }),\n      });\n\n      const reader = response.body?.getReader();\n      if (!reader) return;\n\n      const decoder = new TextDecoder();\n      while (true) {\n        const { done, value } = await reader.read();\n        if (done) break;\n        yield decoder.decode(value);\n      }\n    },\n  };\n}\n"
     ],
@@ -1966,7 +1966,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "// Immediate retry\n{ retries: 3 }\n\n// Delayed retry (wait 20s between attempts)\n{ delay: 20, retries: 3 }\n\n// Exponential backoff (1s, 2s, 4s, 8s)\n{ backoff: 2, retries: 4 }\n"
     ],
@@ -1977,7 +1977,7 @@
     "id": "Documentation-examples",
     "title": "Examples",
     "description": "Ready-to-run examples demonstrating Volcano SDK features. View all examples on GitHub.",
-    "content": "Examples Ready-to-run examples demonstrating Volcano SDK features. View all examples on GitHub → :::note All examples showcase automatic MCP tool selection where the LLM intelligently chooses which tools to call based on the prompt. ::: Basic Examples basic.ts Simple single-step agent with LLM-only generation. [code block] Demonstrates: Agent creation, basic .then() and .run() View source on GitHub → automatic.ts Automatic MCP tool selection - let the LLM choose which tools to call based on the prompt. [code block] Demonstrates: Automatic tool discovery and selection with mcps: [mcp1, mcp2] View source on GitHub → providers.ts Multi-provider workflow using OpenAI, Anthropic, Mistral, and Llama with automatic MCP tool selection. [code block] Demonstrates: Per-step LLM provider switching, automatic tool selection, context flow between providers View source on GitHub → Advanced Patterns parallel.ts Execute multiple steps in parallel with automatic MCP tool selection in each parallel branch. [code block] Demonstrates: .parallel() with array and dictionary modes, automatic tool selection View source on GitHub → branching.ts & branching-simple.ts Conditional routing with .branch() and .switch() using automatic MCP tool selection. [code block] Demonstrates: If/else branching and switch/case patterns, LLM-driven tool selection View source on GitHub → loops.ts & loops-simple.ts Iterative workflows with automatic tool selection in each iteration. [code block] Demonstrates: .while(), .forEach(), .retryUntil() with MCP tools View source on GitHub → sub-agents.ts & composition.ts Build reusable sub-agents with automatic MCP tool integration. [code block] Demonstrates: .runAgent() for modular agent design with tool selection View source on GitHub → advanced-patterns.ts Combine parallel execution, branching, and loops with automatic MCP tool selection throughout. [code block] Demonstrates: Complex workflows mixing all control flow patterns with intelligent tool selection View source on GitHub → Special Features streaming.ts Stream step results in real-time with automatic MCP tool selection. [code block] Demonstrates: .stream() method for progressive result delivery, tool selection in streaming mode View source on GitHub → summit.ts Complete real-world example with multi-step workflow and automatic tool selection. [code block] Demonstrates: End-to-end agent with multiple steps, automatic MCP tool discovery and selection View source on GitHub → Running Examples Prerequisites [code block] Set Environment Variables Most examples require API keys. Set them in your environment: [code block] Run an Example [code block] :::tip[Tip] Start with basic.ts and automatic.ts to understand core concepts, then explore advanced patterns. ::: More Examples Find more examples in the GitHub repository: All examples include automatic MCP tool selection Production-ready code you can copy and adapt Comments explaining key concepts Environment variable setup instructions Contributing Examples Have a great use case? Submit a PR with your example to help other developers!",
+    "content": "Examples Ready-to-run examples demonstrating Volcano SDK features. View all examples on GitHub → :::note All examples showcase automatic MCP tool selection where the LLM intelligently chooses which tools to call based on the prompt. ::: Basic Examples basic.ts Simple single-step agent with LLM-only generation. [code block] Demonstrates: Agent creation, basic .then() and .run() View source on GitHub → automatic.ts Automatic MCP tool selection - let the LLM choose which tools to call based on the prompt. [code block] Demonstrates: Automatic tool discovery and selection with mcps: [mcp1, mcp2] View source on GitHub → providers.ts Multi-provider workflow using OpenAI, Anthropic, Mistral, and Llama with automatic MCP tool selection. [code block] Demonstrates: Per-step LLM provider switching, automatic tool selection, context flow between providers View source on GitHub → Advanced Patterns parallel.ts Execute multiple steps in parallel with automatic MCP tool selection in each parallel branch. [code block] Demonstrates: .parallel() with array and dictionary modes, automatic tool selection View source on GitHub → branching.ts & branching-simple.ts Conditional routing with .branch() and .switch() using automatic MCP tool selection. [code block] Demonstrates: If/else branching and switch/case patterns, LLM-driven tool selection View source on GitHub → loops.ts & loops-simple.ts Iterative workflows with automatic tool selection in each iteration. [code block] Demonstrates: .while(), .forEach(), .retryUntil() with MCP tools View source on GitHub → sub-agents.ts & composition.ts Build reusable sub-agents with automatic MCP tool integration. [code block] Demonstrates: .runAgent() for modular agent design with tool selection View source on GitHub → advanced-patterns.ts Combine parallel execution, branching, and loops with automatic MCP tool selection throughout. [code block] Demonstrates: Complex workflows mixing all control flow patterns with intelligent tool selection View source on GitHub → Special Features streaming.ts Stream step results in real-time with automatic MCP tool selection. [code block] Demonstrates: .stream() method for progressive result delivery, tool selection in streaming mode View source on GitHub → Running Examples Prerequisites [code block] Set Environment Variables Most examples require API keys. Set them in your environment: [code block] Run an Example [code block] :::tip[Tip] Start with basic.ts and automatic.ts to understand core concepts, then explore advanced patterns. ::: More Examples Find more examples in the GitHub repository: All examples include automatic MCP tool selection Production-ready code you can copy and adapt Comments explaining key concepts Environment variable setup instructions Contributing Examples Have a great use case? Submit a PR with your example to help other developers!",
     "headings": [
       "Examples",
       "Basic Examples",
@@ -1992,7 +1992,6 @@
       "advanced-patterns.ts",
       "Special Features",
       "streaming.ts",
-      "summit.ts",
       "Running Examples",
       "Prerequisites",
       "Clone the repository",
@@ -2019,10 +2018,10 @@
       "github",
       "demonstrates:",
       "source",
-      "agent",
-      "selection."
+      "tools",
+      "agent"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/basic.ts\n",
       "npx tsx examples/automatic.ts\n",
@@ -2033,7 +2032,6 @@
       "npx tsx examples/sub-agents.ts\nnpx tsx examples/composition.ts\n",
       "npx tsx examples/advanced-patterns.ts\n",
       "npx tsx examples/streaming.ts\n",
-      "npx tsx examples/summit.ts\n",
       "# Clone the repository\ngit clone https://github.com/Kong/volcano-sdk.git\ncd volcano-sdk\n\n# Install dependencies\nnpm install\n\n# Build the SDK\nnpm run build\n",
       "export OPENAI_API_KEY=\"your-openai-key\"\nexport ANTHROPIC_API_KEY=\"your-anthropic-key\"\nexport MISTRAL_API_KEY=\"your-mistral-key\"\n\n# For Bedrock examples\nexport AWS_REGION=\"us-east-1\"\nexport AWS_ACCESS_KEY_ID=\"your-key\"\nexport AWS_SECRET_ACCESS_KEY=\"your-secret\"\n\n# For Vertex examples\nexport GCP_VERTEX_API_KEY=\"your-google-key\"\n\n# For Azure examples\nexport AZURE_AI_API_KEY=\"your-azure-key\"\nexport AZURE_AI_ENDPOINT=\"https://your-resource.openai.azure.com/openai/responses\"\n",
       "# Run any example with tsx\nnpx tsx examples/basic.ts\nnpx tsx examples/parallel.ts\nnpx tsx examples/streaming.ts\n"
@@ -2059,7 +2057,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "{\n  mcp: MCPHandle;\n  tool: string;\n  args?: Record<string, any>;\n  prompt?: string;         // Optional LLM step before tool\n  llm?: LLMHandle;\n  instructions?: string;\n  timeout?: number;\n  retry?: RetryConfig;\n  contextMaxChars?: number;\n  contextMaxToolResults?: number;\n  pre?: () => void;\n  post?: () => void;\n}\n"
     ],
@@ -2089,7 +2087,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const cafe = mcp(\"http://localhost:3000/mcp\");\n\nawait agent({ llm })\n  .then({ prompt: \"Recommend a coffee for Ava from Naples\" })\n  .then({\n    mcp: cafe,\n    tool: \"order_item\",\n    args: { item_id: \"espresso\", quantity: 2 },\n  })\n  .run();\n"
     ],
@@ -2145,7 +2143,7 @@
       "results",
       "hooks"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const results = await agent({ llm })\n  .then({ prompt: \"Analyze user data\", mcps: [analytics] })\n  .then({ prompt: \"Generate insights\" })\n  .then({ prompt: \"Create recommendations\" })\n  .run();\n\n// All steps complete before results are returned\nconsole.log(results); // Array of all StepResult objects\nconsole.log(results[0].llmOutput); // First step output\nconsole.log(results[1].llmOutput); // Second step output\nconsole.log(results[results.length - 1].totalDurationMs); // Total time\n",
       "const results = await agent({ llm })\n  .then({ prompt: \"Step 1\" })\n  .then({ prompt: \"Step 2\" })\n  .then({ prompt: \"Step 3\" })\n  .run((stepResult, stepIndex) => {\n    console.log(`Step ${stepIndex + 1} completed`);\n    console.log(`Duration: ${stepResult.durationMs}ms`);\n    console.log(`Output: ${stepResult.llmOutput}`);\n  });\n\n// Callback is called for each step as it completes\n// Final results array is returned when all steps finish\n",
@@ -2181,7 +2179,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "const customers = [\n  \"alice@example.com\",\n  \"bob@example.com\",\n  \"charlie@example.com\",\n];\n\nawait agent({ llm })\n  .forEach(customers, (email, a) =>\n    a\n      .then({ prompt: `Generate personalized email for ${email}` })\n      .then({ mcp: sendgrid, tool: \"send\", args: { to: email } })\n  )\n  .then({ prompt: \"Summarize campaign results\" })\n  .run();\n"
     ],
@@ -2207,7 +2205,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// Set default LLM at agent level\nawait agent({ llm: gpt })\n  .then({ prompt: \"Step 1 uses default GPT\" })\n  .then({ llm: claude, prompt: \"Step 2 overrides with Claude\" })\n  .then({ prompt: \"Step 3 back to default GPT\" })\n  .then({ llm: mistral, prompt: \"Step 4 uses Mistral\" })\n  .run();\n"
     ],
@@ -2237,7 +2235,7 @@
       "calling",
       "[code"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmVertexStudio } from \"volcano-sdk\";\n\nconst vertex = llmVertexStudio({\n  model: \"gemini-2.0-flash-exp\",\n  apiKey: process.env.GCP_VERTEX_API_KEY!,\n  baseURL: \"https://aiplatform.googleapis.com/v1\", // Optional\n  options: {\n    temperature: 0.8,\n    max_output_tokens: 2048,\n    top_k: 40,\n    top_p: 0.95,\n    stop_sequences: [\"\\n\\n\"],\n    candidate_count: 1,\n    response_mime_type: \"text/plain\",\n  },\n});\n"
     ],
@@ -2264,7 +2262,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "// OAuth on handle\nconst protectedMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"oauth\",\n    clientId: process.env.MCP_CLIENT_ID!,\n    clientSecret: process.env.MCP_CLIENT_SECRET!,\n    tokenEndpoint: \"https://api.example.com/oauth/token\",\n  },\n});\n\n// Bearer token on handle\nconst bearerMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"bearer\",\n    token: process.env.MCP_BEARER_TOKEN!,\n  },\n});\n"
     ],
@@ -2295,7 +2293,7 @@
       "synchronous",
       "functions"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "hook-characteristics",
     "parentTitle": "Features"
   },
@@ -2323,7 +2321,7 @@
       "(after",
       "completion)"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "hook-execution-order",
     "parentTitle": "Features"
   },
@@ -2350,7 +2348,7 @@
       "(cached",
       "selection:"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "how-it-works",
     "parentTitle": "MCP Tools"
   },
@@ -2375,7 +2373,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  .then({ prompt: \"Is this email spam? Reply YES or NO\" })\n  .branch((history) => history[0].llmOutput?.includes(\"YES\") || false, {\n    true: (a) =>\n      a\n        .then({ prompt: \"Categorize spam type\" })\n        .then({ mcp: notifications, tool: \"alert\" }),\n    false: (a) =>\n      a\n        .then({ prompt: \"Extract action items\" })\n        .then({ prompt: \"Draft reply\" }),\n  })\n  .run();\n"
     ],
@@ -2401,7 +2399,7 @@
       "dependency):",
       "```bash"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "installation",
     "parentTitle": "Observability"
   },
@@ -2428,7 +2426,7 @@
       "---------------------",
       "fastest"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "iteration-trade-offs",
     "parentTitle": "MCP Tools"
   },
@@ -2450,7 +2448,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { NodeSDK } from \"@opentelemetry/sdk-node\";\nimport { JaegerExporter } from \"@opentelemetry/exporter-jaeger\";\nimport { createVolcanoTelemetry } from \"volcano-sdk\";\n\n// Setup OTEL SDK\nconst sdk = new NodeSDK({\n  serviceName: \"my-agent\",\n  traceExporter: new JaegerExporter({\n    endpoint: \"http://localhost:14268/api/traces\",\n  }),\n});\n\nsdk.start();\n\n// Use with Volcano\nconst telemetry = createVolcanoTelemetry({\n  serviceName: \"my-agent\",\n});\n\nawait agent({ llm, telemetry }).then({ prompt: \"...\" }).run();\n\n// View traces in Jaeger UI at http://localhost:16686\n"
     ],
@@ -2480,7 +2478,7 @@
       "block]",
       "setup:"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmLlama } from \"volcano-sdk\";\n\n// Local Ollama setup\nconst llama = llmLlama({\n  baseURL: \"http://127.0.0.1:11434\",\n  model: \"llama3.2:3b\",\n  apiKey: \"\", // Optional, not needed for local Ollama\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_p: 0.9,\n    top_k: 40,\n    repeat_penalty: 1.1,\n    seed: 42,\n    num_predict: 2000,\n  },\n});\n"
     ],
@@ -2507,7 +2505,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "{\n  prompt: string;\n  llm?: LLMHandle;\n  instructions?: string;\n  timeout?: number;\n  retry?: RetryConfig;\n  contextMaxChars?: number;\n  contextMaxToolResults?: number;\n  pre?: () => void;\n  post?: () => void;\n}\n"
     ],
@@ -2530,7 +2528,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "type LLMHandle = {\n  model: string;\n  gen(prompt: string): Promise<string>;\n  genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult>;\n  genStream?(prompt: string): AsyncGenerator<string, void, unknown>;\n};\n"
     ],
@@ -2554,7 +2552,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "type LLMHandle = {\n  id: string;\n  model: string;\n  gen: (prompt: string) => Promise<string>;\n  genWithTools: (\n    prompt: string,\n    tools: ToolDefinition[]\n  ) => Promise<LLMToolResult>;\n  genStream: (prompt: string) => AsyncGenerator<string, void, unknown>;\n  client: any; // Your provider-specific client\n};\n"
     ],
@@ -2578,7 +2576,7 @@
       "until",
       "conditions"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "loops",
     "parentTitle": "Advanced Patterns"
   },
@@ -2605,7 +2603,7 @@
       "block]",
       "demonstrates:"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/loops-simple.ts\nnpx tsx examples/loops.ts\n"
     ],
@@ -2635,7 +2633,7 @@
       "handle",
       "level"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "mcp-authentication",
     "parentTitle": "MCP Tools"
   },
@@ -2682,7 +2680,7 @@
       "cached",
       "automatic"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import { agent, llmOpenAI, mcp } from \"volcano-sdk\";\n\nconst weather = mcp(\"http://localhost:3000/mcp\");\nconst notifications = mcp(\"http://localhost:4000/mcp\");\nconst llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });\n\nawait agent({ llm })\n  .then({\n    prompt: \"Check SF weather for tomorrow and send me a notification.\",\n    mcps: [weather, notifications],\n  })\n  .run();\n\n// The LLM automatically:\n// 1. Discovers available tools from both servers\n// 2. Selects the appropriate tools\n// 3. Calls them with correct arguments\n// 4. Returns the results\n",
       "// Agent-level (default for all steps)\nawait agent({\n  llm,\n  maxToolIterations: 2, // Limit to 2 iterations (faster)\n})\n  .then({ prompt: \"Task\", mcps: [tools] })\n  .run();\n\n// Per-step override\nawait agent({ llm, maxToolIterations: 4 }) // Default 4\n  .then({\n    prompt: \"Simple task\",\n    mcps: [tools],\n    maxToolIterations: 1, // Fast: only 1 tool call\n  })\n  .then({\n    prompt: \"Complex task\",\n    mcps: [tools],\n    maxToolIterations: 4, // More iterations for complexity\n  })\n  .run();\n",
@@ -2721,7 +2719,7 @@
       "authentication:",
       "[code"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "import { mcp } from \"volcano-sdk\";\n\n// No authentication\nconst astro = mcp(\"http://localhost:3211/mcp\");\n\n// OAuth authentication\nconst protectedMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"oauth\",\n    clientId: \"your-client-id\",\n    clientSecret: \"your-client-secret\",\n    tokenEndpoint: \"https://api.example.com/oauth/token\",\n  },\n});\n\n// Bearer token\nconst bearerMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"bearer\",\n    token: \"your-bearer-token\",\n  },\n});\n"
     ],
@@ -2744,7 +2742,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "type MCPHandle = {\n  id: string;\n  url: string;\n};\n"
     ],
@@ -2774,7 +2772,7 @@
       "model>",
       "mcp:<host>"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "metadata-fields",
     "parentTitle": "Features"
   },
@@ -2792,7 +2790,7 @@
     "keywords": [
       "methods"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "methods",
     "parentTitle": "api"
   },
@@ -2819,7 +2817,7 @@
       "(openai,",
       "anthropic,"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "metric-labels",
     "parentTitle": "Observability"
   },
@@ -2841,7 +2839,7 @@
       "dashboards",
       "alerting."
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "metrics",
     "parentTitle": "Observability"
   },
@@ -2867,7 +2865,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmMistral } from \"volcano-sdk\";\n\nconst mistral = llmMistral({\n  apiKey: process.env.MISTRAL_API_KEY!,\n  model: \"mistral-small-latest\",\n  baseURL: \"https://api.mistral.ai\", // Optional\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_p: 0.9,\n    safe_prompt: true,\n    random_seed: 42,\n  },\n});\n"
     ],
@@ -2897,7 +2895,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const publicMcp = mcp(\"http://localhost:3000/mcp\"); // No auth\nconst privateMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"oauth\",\n    clientId: process.env.CLIENT_ID!,\n    clientSecret: process.env.CLIENT_SECRET!,\n    tokenEndpoint: \"https://api.example.com/oauth/token\",\n  },\n});\n\nawait agent({ llm })\n  .then({ mcp: publicMcp, tool: \"get_public_data\", args: {} })\n  .then({ mcp: privateMcp, tool: \"store_private_data\", args: {} })\n  .run();\n\n// Each server uses its own authentication (or none)\n"
     ],
@@ -2928,7 +2926,7 @@
       "comments",
       "explaining"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "more-examples",
     "parentTitle": "Examples"
   },
@@ -2955,7 +2953,7 @@
       "workflow.",
       "match"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "multi-llm-workflows",
     "parentTitle": "Advanced Patterns"
   },
@@ -2980,7 +2978,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "const database = mcp(\"http://localhost:5000/mcp\");\nconst analytics = mcp(\"http://localhost:5001/mcp\");\n\nawait agent()\n  .then({\n    llm: gpt,\n    prompt: \"Query user data from database\",\n    mcps: [database],\n  })\n  .then({\n    llm: claude,\n    prompt: \"Perform statistical analysis\",\n    mcps: [analytics],\n  })\n  .then({\n    llm: mistral,\n    prompt: \"Generate executive summary\",\n  })\n  .run();\n"
     ],
@@ -3007,7 +3005,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const database = mcp(\"http://localhost:5000/mcp\");\nconst email = mcp(\"http://localhost:5001/mcp\");\nconst analytics = mcp(\"http://localhost:5002/mcp\");\n\nawait agent({ llm })\n  .then({\n    prompt:\n      \"Query user data, analyze it, and email the report to admin@example.com\",\n    mcps: [database, email, analytics],\n  })\n  .run();\n\n// The LLM automatically orchestrates tools across all three servers\n"
     ],
@@ -3036,7 +3034,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  .parallel({\n    sentiment: { prompt: \"What's the sentiment?\" },\n    entities: { prompt: \"Extract key entities\" },\n    summary: { prompt: \"Summarize in 5 words\" },\n  })\n  .then((history) => {\n    const results = history[0].parallel;\n    // Access: results.sentiment, results.entities, results.summary\n    return { prompt: \"Generate report based on analysis\" };\n  })\n  .run();\n"
     ],
@@ -3066,7 +3064,7 @@
       "automatically",
       "acquires"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const protectedMcp = mcp(\"https://api.example.com/mcp\", {\n  auth: {\n    type: \"oauth\",\n    clientId: process.env.MCP_CLIENT_ID!,\n    clientSecret: process.env.MCP_CLIENT_SECRET!,\n    tokenEndpoint: \"https://api.example.com/oauth/token\",\n  },\n});\n\nawait agent({ llm })\n  .then({\n    prompt: \"Use protected tools\",\n    mcps: [protectedMcp],\n  })\n  .run();\n\n// Volcano automatically:\n// 1. Requests OAuth token from tokenEndpoint\n// 2. Caches the token until expiration\n// 3. Refreshes automatically when needed\n// 4. Includes Authorization header in all requests\n"
     ],
@@ -3122,7 +3120,7 @@
       "backend.",
       "total"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// app.ts or index.ts - run once at startup\nimport { NodeSDK } from \"@opentelemetry/sdk-node\";\nimport { OTLPTraceExporter } from \"@opentelemetry/exporter-trace-otlp-http\";\n\n// Configure OTEL to send to your observability backend\nconst sdk = new NodeSDK({\n  serviceName: \"my-agent-service\",\n  traceExporter: new OTLPTraceExporter({\n    url: \"http://localhost:4318/v1/traces\", // Your OTEL collector\n    // For production: configure your observability backend URL\n    // url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT\n    // headers: { 'Authorization': `Bearer ${process.env.API_KEY}` }\n  }),\n});\n\nsdk.start();\n\n// Optional: Graceful shutdown\nprocess.on(\"SIGTERM\", async () => {\n  await sdk.shutdown();\n});\n",
       "import { agent, llmOpenAI, createVolcanoTelemetry } from \"volcano-sdk\";\n\n// Create telemetry (uses global OTEL SDK configured above)\nconst telemetry = createVolcanoTelemetry({\n  serviceName: \"my-agent-service\",\n});\n\n// Pass to agent\nconst results = await agent({\n  llm: llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! }),\n  telemetry, // Enable observability\n})\n  .then({ prompt: \"Analyze data\" })\n  .then({ prompt: \"Generate report\" })\n  .run();\n\n// Traces and metrics automatically sent to your configured backend!\n",
@@ -3156,7 +3154,7 @@
       "opentelemetry-compatible",
       "backend."
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "observability-backends",
     "parentTitle": "Observability"
   },
@@ -3183,7 +3181,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmOpenAI } from \"volcano-sdk\";\n\nconst openai = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n  baseURL: \"https://api.openai.com/v1\", // Optional\n  options: {\n    temperature: 0.7,\n    max_completion_tokens: 2000,\n    top_p: 0.9,\n    seed: 42,\n  },\n});\n"
     ],
@@ -3213,7 +3211,7 @@
       "traces",
       "metrics"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "opentelemetry-integration",
     "parentTitle": "Observability"
   },
@@ -3240,7 +3238,7 @@
       "-----------------------",
       "-----------"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "options",
     "parentTitle": "api"
   },
@@ -3267,7 +3265,7 @@
       "------------------",
       "-----------------------------------------------------------------"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3294,7 +3292,7 @@
       "-------------------------------------------------",
       "temperature"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3321,7 +3319,7 @@
       "temperature",
       "controls"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3348,7 +3346,7 @@
       "----------------------------------------------------",
       "temperature"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3375,7 +3373,7 @@
       "controls",
       "randomness"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3402,7 +3400,7 @@
       "temperature",
       "controls"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3429,7 +3427,7 @@
       "configuration",
       "parameters."
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "options-parameters",
     "parentTitle": "providers"
   },
@@ -3454,7 +3452,7 @@
       "faster",
       "workflows."
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "parallel-execution",
     "parentTitle": "Advanced Patterns"
   },
@@ -3481,7 +3479,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/parallel.ts\n"
     ],
@@ -3505,7 +3503,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "await agent({ llm, retry: { delay: 20 } })\n  .then({ prompt: \"override to immediate\", retry: { delay: 0 } })\n  .run();\n"
     ],
@@ -3527,7 +3525,7 @@
       "prerequisites",
       "```bash"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "prerequisites",
     "parentTitle": "Examples"
   },
@@ -3548,7 +3546,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { NodeSDK } from \"@opentelemetry/sdk-node\";\nimport { PrometheusExporter } from \"@opentelemetry/exporter-prometheus\";\n\nconst prometheusExporter = new PrometheusExporter({\n  port: 9464,\n});\n\nconst sdk = new NodeSDK({\n  serviceName: \"my-agent\",\n  metricReader: prometheusExporter,\n});\n\nsdk.start();\n\n// Metrics available at http://localhost:9464/metrics\n// volcano_agent_duration_bucket{le=\"100\"} 42\n// volcano_llm_calls_total{provider=\"openai\"} 156\n"
     ],
@@ -3578,7 +3576,7 @@
       "calling",
       "streaming"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "provider-support-matrix",
     "parentTitle": "providers"
   },
@@ -3641,7 +3639,7 @@
       "authentication",
       "parameter"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { llmOpenAI } from \"volcano-sdk\";\n\nconst openai = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n  baseURL: \"https://api.openai.com/v1\", // Optional\n  options: {\n    temperature: 0.7,\n    max_completion_tokens: 2000,\n    top_p: 0.9,\n    seed: 42,\n  },\n});\n",
       "import { llmAnthropic } from \"volcano-sdk\";\n\nconst claude = llmAnthropic({\n  apiKey: process.env.ANTHROPIC_API_KEY!,\n  model: \"claude-3-5-sonnet-20241022\",\n  baseURL: \"https://api.anthropic.com\", // Optional\n  version: \"2023-06-01\", // Optional\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_k: 50,\n    top_p: 0.9,\n    stop_sequences: [\"\\n\\n\"],\n  },\n});\n",
@@ -3680,7 +3678,7 @@
       "llama",
       "selection."
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/providers.ts\n"
     ],
@@ -3710,7 +3708,7 @@
       "enable",
       "telemetry"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "// app.ts or index.ts - run once at startup\nimport { NodeSDK } from \"@opentelemetry/sdk-node\";\nimport { OTLPTraceExporter } from \"@opentelemetry/exporter-trace-otlp-http\";\n\n// Configure OTEL to send to your observability backend\nconst sdk = new NodeSDK({\n  serviceName: \"my-agent-service\",\n  traceExporter: new OTLPTraceExporter({\n    url: \"http://localhost:4318/v1/traces\", // Your OTEL collector\n    // For production: configure your observability backend URL\n    // url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT\n    // headers: { 'Authorization': `Bearer ${process.env.API_KEY}` }\n  }),\n});\n\nsdk.start();\n\n// Optional: Graceful shutdown\nprocess.on(\"SIGTERM\", async () => {\n  await sdk.shutdown();\n});\n",
       "import { agent, llmOpenAI, createVolcanoTelemetry } from \"volcano-sdk\";\n\n// Create telemetry (uses global OTEL SDK configured above)\nconst telemetry = createVolcanoTelemetry({\n  serviceName: \"my-agent-service\",\n});\n\n// Pass to agent\nconst results = await agent({\n  llm: llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! }),\n  telemetry, // Enable observability\n})\n  .then({ prompt: \"Analyze data\" })\n  .then({ prompt: \"Generate report\" })\n  .run();\n\n// Traces and metrics automatically sent to your configured backend!\n"
@@ -3741,7 +3739,7 @@
       "function",
       "calling"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "requirements",
     "parentTitle": "providers"
   },
@@ -3760,7 +3758,7 @@
       "retries",
       "timeouts"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "retries-timeouts",
     "parentTitle": "Features"
   },
@@ -3787,7 +3785,7 @@
       "retryable",
       "include:"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "retry-semantics",
     "parentTitle": "Features"
   },
@@ -3806,7 +3804,7 @@
       "retry",
       "strategies"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "retry-strategies",
     "parentTitle": "Features"
   },
@@ -3831,7 +3829,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  .retryUntil(\n    (a) => a.then({ prompt: \"Generate a haiku about AI\" }),\n    (result) => {\n      // Validate 5-7-5 syllable structure\n      const lines = result.llmOutput?.split(\"\\n\") || [];\n      return lines.length === 3; // Simple validation\n    },\n    { maxAttempts: 5, backoff: 1.5 }\n  )\n  .run();\n"
     ],
@@ -3857,7 +3855,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "type RetryConfig = {\n  delay?: number; // Seconds to wait between retries (mutually exclusive with backoff)\n  backoff?: number; // Exponential factor (waits 1s, factor^n each retry)\n  retries?: number; // Total attempts including first (default: 3)\n};\n"
     ],
@@ -3884,7 +3882,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "type StepResult = {\n  prompt?: string;\n  llmOutput?: string;\n  durationMs?: number;\n  llmMs?: number;\n  toolCalls?: Array<{ name: string; result: any; ms?: number }>;\n  // Aggregated metrics (on final step only):\n  totalDurationMs?: number;\n  totalLlmMs?: number;\n  totalMcpMs?: number;\n};\n"
     ],
@@ -3906,7 +3904,7 @@
       "example",
       "```bash"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "run-an-example",
     "parentTitle": "Examples"
   },
@@ -3933,7 +3931,7 @@
       "once.",
       "[code"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const results = await agent({ llm })\n  .then({ prompt: \"Analyze user data\", mcps: [analytics] })\n  .then({ prompt: \"Generate insights\" })\n  .then({ prompt: \"Create recommendations\" })\n  .run();\n\n// All steps complete before results are returned\nconsole.log(results); // Array of all StepResult objects\nconsole.log(results[0].llmOutput); // First step output\nconsole.log(results[1].llmOutput); // Second step output\nconsole.log(results[results.length - 1].totalDurationMs); // Total time\n"
     ],
@@ -3955,7 +3953,7 @@
       "running",
       "examples"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "running-examples",
     "parentTitle": "Examples"
   },
@@ -3981,7 +3979,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "// If the MCP tool has this schema:\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"city\": { \"type\": \"string\" },\n    \"units\": { \"type\": \"string\", \"enum\": [\"celsius\", \"fahrenheit\"] }\n  },\n  \"required\": [\"city\"]\n}\n\n// This call would fail validation:\nawait agent({ llm })\n  .then({\n    mcp: weather,\n    tool: \"get_weather\",\n    args: { units: \"kelvin\" }  // ❌ Missing required \"city\", invalid enum\n  })\n  .run();\n\n// Error: ValidationError\n// Message: \"arguments failed schema validation: city is required; units must be one of...\"\n"
     ],
@@ -4011,7 +4009,7 @@
       "openaiapikey=\"your-openai-key\"",
       "anthropicapikey=\"your-anthropic-key\""
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "set-environment-variables",
     "parentTitle": "Examples"
   },
@@ -4039,7 +4037,7 @@
       "step.execute",
       "step.index,"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "span-attributes",
     "parentTitle": "Observability"
   },
@@ -4058,7 +4056,7 @@
       "special",
       "features"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "special-features",
     "parentTitle": "Examples"
   },
@@ -4083,7 +4081,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "await agent({ llm })\n  .then({\n    prompt: \"Analyze the user data\",\n    mcps: [analytics],\n    pre: () => {\n      console.log(\"Starting analysis...\");\n    },\n    post: () => {\n      console.log(\"Analysis complete!\");\n    },\n  })\n  .then({\n    prompt: \"Generate report\",\n    pre: () => {\n      startTimer();\n    },\n    post: () => {\n      endTimer();\n      saveMetrics();\n    },\n  })\n  .run((step, stepIndex) => {\n    console.log(`Step ${stepIndex + 1} finished`);\n  });\n"
     ],
@@ -4112,7 +4110,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "type StepResult = {\n  // Basic fields\n  prompt?: string;\n  llmOutput?: string;\n\n  // Timing metrics (milliseconds)\n  durationMs?: number; // Total step wall time\n  llmMs?: number; // Time spent in LLM calls\n\n  // MCP tool results (explicit call)\n  mcp?: {\n    endpoint: string;\n    tool: string;\n    result: any;\n    ms?: number; // Tool execution time\n  };\n\n  // MCP tool calls (automatic selection)\n  toolCalls?: Array<{\n    name: string;\n    endpoint: string;\n    result: any;\n    ms?: number; // Tool execution time\n  }>;\n\n  // Parallel execution results\n  parallel?: Record<string, StepResult>;\n  parallelResults?: StepResult[];\n\n  // Aggregated metrics (on final step only)\n  totalDurationMs?: number;\n  totalLlmMs?: number;\n  totalMcpMs?: number;\n};\n"
     ],
@@ -4138,7 +4136,7 @@
       "three",
       "steps:"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "step-types",
     "parentTitle": "api"
   },
@@ -4165,7 +4163,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "for await (const stepResult of agent({ llm })\n  .then({ prompt: \"Analyze user data\", mcps: [analytics] })\n  .then({ prompt: \"Generate insights\" })\n  .then({ prompt: \"Create recommendations\" })\n  .stream()) {\n  console.log(`Step completed: ${stepResult.prompt}`);\n  console.log(`Duration: ${stepResult.durationMs}ms`);\n\n  if (stepResult.llmOutput) {\n    console.log(`Result: ${stepResult.llmOutput}`);\n  }\n}\n"
     ],
@@ -4190,7 +4188,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "let completedSteps = 0;\nconst totalSteps = 3;\n\nfor await (const stepResult of workflow.stream((step, stepIndex) => {\n  completedSteps++;\n  console.log(`Progress: ${completedSteps}/${totalSteps}`);\n})) {\n  updateProgressBar(completedSteps / totalSteps);\n  displayStepResult(stepResult);\n}\n"
     ],
@@ -4220,7 +4218,7 @@
       "demonstrates:",
       ".stream()"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/streaming.ts\n"
     ],
@@ -4249,7 +4247,7 @@
       "larger",
       "workflows."
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "sub-agent-composition",
     "parentTitle": "Advanced Patterns"
   },
@@ -4276,41 +4274,11 @@
       "block]",
       "demonstrates:"
     ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "npx tsx examples/sub-agents.ts\nnpx tsx examples/composition.ts\n"
     ],
     "anchor": "sub-agentsts-compositionts",
-    "parentTitle": "Examples"
-  },
-  {
-    "id": "Documentation-examples-summitts",
-    "title": "summit.ts",
-    "description": "summit.ts Complete real-world example with multi-step workflow and automatic tool selection. [code block] Demonstrates: End-to-end agent with multiple",
-    "content": "summit.ts Complete real-world example with multi-step workflow and automatic tool selection. [code block] Demonstrates: End-to-end agent with multiple steps, automatic MCP tool discovery and selection View source on GitHub →",
-    "headings": [
-      "summit.ts"
-    ],
-    "path": "/docs/examples#summitts",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "summit.ts",
-      "automatic",
-      "complete",
-      "real-world",
-      "example",
-      "multi-step",
-      "workflow",
-      "selection.",
-      "[code",
-      "block]"
-    ],
-    "lastModified": "2025-10-07T21:08:57.968Z",
-    "codeBlocks": [
-      "npx tsx examples/summit.ts\n"
-    ],
-    "anchor": "summitts",
     "parentTitle": "Examples"
   },
   {
@@ -4335,7 +4303,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  .then({ prompt: \"Classify ticket priority: HIGH, MEDIUM, or LOW\" })\n  .switch((history) => history[0].llmOutput?.toUpperCase().trim() || \"\", {\n    HIGH: (a) => a.then({ mcp: pagerduty, tool: \"create_incident\" }),\n    MEDIUM: (a) => a.then({ mcp: jira, tool: \"create_ticket\" }),\n    LOW: (a) => a.then({ mcp: email, tool: \"queue_for_review\" }),\n    default: (a) => a.then({ prompt: \"Escalate unknown priority\" }),\n  })\n  .run();\n"
     ],
@@ -4361,7 +4329,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "await agent({ llm, timeout: 60 })\n  .then({ prompt: \"Quick check\", timeout: 5 }) // Override to 5s\n  .then({ prompt: \"Next step uses agent default (60s)\" })\n  .run();\n"
     ],
@@ -4392,7 +4360,7 @@
       "independently",
       "invalidation"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "tool-discovery-cache",
     "parentTitle": "MCP Tools"
   },
@@ -4412,7 +4380,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "type ToolDefinition = {\n  name: string;\n  description: string;\n  parameters: any; // JSON Schema\n  mcpHandle?: MCPHandle;\n};\n"
     ],
@@ -4436,7 +4404,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.084Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "Trace: agent-run-abc123\n├── Span: agent.run (parent)\n│   ├── Span: step[0].execute (type: mcp_auto)\n│   │   ├── Span: llm.generate (provider: openai, model: gpt-4o-mini)\n│   │   ├── Span: mcp.discover_tools (endpoint: http://...)\n│   │   └── Span: mcp.call_tool (tool: get_weather)\n│   ├── Span: step[1].execute (type: llm)\n│   │   └── Span: llm.generate (provider: anthropic, model: claude-3-haiku)\n│   └── Span: step[2].execute (type: mcp_explicit)\n│       └── Span: mcp.call_tool (tool: send_notification)\n"
     ],
@@ -4458,7 +4426,7 @@
       "type",
       "reference"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "type-reference",
     "parentTitle": "api"
   },
@@ -4485,7 +4453,7 @@
       "notifications",
       "alerts"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "use-cases",
     "parentTitle": "Features"
   },
@@ -4512,7 +4480,7 @@
       "customer",
       "support"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "use-cases",
     "parentTitle": "Advanced Patterns"
   },
@@ -4539,7 +4507,7 @@
       "content",
       "generation"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "anchor": "use-cases",
     "parentTitle": "Advanced Patterns"
   },
@@ -4562,7 +4530,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.151Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "import { agent } from \"volcano-sdk\";\nimport { llmCustom } from \"./my-custom-provider\";\n\nconst customLLM = llmCustom({\n  apiKey: process.env.CUSTOM_API_KEY!,\n  model: \"my-model-v1\",\n  baseURL: \"https://api.myservice.com/v1\",\n});\n\nconst results = await agent({ llm: customLLM })\n  .then({ prompt: \"Hello from custom provider!\" })\n  .run();\n\nconsole.log(results[0].llmOutput);\n"
     ],
@@ -4584,7 +4552,7 @@
       "utility",
       "functions"
     ],
-    "lastModified": "2025-10-07T21:08:57.953Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "utility-functions",
     "parentTitle": "api"
   },
@@ -4612,7 +4580,7 @@
       "order",
       "you're"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "when-to-use-explicit-calling",
     "parentTitle": "MCP Tools"
   },
@@ -4640,7 +4608,7 @@
       "workflows",
       "needing"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "when-to-use-run",
     "parentTitle": "Features"
   },
@@ -4668,7 +4636,7 @@
       "needing",
       "updates"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "anchor": "when-to-use-streaming",
     "parentTitle": "Features"
   },
@@ -4694,7 +4662,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.115Z",
+    "lastModified": "2025-10-08T14:35:15.747Z",
     "codeBlocks": [
       "await agent({ llm })\n  .while(\n    (history) => {\n      if (history.length === 0) return true;\n      const last = history[history.length - 1];\n      return !last.llmOutput?.includes(\"COMPLETE\");\n    },\n    (a) => a.then({ prompt: \"Process next chunk\", mcps: [database] }),\n    { maxIterations: 10 }\n  )\n  .then({ prompt: \"Generate final summary\" })\n  .run();\n"
     ],
@@ -4721,7 +4689,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:58.068Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "await agent({ llm })\n  .then({\n    mcp: database,\n    tool: \"query_users\",\n    args: { status: \"active\" },\n    prompt: \"Analyze the results and summarize\", // LLM processes tool output\n  })\n  .run();\n"
     ],
@@ -4747,7 +4715,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-07T21:08:57.997Z",
+    "lastModified": "2025-10-08T14:35:15.746Z",
     "codeBlocks": [
       "const results = await agent({ llm })\n  .then({ prompt: \"Step 1\" })\n  .then({ prompt: \"Step 2\" })\n  .then({ prompt: \"Step 3\" })\n  .run((stepResult, stepIndex) => {\n    console.log(`Step ${stepIndex + 1} completed`);\n    console.log(`Duration: ${stepResult.durationMs}ms`);\n    console.log(`Output: ${stepResult.llmOutput}`);\n  });\n\n// Callback is called for each step as it completes\n// Final results array is returned when all steps finish\n"
     ],
