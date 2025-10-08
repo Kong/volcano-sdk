@@ -133,7 +133,7 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
                       key={item.href}
                       title={item.title}
                       href={item.href}
-                      icon={item.icon}
+                      // icon={item.icon}
                       isActive={isActive}
                       onPreserveScroll={handleItemClick}
                     />

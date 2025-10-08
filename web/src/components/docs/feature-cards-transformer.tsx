@@ -4,10 +4,10 @@ import { FeatureCard } from "@/components/ui/feature-card";
 
 // Map feature titles to their corresponding docs pages
 const featureLinkMap: Record<string, string> = {
-  "Chainable API": "/docs#quick-start",
+  "Chainable API": "/docs/api#agent",
   "Automatic Tool Selection": "/docs/mcp-tools#automatic-tool-selection",
   "100s of Models": "/docs/providers",
-  "TypeScript-First": "/docs#quick-start",
+  "TypeScript-First": "/docs/api#type-reference",
   "Advanced Patterns": "/docs/patterns",
   "Retries & Timeouts": "/docs/features#retries--timeouts",
   "Streaming Workflows": "/docs/features#stream-method",

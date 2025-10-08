@@ -1,12 +1,11 @@
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 interface SidebarItemProps {
   title: string;
   href: string;
-  icon: LucideIcon;
+  // icon: LucideIcon;
   isActive: boolean;
   onPreserveScroll: () => void;
 }
@@ -14,7 +13,7 @@ interface SidebarItemProps {
 export function SidebarItem({
   title,
   href,
-  icon: Icon,
+  // icon: Icon,
   isActive,
   onPreserveScroll,
 }: SidebarItemProps) {
@@ -152,7 +151,7 @@ export function SidebarItem({
         )}
         onClick={handleClick}
       >
-        <Icon className="h-4 w-4" />
+        {/* <Icon className="h-4 w-4" /> */}
         {title}
       </button>
     </li>
