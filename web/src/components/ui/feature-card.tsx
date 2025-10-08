@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
 
 interface FeatureCardProps {
   icon?: string;
@@ -31,18 +30,34 @@ export function FeatureCard({
     </>
   );
 
-  if (href) {
-    // Parse href to extract path and hash
-    const [path, hash] = href.split("#");
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (href) {
+      e.preventDefault();
+      const [path, hash] = href.split("#");
 
+      // Use TanStack Router's client-side navigation
+      window.history.pushState({}, "", href);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+
+      // Scroll to hash if present
+      if (hash) {
+        setTimeout(() => {
+          const element = document.getElementById(hash);
+          element?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  };
+
+  if (href) {
     return (
-      <Link
-        to={path}
-        hash={hash}
+      <a
+        href={href}
+        onClick={handleClick}
         className={`border-2 p-6 ${gradientClass} hover:border-color-primary flex h-full cursor-pointer flex-col no-underline transition-all`}
       >
         {content}
-      </Link>
+      </a>
     );
   }
 
