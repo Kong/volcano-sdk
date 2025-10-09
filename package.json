@@ -1,7 +1,8 @@
 {
   "name": "volcano-sdk",
-  "version": "0.1.0",
-  "description": "Tiny SDK to chain LLM calls and MCP (streamable HTTP) tool calls.",
+  "version": "1.0.0",
+  "description": "Build AI agents that seamlessly combine LLM reasoning with real-world actions via MCP tools — in just a few lines of TypeScript.",
+  "author": "Kong <office@konghq.com>",
   "type": "module",
   "license": "Apache-2.0",
   "repository": {
@@ -86,7 +87,6 @@
     "ai",
     "volcano"
   ],
-  "author": "Marco Palladino <marco@konghq.com>",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
     "ajv": "^8.17.1",
