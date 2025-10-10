@@ -27,7 +27,7 @@ Volcano SDK is a TypeScript framework for building AI agents that:
 ## Installation
 
 ```bash
-npm install volcano-ai
+npm install volcano-sdk
 ```
 
 Requires Node.js 18.17 or later.

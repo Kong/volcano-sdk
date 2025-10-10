@@ -115,7 +115,7 @@ export function Hero() {
               </Link>
               <div className="bg-terminal inline-flex w-fit items-center justify-between gap-2 border-2 border-black px-3 py-3 text-sm font-light text-white sm:text-base">
                 <div className="flex w-fit items-center gap-2">
-                  $ npm i <span className="text-color-primary">volcano-ai</span>
+                  $ npm i <span className="text-color-primary">volcano-sdk</span>
                 </div>
                 <button
                   className="text-color-primary cursor-pointer pl-2 transition-opacity hover:opacity-60"

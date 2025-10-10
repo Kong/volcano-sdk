@@ -23,7 +23,7 @@ function InstallationPage() {
 
           <h2>Package Installation</h2>
           <CodeBlock language="bash" title="Install Volcano SDK">
-            {`npm install volcano-ai`}
+            {`npm install volcano-sdk`}
           </CodeBlock>
 
           <h2>Requirements</h2>
