@@ -6,23 +6,10 @@ import {
   parseSearchQuery,
   scoreBoosts,
   searchLimits,
+  type SearchDocument,
 } from "./search-config";
 
-export interface SearchDocument {
-  id: string;
-  title: string;
-  description?: string;
-  content: string;
-  headings: string[];
-  path: string;
-  section?: string;
-  type?: string;
-  keywords?: string[];
-  lastModified?: string;
-  popularity?: number;
-  anchor?: string;
-  parentTitle?: string;
-}
+export type { SearchDocument };
 
 export interface SearchResult extends FuseResult<SearchDocument> {
   adjustedScore?: number;

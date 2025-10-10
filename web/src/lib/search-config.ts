@@ -1,13 +1,20 @@
 import type { IFuseOptions } from "fuse.js";
 
-// Generic document type for search
-interface SearchDocument {
+// Document type for search - must match SearchDocument in search-service.ts
+export interface SearchDocument {
+  id: string;
   title: string;
-  headings?: string[];
   description?: string;
-  content?: string;
+  content: string;
+  headings: string[];
+  path: string;
+  section?: string;
+  type?: string;
   keywords?: string[];
-  [key: string]: unknown;
+  lastModified?: string;
+  popularity?: number;
+  anchor?: string;
+  parentTitle?: string;
 }
 
 // Synonym mappings for common terms
@@ -51,7 +58,7 @@ export const searchConfig: IFuseOptions<SearchDocument> = {
   ignoreFieldNorm: false,
   fieldNormWeight: 1,
   // Fuzzy matching configuration
-  getFn: (obj: SearchDocument, path: string | string[]) => {
+  getFn: (obj: SearchDocument, path: string | string[]): string | readonly string[] => {
     const pathArray = typeof path === "string" ? [path] : path;
     const value = pathArray.reduce<unknown>(
       (currentObj: unknown, key: string) => {
@@ -70,7 +77,10 @@ export const searchConfig: IFuseOptions<SearchDocument> = {
         .replace(/\s+/g, " ") // Normalize whitespace
         .trim();
     }
-    return value;
+    if (Array.isArray(value)) {
+      return value.map(v => String(v));
+    }
+    return "";
   },
 };
 

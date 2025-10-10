@@ -6,7 +6,7 @@ interface CodeProps {
   children?: ReactNode;
 }
 
-interface PreProps extends CodeProps {
+interface PreProps {
   children?: {
     props?: {
       children?: string;
