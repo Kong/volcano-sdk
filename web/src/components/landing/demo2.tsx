@@ -136,7 +136,7 @@ function Demo2() {
               What's happening
             </div>
             <div className="relative flex flex-col gap-4">
-              <div className="group relative flex items-start gap-4 border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+              <div className="group relative flex items-start gap-4 border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
                 <div className="flex flex-col p-5 gap-3 w-full">
                   <div className="flex items-start gap-4">
                     <div className="bg-btn-primary relative z-10 flex h-11 w-11 flex-shrink-0 items-center justify-center text-lg font-bold text-white shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md">
@@ -152,7 +152,7 @@ function Demo2() {
                 </div>
               </div>
 
-              <div className="group relative flex items-start gap-4 border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+              <div className="group relative flex items-start gap-4 border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
                 <div className="flex flex-col p-5 gap-3 w-full">
                   <div className="flex items-start gap-4">
                     <div className="bg-btn-primary relative z-10 flex h-11 w-11 flex-shrink-0 items-center justify-center text-lg font-bold text-white shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md">
@@ -168,7 +168,7 @@ function Demo2() {
                 </div>
               </div>
 
-              <div className="group relative flex items-start gap-4 border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+              <div className="group relative flex items-start gap-4 border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
                 <div className="flex flex-col p-5 gap-3 w-full">
                   <div className="flex items-start gap-4">
                     <div className="bg-btn-primary relative z-10 flex h-11 w-11 flex-shrink-0 items-center justify-center text-lg font-bold text-white shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md">
@@ -184,7 +184,7 @@ function Demo2() {
                 </div>
               </div>
 
-              <div className="group relative flex items-start gap-4 border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+              <div className="group relative flex items-start gap-4 border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
                 <div className="flex flex-col p-5 gap-3 w-full">
                   <div className="flex items-start gap-4">
                     <div className="bg-btn-primary relative z-10 flex h-11 w-11 flex-shrink-0 items-center justify-center text-lg font-bold text-white shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md">

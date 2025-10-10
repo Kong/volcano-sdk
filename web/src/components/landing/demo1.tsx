@@ -154,7 +154,7 @@ function Demo1() {
             Advanced Patterns
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="group flex flex-col border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Rows3 className="text-color-primary h-8 w-8" />
@@ -175,7 +175,7 @@ function Demo1() {
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Split className="text-color-primary h-8 w-8" />
@@ -196,7 +196,7 @@ function Demo1() {
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Repeat2 className="text-color-primary h-8 w-8" />
@@ -217,7 +217,7 @@ function Demo1() {
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Bot className="text-color-primary h-8 w-8" />
@@ -237,7 +237,7 @@ function Demo1() {
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black  hover:outline-2  hover:outline-offset-[-2px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Radio className="text-color-primary h-8 w-8" />
