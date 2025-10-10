@@ -150,86 +150,120 @@ function Demo1() {
         </div>
 
         <div className="w-full xl:w-auto xl:flex-shrink-0">
-          <div className="font-space-mono pb-4 text-lg font-bold sm:text-2xl xl:pb-8">
+          <div className="font-space-mono pb-6 text-lg font-bold sm:text-2xl xl:pb-8">
             Advanced Patterns
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div className="flex items-start gap-2">
-              <Rows3 className="text-color-primary h-8 w-8" />
-              <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-lg">
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <code>.parallel()</code>
-                  </span>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="group flex flex-col border-1 border-black transition-all hover:border-[#FF572D]/40">
+              <div className="p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Rows3 className="text-color-primary h-8 w-8" />
+                  <code className="text-base font-semibold sm:text-lg">
+                    .parallel()
+                  </code>
+                </div>
+                <p className="text-sm text-slate-600 sm:text-base">
+                  Execute multiple LLM calls simultaneously for faster processing
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
-                  Run steps simultaneously
-                </p>
+              </div>
+              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
+                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">parallel</span>([<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Analyze sentiment" }'},<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Extract entities" }'}<br />
+                &nbsp;&nbsp;]).<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
-              <Split className="text-color-primary h-8 w-8" />
-              <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-lg">
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <code>.branch()/.switch()</code>
-                  </span>
+            <div className="group flex flex-col border-1 border-black transition-all hover:border-[#FF572D]/40">
+              <div className="p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Split className="text-color-primary h-8 w-8" />
+                  <code className="text-base font-semibold sm:text-lg">
+                    .branch()
+                  </code>
+                </div>
+                <p className="text-sm text-slate-600 sm:text-base">
+                  Route workflow based on conditions or LLM decisions
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
-                  Conditional routing
-                </p>
+              </div>
+              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
+                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">branch</span>(state =&gt; [<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;state.positive,<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Respond positive" }'}<br />
+                &nbsp;&nbsp;]).<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
-              <Repeat2 className="text-color-primary h-8 w-8" />
-              <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-lg">
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <code>.while()/.forEach</code>
-                  </span>
+            <div className="group flex flex-col border-1 border-black transition-all hover:border-[#FF572D]/40">
+              <div className="p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Repeat2 className="text-color-primary h-8 w-8" />
+                  <code className="text-base font-semibold sm:text-lg">
+                    .while()
+                  </code>
+                </div>
+                <p className="text-sm text-slate-600 sm:text-base">
+                  Iterate until condition met or loop through arrays of data
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
-                  Loop constructs
-                </p>
+              </div>
+              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
+                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">while</span>(<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;state =&gt; !state.done,<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Process item" }'}<br />
+                &nbsp;&nbsp;).<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
-              <Bot className="text-color-primary h-8 w-8" />
-              <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-lg">
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <code>.runAgent()</code>
-                  </span>
+            <div className="group flex flex-col border-1 border-black transition-all hover:border-[#FF572D]/40">
+              <div className="p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Bot className="text-color-primary h-8 w-8" />
+                  <code className="text-base font-semibold sm:text-lg">
+                    .runAgent()
+                  </code>
+                </div>
+                <p className="text-sm text-slate-600 sm:text-base">
+                  Compose complex workflows by nesting and reusing agents
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
-                  Compose sub-agents
-                </p>
+              </div>
+              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
+                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">runAgent</span>(summaryAgent)<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">then</span>({'{ prompt: "Analyze" }'})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
-              <Radio className="text-color-primary h-8 w-8" />
-              <div className="flex flex-col items-start">
-                <p className="flex items-start gap-2 text-sm sm:text-lg">
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <code>.stream()</code>
-                  </span>
+            <div className="group flex flex-col border-1 border-black transition-all hover:border-[#FF572D]/40">
+              <div className="p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Radio className="text-color-primary h-8 w-8" />
+                  <code className="text-base font-semibold sm:text-lg">
+                    .stream()
+                  </code>
+                </div>
+                <p className="text-sm text-slate-600 sm:text-base">
+                  Get real-time results as each step completes in the workflow
                 </p>
-                <p className="py-1 pl-3 text-sm text-slate-600 sm:text-lg">
-                  Real-time step results
-                </p>
+              </div>
+              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
+                <span className="text-purple-600">for await</span> (<span className="text-purple-600">const</span> step <span className="text-purple-600">of</span><br />
+                &nbsp;&nbsp;<span className="text-blue-600">agent</span>({'{ llm }'}).<span className="text-blue-600">then</span>(...).<span className="text-blue-600">stream</span>()<br />
+                ) {'{'}<br />
+                &nbsp;&nbsp;console.<span className="text-blue-600">log</span>(step)<br />
+                {'}'}
               </div>
             </div>
           </div>
           <Link
             to="/docs/patterns"
-            className="text-color-primary flex items-center gap-2 py-4 text-base font-medium sm:text-xl"
+            className="text-color-primary group mt-6 inline-flex items-center gap-2 text-base font-medium sm:text-xl"
           >
             Explore Advanced Patterns
-            <ChevronRight />
+            <ChevronRight className="transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
       </div>
