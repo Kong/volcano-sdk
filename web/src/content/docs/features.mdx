@@ -1,13 +1,12 @@
 ---
-title: Features
-description: Core features for building AI agents - execution methods, streaming, retries, timeouts, hooks, error handling, and MCP tool integration.
+title: "Features - Volcano SDK"
 ---
 
 # Features
 
 Core features for building AI agents: execution methods, streaming, retries, timeouts, hooks, error handling, and MCP tool integration.
 
-## run() Method
+## run() Method {#run}
 
 Execute the complete agent workflow and return all step results at once.
 
@@ -78,7 +77,7 @@ type StepResult = {
 - APIs returning complete responses
 - Testing and debugging (inspect all steps together)
 
-## stream() Method
+## stream() Method {#streaming}
 
 Stream step results in real-time as they complete using the `stream()` method.
 
@@ -88,6 +87,7 @@ for await (const stepResult of agent({ llm })
   .then({ prompt: "Generate insights" })
   .then({ prompt: "Create recommendations" })
   .stream()) {
+
   console.log(`Step completed: ${stepResult.prompt}`);
   console.log(`Duration: ${stepResult.durationMs}ms`);
 
@@ -114,14 +114,23 @@ for await (const stepResult of workflow.stream((step, stepIndex) => {
 
 ### When to Use Streaming
 
-| Use `stream()` for:                           | Use `run()` for:                  |
-| --------------------------------------------- | --------------------------------- |
-| Interactive applications needing live updates | Batch processing                  |
-| Long-running workflows (>5 seconds)           | Simple scripts                    |
-| Real-time dashboards                          | Analysis workflows                |
-| WebSocket/SSE applications                    | APIs returning complete responses |
-| Memory-sensitive environments                 | Testing and debugging             |
-| Early termination scenarios                   | When you need aggregated metrics  |
+#### Use `stream()` for:
+
+- Interactive applications needing live updates
+- Long-running workflows (>5 seconds)
+- Real-time dashboards
+- WebSocket/SSE applications
+- Memory-sensitive environments
+- Early termination scenarios
+
+#### Use `run()` for:
+
+- Batch processing
+- Simple scripts
+- Analysis workflows
+- APIs returning complete responses
+- Testing and debugging
+- When you need aggregated metrics
 
 ### Characteristics
 
@@ -130,7 +139,7 @@ for await (const stepResult of workflow.stream((step, stepIndex) => {
 - **Progressive display:** Results appear as they complete
 - **Same execution model:** Retries, timeouts, and validation work identically to `run()`
 
-## Retries & Timeouts
+## Retries & Timeouts {#retries}
 
 ### Timeouts
 
@@ -138,7 +147,7 @@ Set per-step or global timeouts (in seconds):
 
 ```typescript
 await agent({ llm, timeout: 60 })
-  .then({ prompt: "Quick check", timeout: 5 }) // Override to 5s
+  .then({ prompt: "Quick check", timeout: 5 })  // Override to 5s
   .then({ prompt: "Next step uses agent default (60s)" })
   .run();
 ```
@@ -192,7 +201,7 @@ await agent({ llm, retry: { delay: 20 } })
 - On retry exhaustion, the last error is thrown
 - You cannot set both `delay` and `backoff`
 
-## Step Hooks
+## Step Hooks {#hooks}
 
 Add `pre` and `post` hooks for fine-grained control over execution flow:
 
@@ -201,22 +210,13 @@ await agent({ llm })
   .then({
     prompt: "Analyze the user data",
     mcps: [analytics],
-    pre: () => {
-      console.log("Starting analysis...");
-    },
-    post: () => {
-      console.log("Analysis complete!");
-    },
+    pre: () => { console.log("Starting analysis..."); },
+    post: () => { console.log("Analysis complete!"); }
   })
   .then({
     prompt: "Generate report",
-    pre: () => {
-      startTimer();
-    },
-    post: () => {
-      endTimer();
-      saveMetrics();
-    },
+    pre: () => { startTimer(); },
+    post: () => { endTimer(); saveMetrics(); }
   })
   .run((step, stepIndex) => {
     console.log(`Step ${stepIndex + 1} finished`);
@@ -237,9 +237,7 @@ await agent({ llm })
 - Hooks execute on **every retry attempt** (pre) or **only on success** (post)
 - Hooks have access to **closure variables** for state management
 
-:::warning[Note]
-Hook errors are caught and logged but do not fail the step. Pre-hooks execute on every retry attempt. Post-hooks execute only on successful completion.
-:::
+**Note:** Hook errors are caught and logged but do not fail the step. Pre-hooks execute on every retry attempt. Post-hooks execute only on successful completion.
 
 ### Use Cases
 
@@ -249,21 +247,21 @@ Hook errors are caught and logged but do not fail the step. Pre-hooks execute on
 - Notifications and alerts
 - Metrics collection
 
-## Error Handling
+## Error Handling {#errors}
 
 Volcano surfaces typed errors with rich metadata for easy debugging.
 
 ### Error Types
 
-| Error Type              | Description                         |
-| ----------------------- | ----------------------------------- |
+| Error Type | Description |
+|------------|-------------|
 | `AgentConcurrencyError` | run() called twice on same instance |
-| `TimeoutError`          | Step exceeded timeout limit         |
-| `ValidationError`       | Tool args failed schema validation  |
-| `RetryExhaustedError`   | Final failure after all retries     |
-| `LLMError`              | LLM provider error                  |
-| `MCPToolError`          | MCP tool execution error            |
-| `MCPConnectionError`    | MCP connection error                |
+| `TimeoutError` | Step exceeded timeout limit |
+| `ValidationError` | Tool args failed schema validation |
+| `RetryExhaustedError` | Final failure after all retries |
+| `LLMError` | LLM provider error |
+| `MCPToolError` | MCP tool execution error |
+| `MCPConnectionError` | MCP connection error |
 
 ### Error Metadata
 
@@ -272,18 +270,18 @@ All Volcano errors include metadata for debugging:
 ```typescript
 try {
   await agent({ llm, retry: { backoff: 2, retries: 4 }, timeout: 30 })
-    .then({ prompt: "auto", mcps: [mcp("http://localhost:3211/mcp")] })
+    .then({ prompt: 'auto', mcps: [mcp('http://localhost:3211/mcp')] })
     .run();
 } catch (err) {
-  if (err && typeof err === "object" && "meta" in err) {
+  if (err && typeof err === 'object' && 'meta' in err) {
     const e = err as VolcanoError;
 
     console.error(e.name, e.message);
-    console.error("Metadata:", {
-      stepId: e.meta.stepId, // 0-based step index
-      provider: e.meta.provider, // llm:openai or mcp:localhost
-      requestId: e.meta.requestId, // Upstream request ID
-      retryable: e.meta.retryable, // Should retry?
+    console.error('Metadata:', {
+      stepId: e.meta.stepId,        // 0-based step index
+      provider: e.meta.provider,     // llm:openai or mcp:localhost
+      requestId: e.meta.requestId,   // Upstream request ID
+      retryable: e.meta.retryable    // Should retry?
     });
 
     if (e.meta?.retryable) {

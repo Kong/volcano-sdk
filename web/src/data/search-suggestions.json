@@ -7,26 +7,24 @@
       "description": "Get started with Volcano SDK in minutes"
     },
     {
-      "label": "Api",
+      "label": "API Reference - Volcano SDK",
       "query": "api",
       "path": "/docs/api"
     },
     {
-      "label": "Features",
+      "label": "Features - Volcano SDK",
       "query": "features",
-      "path": "/docs/features",
-      "description": "Core features for building AI agents - execution methods, streaming, retries, timeouts, hooks, error handling, and MCP tool integration."
+      "path": "/docs/features"
     },
     {
-      "label": "Providers",
+      "label": "LLM Providers - Volcano SDK",
       "query": "providers",
       "path": "/docs/providers"
     },
     {
-      "label": "MCP Tools",
+      "label": "MCP Tools - Volcano SDK",
       "query": "mcp-tools",
-      "path": "/docs/mcp-tools",
-      "description": "The Model Context Protocol (MCP) enables AI agents to securely interact with external tools and data sources. Volcano SDK provides first-class MCP integration with automatic tool discovery, selection, and authentication."
+      "path": "/docs/mcp-tools"
     }
   ],
   "popular": [

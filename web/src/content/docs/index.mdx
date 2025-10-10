@@ -1,60 +1,62 @@
-# Volcano SDK 🌋
+---
+title: "Volcano SDK - Build MCP-powered AI Agents"
+---
+
+# Volcano SDK 🌋 {#introduction}
 
 A TypeScript SDK for building AI agents that combine LLM reasoning with real-world actions via MCP tools.
 
-> **Design Philosophy:** Volcano provides a fluent, chainable API that scales from simple single-step agents to complex multi-provider workflows with parallel execution, retries, and streaming.
+**Design Philosophy:** Volcano provides a fluent, chainable API that scales from simple single-step agents to complex multi-provider workflows with parallel execution, retries, and streaming.
 
-## Key Features
-
-### ⚡️ Chainable API
+### Chainable API {#chainable-api}
 
 Chain steps with `.then()` and `.run()`. Promise-like syntax for building multi-step workflows.
 
-### ✨ Automatic Tool Selection
+### Automatic Tool Selection {#automatic-tool-selection}
 
 LLM automatically selects and calls appropriate MCP tools based on the prompt. No manual routing required.
 
-### 🔧 100s of Models
+### 100s of Models {#100s-of-models}
 
 OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-step or use globally.
 
-### 🛡️ TypeScript-First
+### TypeScript-First {#typescript-first}
 
 Full TypeScript support with type inference and IntelliSense for all APIs.
 
-### 🔄 Advanced Patterns
+### Advanced Patterns {#advanced-patterns}
 
 Parallel execution, conditional branching, loops, and sub-agent composition for complex workflows.
 
-### ⏱️ Retries & Timeouts
+### Retries & Timeouts {#retries-timeouts}
 
 Three retry strategies: immediate, delayed, and exponential backoff. Per-step timeout configuration.
 
-### 📡 Streaming Workflows
+### Streaming Workflows {#streaming-workflows}
 
 Stream step results as they complete using async generators. Perfect for real-time UIs and long-running tasks.
 
-### 🎯 MCP Integration
+### MCP Integration {#mcp-integration}
 
 Native Model Context Protocol support with connection pooling, tool discovery, and authentication.
 
-### 🧩 Sub-Agent Composition
+### Sub-Agent Composition {#sub-agent-composition}
 
 Build reusable agent components and compose them into larger workflows. Modular and testable.
 
-### 📊 OpenTelemetry Observability
+### OpenTelemetry Observability {#opentelemetry-observability}
 
 Production-ready distributed tracing and metrics. Monitor performance, debug failures. Export to Jaeger, Prometheus, DataDog, NewRelic.
 
-### 🔐 MCP OAuth Authentication
+### MCP OAuth Authentication {#mcp-oauth-authentication}
 
 OAuth 2.1 and Bearer token authentication per MCP specification. Agent-level or handle-level configuration with automatic token refresh.
 
-### ⚡ Performance Optimized
+### Performance Optimized {#performance-optimized}
 
 Intelligent connection pooling for MCP servers, tool discovery caching with TTL, and JSON schema validation for reliability.
 
-## Installation
+## Installation {#installation}
 
 Install Volcano SDK - everything you need for OpenAI, Anthropic, Mistral, Llama, and Google Vertex providers:
 
@@ -64,7 +66,7 @@ npm install volcano-sdk
 
 That's it! The core SDK includes MCP support and all common LLM providers.
 
-### Optional Provider Dependencies
+### Optional Provider Dependencies {#optional-provider-dependencies}
 
 For provider-specific features, install additional packages:
 
@@ -76,7 +78,7 @@ npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 npm install @azure/identity
 ```
 
-### Optional Observability
+### Optional Observability {#optional-observability}
 
 For production observability with OpenTelemetry:
 
@@ -87,13 +89,13 @@ npm install @opentelemetry/sdk-node
 npm install @opentelemetry/exporter-trace-otlp-http
 ```
 
-See the [Observability guide](/docs/observability) for complete setup and backend configuration.
+See the [Observability guide](observability) for complete setup and backend configuration.
 
-> ✓ **Requirements:** Node.js 18.17 or later
+**Requirements:** Node.js 18.17 or later
 
-## Quick Start
+## Quick Start {#quick-start}
 
-### Hello World
+### Hello World {#hello-world}
 
 The simplest possible agent with a single LLM step:
 
@@ -102,7 +104,7 @@ import { agent, llmOpenAI } from "volcano-sdk";
 
 const llm = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini",
+  model: "gpt-4o-mini"
 });
 
 const results = await agent({ llm })
@@ -113,7 +115,7 @@ console.log(results[0].llmOutput);
 // Output: "Hello Marco! Hope you're having a great day!"
 ```
 
-### Two-Step Agent with MCP Tools
+### Two-Step Agent with MCP Tools {#two-step-agent-with-mcp-tools}
 
 Automatically discover and use MCP tools across multiple steps:
 
@@ -122,7 +124,7 @@ import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
 const llm = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini",
+  model: "gpt-4o-mini"
 });
 
 const astro = mcp("http://localhost:3211/mcp");
@@ -130,10 +132,10 @@ const astro = mcp("http://localhost:3211/mcp");
 const steps = await agent({ llm })
   .then({
     prompt: "Determine the astrological sign for 1993-07-11.",
-    mcps: [astro], // Automatic tool selection
+    mcps: [astro]  // Automatic tool selection
   })
   .then({
-    prompt: "Write a one-line fortune for that sign.",
+    prompt: "Write a one-line fortune for that sign."
     // Context from previous step is automatically included
   })
   .run();
@@ -142,7 +144,7 @@ console.log(steps[0].toolCalls); // Tools that were called
 console.log(steps[1].llmOutput); // Fortune based on the sign
 ```
 
-### Multi-Provider Workflow
+### Multi-Provider Workflow {#multi-provider-workflow}
 
 Use different LLM providers for different steps in the same workflow:
 
@@ -151,15 +153,15 @@ import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
 
 const openai = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini",
+  model: "gpt-4o-mini"
 });
 const claude = llmAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
-  model: "claude-3-5-haiku-20241022",
+  model: "claude-3-5-haiku-20241022"
 });
 const mistral = llmMistral({
   apiKey: process.env.MISTRAL_API_KEY!,
-  model: "mistral-small-latest",
+  model: "mistral-small-latest"
 });
 
 const results = await agent()
@@ -171,32 +173,35 @@ const results = await agent()
 // Each step uses a different provider. Context flows automatically.
 ```
 
-### Next Steps
+### Next Steps {#next-steps}
 
-- Explore [LLM Providers](/docs/providers) for configuration options
-- Learn [Advanced Patterns](/docs/patterns) for complex workflows
-- Discover [Features](/docs/features) like streaming and error handling
-- Check the [API Reference](/docs/api) for complete documentation
+- Explore [LLM Providers](providers) for configuration options
+- Learn [Advanced Patterns](patterns) for complex workflows
+- Discover [Features](features) like streaming and error handling
+- Check the [API Reference](api) for complete documentation
 
-## Use Cases
+## Use Cases {#use-cases}
 
 Volcano SDK excels in scenarios that require LLM reasoning combined with real-world actions:
 
-### Customer Support Automation
+### Customer Support Automation {#customer-support-automation}
 
 Build agents that analyze support tickets, look up customer data via MCP tools, and generate personalized responses across multiple LLMs for quality.
 
 ```typescript
 await agent({ llm: gpt4 })
   .then({ prompt: "Classify ticket urgency", mcps: [ticketing] })
-  .branch((h) => h[0].llmOutput?.includes("URGENT"), {
-    true: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
-    false: (a) => a.then({ llm: claude, prompt: "Draft response" }),
-  })
+  .branch(
+    (h) => h[0].llmOutput?.includes("URGENT"),
+    {
+      true: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+      false: (a) => a.then({ llm: claude, prompt: "Draft response" })
+    }
+  )
   .run();
 ```
 
-### Content Moderation Pipeline
+### Content Moderation Pipeline {#content-moderation-pipeline}
 
 Analyze content in parallel (sentiment, topics, violations), then route based on results with conditional branching.
 
@@ -205,22 +210,19 @@ await agent({ llm })
   .parallel({
     sentiment: { prompt: "Analyze sentiment" },
     topics: { prompt: "Extract topics" },
-    violations: { prompt: "Check policy violations" },
+    violations: { prompt: "Check policy violations" }
   })
   .switch(
-    (h) =>
-      h[0].parallel?.violations.llmOutput?.includes("VIOLATION")
-        ? "flag"
-        : "approve",
+    (h) => h[0].parallel?.violations.llmOutput?.includes("VIOLATION") ? "flag" : "approve",
     {
       flag: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
-      approve: (a) => a.then({ mcp: cms, tool: "publish" }),
+      approve: (a) => a.then({ mcp: cms, tool: "publish" })
     }
   )
   .run();
 ```
 
-### Data Processing Workflows
+### Data Processing Workflows {#data-processing-workflows}
 
 Process large datasets with loops, use local Llama for preprocessing, then GPT-4 for final analysis.
 
@@ -233,7 +235,7 @@ await agent()
   .run();
 ```
 
-### Multi-Step Research Agent
+### Multi-Step Research Agent {#multi-step-research-agent}
 
 Use MCP tools to gather data, multiple LLMs for analysis, and streaming for real-time updates.
 
@@ -243,30 +245,31 @@ for await (const step of agent({ llm: gpt4 })
   .then({ llm: claude, prompt: "Analyze findings" })
   .then({ llm: mistral, prompt: "Write comprehensive report" })
   .stream()) {
+
   updateUI(step); // Real-time progress
 }
 ```
 
-## Volcano vs Others
+## Volcano vs Others {#comparison}
 
 Factual comparison with other AI frameworks:
 
-| Feature                      | Volcano SDK                                              | AI SDK                | LangChain             |
-| ---------------------------- | -------------------------------------------------------- | --------------------- | --------------------- |
-| **API Style**                | Fluent, chainable `.then()`                              | Function-based        | Class-based chains    |
-| **MCP Integration**          | Native, first-class                                      | Via custom tools      | Via custom tools      |
-| **Multi-Provider Workflows** | Built-in, per-step LLM switching                         | Manual configuration  | Supported via chains  |
-| **Advanced Patterns**        | Parallel, branching, loops, sub-agents                   | Manual implementation | Via agents framework  |
-| **Retry Strategies**         | 3 modes: immediate, delayed, exponential                 | Basic retry           | Via callbacks         |
-| **Streaming**                | `stream()` method (async generator)                      | `streamText()`        | Via callbacks         |
-| **Type Safety**              | Full TypeScript with inference                           | Full TypeScript       | TypeScript available  |
-| **Error Handling**           | Typed errors with metadata (stepId, provider, retryable) | Standard errors       | Custom error handlers |
-| **Context Management**       | Automatic with tunable limits                            | Manual memory         | Built-in memory       |
-| **Step Hooks**               | Pre/post hooks per step                                  | Not available         | Via callbacks         |
-| **Connection Pooling**       | Automatic for MCP                                        | N/A                   | Manual                |
-| **Bundle Size**              | Minimal (peer deps only)                                 | Minimal               | Large (~500KB+)       |
+| Feature | Volcano SDK | AI SDK | LangChain |
+|---------|-------------|--------|-----------|
+| **API Style** | Fluent, chainable `.then()` | Function-based | Class-based chains |
+| **MCP Integration** | Native, first-class | Via custom tools | Via custom tools |
+| **Multi-Provider Workflows** | Built-in, per-step LLM switching | Manual configuration | Supported via chains |
+| **Advanced Patterns** | Parallel, branching, loops, sub-agents | Manual implementation | Via agents framework |
+| **Retry Strategies** | 3 modes: immediate, delayed, exponential | Basic retry | Via callbacks |
+| **Streaming** | `stream()` method (async generator) | `streamText()` | Via callbacks |
+| **Type Safety** | Full TypeScript with inference | Full TypeScript | TypeScript available |
+| **Error Handling** | Typed errors with metadata (stepId, provider, retryable) | Standard errors | Custom error handlers |
+| **Context Management** | Automatic with tunable limits | Manual memory | Built-in memory |
+| **Step Hooks** | Pre/post hooks per step | Not available | Via callbacks |
+| **Connection Pooling** | Automatic for MCP | N/A | Manual |
+| **Bundle Size** | Minimal (peer deps only) | Minimal | Large (~500KB+) |
 
-### When to Choose Volcano
+### When to Choose Volcano {#when-to-choose-volcano}
 
 - **MCP-first applications:** Native support for Model Context Protocol
 - **Multi-provider workflows:** Need to mix different LLMs in one workflow
@@ -274,26 +277,26 @@ Factual comparison with other AI frameworks:
 - **Production reliability:** Need retries, timeouts, and error metadata
 - **TypeScript projects:** Want excellent type inference and IntelliSense
 
-## Core Concepts
+## Core Concepts {#core-concepts}
 
-### Agents
+### Agents {#agents}
 
 An agent is a workflow builder that chains together steps. Each step can call an LLM, execute MCP tools, or both. Create an agent with `agent()`:
 
 ```typescript
 const myAgent = agent({
-  llm, // Default LLM provider (OpenAI, Claude, etc.)
-  instructions: "...", // Global system instructions for ALL steps
-  timeout: 60, // Default timeout in seconds (prevents hanging)
-  retry: { retries: 3 }, // Retry configuration (automatic failure recovery)
-  contextMaxChars: 20480, // Context size limit (prevent token overflow)
-  contextMaxToolResults: 8, // How many tool results to keep in context
+  llm,                        // Default LLM provider (OpenAI, Claude, etc.)
+  instructions: "...",        // Global system instructions for ALL steps
+  timeout: 60,                // Default timeout in seconds (prevents hanging)
+  retry: { retries: 3 },      // Retry configuration (automatic failure recovery)
+  contextMaxChars: 20480,     // Context size limit (prevent token overflow)
+  contextMaxToolResults: 8    // How many tool results to keep in context
 });
 ```
 
-> **Note:** All options are optional. The minimal configuration is `agent({ llm })`.
+**Note:** All options are optional. The minimal configuration is `agent({ llm })`.
 
-### Steps
+### Steps {#steps}
 
 Each step in a workflow can perform one or more of the following:
 
@@ -303,7 +306,7 @@ Each step in a workflow can perform one or more of the following:
 - **Access context** from previous steps automatically
 - **Execute hooks** before or after execution
 
-### Context & History
+### Context & History {#context-history}
 
 Each step automatically receives context from previous steps. This includes:
 
@@ -317,14 +320,14 @@ Use `resetHistory()` to clear context:
 await agent({ llm })
   .then({ prompt: "Analyze this document..." })
   .then({ prompt: "What were the key points?" }) // Has context from step 1
-  .resetHistory() // 🧹 Clear all context
+  .resetHistory()  // 🧹 Clear all context
   .then({ prompt: "Now analyze this OTHER document..." }) // Fresh start
   .run();
 ```
 
-> 💡 **Note:** Use `resetHistory()` in long workflows to prevent context from growing too large. Each agent instance maintains its own history.
+**Note:** Use `resetHistory()` in long workflows to prevent context from growing too large. Each agent instance maintains its own history.
 
-### Multi-Provider Workflows
+### Multi-Provider Workflows {#multi-provider-workflows}
 
 Different LLM providers can be used for different steps in the same workflow:
 
@@ -343,21 +346,26 @@ await agent()
 // Each step uses a different LLM. Context flows between steps.
 ```
 
-> **Example use cases:**
->
-> - GPT-4 for data extraction, Claude for analysis, Mistral for summaries
-> - Local Llama for preprocessing, GPT-4 for final processing
-> - Test different models to optimize cost and quality
+**Example use cases:**
 
-## Questions or Feature Requests?
+- GPT-4 for data extraction, Claude for analysis, Mistral for summaries
+- Local Llama for preprocessing, GPT-4 for final processing
+- Test different models to optimize cost and quality
+
+## Questions or Feature Requests? {#questions}
 
 We'd love to hear from you!
 
-### GitHub Repository
+### GitHub Repository {#github-repository}
 
 Visit our GitHub repository for:
 
-- 📝 [Report bugs or issues](https://github.com/Kong/volcano-sdk/issues)
-- 💡 [Request features or ask questions](https://github.com/Kong/volcano-sdk/discussions)
-- ⭐ [Star the project](https://github.com/Kong/volcano-sdk) if you find it useful
-- 🤝 [Contribute code or documentation](https://github.com/Kong/volcano-sdk/blob/main/CONTRIBUTING.md)
+- [Report bugs or issues](https://github.com/Kong/volcano-sdk/issues)
+- [Request features or ask questions](https://github.com/Kong/volcano-sdk/discussions)
+- [Star the project](https://github.com/Kong/volcano-sdk) if you find it useful
+- [Contribute code or documentation](https://github.com/Kong/volcano-sdk/blob/main/CONTRIBUTING.md)
+
+### ⭐ View on GitHub {#view-on-github}
+
+- [View on GitHub](https://github.com/Kong/volcano-sdk) - Source code, issues, and discussions
+- [NPM Package](https://www.npmjs.com/package/volcano-sdk) - Install via npm and view package details

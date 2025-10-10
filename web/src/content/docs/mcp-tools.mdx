@@ -1,17 +1,14 @@
 ---
-title: MCP Tools
-description: The Model Context Protocol (MCP) enables AI agents to securely interact with external tools and data sources. Volcano SDK provides first-class MCP integration with automatic tool discovery, selection, and authentication.
+title: "MCP Tools - Volcano SDK"
 ---
 
 # MCP Tools
 
 The Model Context Protocol (MCP) enables AI agents to securely interact with external tools and data sources. Volcano SDK provides first-class MCP integration with automatic tool discovery, selection, and authentication.
 
-:::note[What is MCP?]
-The Model Context Protocol is an open standard for connecting AI systems to external data sources and tools. It enables LLMs to safely interact with databases, APIs, file systems, and other services through a unified interface.
-:::
+**What is MCP?** The Model Context Protocol is an open standard for connecting AI systems to external data sources and tools. It enables LLMs to safely interact with databases, APIs, file systems, and other services through a unified interface.
 
-## Automatic Tool Selection
+## Automatic Tool Selection {#automatic}
 
 Let the LLM intelligently choose which tools to call based on the prompt. This is the recommended approach for most use cases.
 
@@ -25,7 +22,7 @@ const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 await agent({ llm })
   .then({
     prompt: "Check SF weather for tomorrow and send me a notification.",
-    mcps: [weather, notifications],
+    mcps: [weather, notifications]
   })
   .run();
 
@@ -52,37 +49,35 @@ For complex tasks, the LLM may need multiple tool calls. Configure how many iter
 // Agent-level (default for all steps)
 await agent({
   llm,
-  maxToolIterations: 2, // Limit to 2 iterations (faster)
+  maxToolIterations: 2  // Limit to 2 iterations (faster)
 })
   .then({ prompt: "Task", mcps: [tools] })
   .run();
 
 // Per-step override
-await agent({ llm, maxToolIterations: 4 }) // Default 4
+await agent({ llm, maxToolIterations: 4 })  // Default 4
   .then({
     prompt: "Simple task",
     mcps: [tools],
-    maxToolIterations: 1, // Fast: only 1 tool call
+    maxToolIterations: 1  // Fast: only 1 tool call
   })
   .then({
     prompt: "Complex task",
     mcps: [tools],
-    maxToolIterations: 4, // More iterations for complexity
+    maxToolIterations: 4  // More iterations for complexity
   })
   .run();
 ```
 
 ### Iteration Trade-offs
 
-| maxToolIterations | Speed       | Capability           | Use Case              |
-| ----------------- | ----------- | -------------------- | --------------------- |
-| `1`               | ⚡ Fastest  | Single tool call     | Simple, direct tasks  |
-| `2`               | 🏃 Fast     | Tool + follow-up     | Two-step operations   |
-| `4` (default)     | ⏱️ Moderate | Multi-step workflows | Complex orchestration |
+| maxToolIterations | Speed | Capability | Use Case |
+|-------------------|-------|------------|----------|
+| `1` | ⚡ Fastest | Single tool call | Simple, direct tasks |
+| `2` | 🏃 Fast | Tool + follow-up | Two-step operations |
+| `4` (default) | ⏱️ Moderate | Multi-step workflows | Complex orchestration |
 
-:::tip[Performance tip]
-Start with `maxToolIterations: 1` for simple tasks. Increase only if the LLM needs multiple tool calls to complete the task.
-:::
+**Performance tip:** Start with `maxToolIterations: 1` for simple tasks. Increase only if the LLM needs multiple tool calls to complete the task.
 
 ### Multiple MCP Servers
 
@@ -95,16 +90,15 @@ const analytics = mcp("http://localhost:5002/mcp");
 
 await agent({ llm })
   .then({
-    prompt:
-      "Query user data, analyze it, and email the report to admin@example.com",
-    mcps: [database, email, analytics],
+    prompt: "Query user data, analyze it, and email the report to admin@example.com",
+    mcps: [database, email, analytics]
   })
   .run();
 
 // The LLM automatically orchestrates tools across all three servers
 ```
 
-## Explicit Tool Calling
+## Explicit Tool Calling {#explicit}
 
 Call specific MCP tools directly when you know exactly which tool to use and with what arguments.
 
@@ -116,7 +110,7 @@ await agent({ llm })
   .then({
     mcp: cafe,
     tool: "order_item",
-    args: { item_id: "espresso", quantity: 2 },
+    args: { item_id: "espresso", quantity: 2 }
   })
   .run();
 ```
@@ -131,7 +125,7 @@ await agent({ llm })
     mcp: database,
     tool: "query_users",
     args: { status: "active" },
-    prompt: "Analyze the results and summarize", // LLM processes tool output
+    prompt: "Analyze the results and summarize"  // LLM processes tool output
   })
   .run();
 ```
@@ -143,7 +137,7 @@ await agent({ llm })
 - You want fine-grained control over execution order
 - You're building deterministic workflows
 
-## MCP Authentication
+## MCP Authentication {#authentication}
 
 Volcano SDK supports OAuth 2.1 and Bearer token authentication per the MCP specification. Authentication can be configured at the MCP handle level or centrally at the agent level.
 
@@ -155,19 +149,19 @@ Configure auth directly on the MCP handle:
 // OAuth on handle
 const protectedMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: "oauth",
+    type: 'oauth',
     clientId: process.env.MCP_CLIENT_ID!,
     clientSecret: process.env.MCP_CLIENT_SECRET!,
-    tokenEndpoint: "https://api.example.com/oauth/token",
-  },
+    tokenEndpoint: 'https://api.example.com/oauth/token'
+  }
 });
 
 // Bearer token on handle
 const bearerMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: "bearer",
-    token: process.env.MCP_BEARER_TOKEN!,
-  },
+    type: 'bearer',
+    token: process.env.MCP_BEARER_TOKEN!
+  }
 });
 ```
 
@@ -184,25 +178,23 @@ const mcp2 = mcp("https://api.other.com/mcp");
 await agent({
   llm,
   mcpAuth: {
-    "https://api.example.com/mcp": {
-      type: "oauth",
+    'https://api.example.com/mcp': {
+      type: 'oauth',
       clientId: process.env.CLIENT_ID_1!,
       clientSecret: process.env.CLIENT_SECRET_1!,
-      tokenEndpoint: "https://api.example.com/oauth/token",
+      tokenEndpoint: 'https://api.example.com/oauth/token'
     },
-    "https://api.other.com/mcp": {
-      type: "bearer",
-      token: process.env.TOKEN_2!,
-    },
-  },
+    'https://api.other.com/mcp': {
+      type: 'bearer',
+      token: process.env.TOKEN_2!
+    }
+  }
 })
   .then({ prompt: "Use tools from both servers", mcps: [mcp1, mcp2] })
   .run();
 ```
 
-:::tip[Precedence]
-Handle-level auth takes precedence over agent-level auth. This allows you to set defaults at the agent level and override for specific handles.
-:::
+**Precedence:** Handle-level auth takes precedence over agent-level auth. This allows you to set defaults at the agent level and override for specific handles.
 
 ### OAuth Authentication (Client Credentials)
 
@@ -211,17 +203,17 @@ Recommended for production MCP servers. Volcano automatically acquires and refre
 ```typescript
 const protectedMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: "oauth",
+    type: 'oauth',
     clientId: process.env.MCP_CLIENT_ID!,
     clientSecret: process.env.MCP_CLIENT_SECRET!,
-    tokenEndpoint: "https://api.example.com/oauth/token",
-  },
+    tokenEndpoint: 'https://api.example.com/oauth/token'
+  }
 });
 
 await agent({ llm })
   .then({
     prompt: "Use protected tools",
-    mcps: [protectedMcp],
+    mcps: [protectedMcp]
   })
   .run();
 
@@ -239,9 +231,9 @@ For pre-acquired tokens or custom authentication flows:
 ```typescript
 const authMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: "bearer",
-    token: process.env.MCP_BEARER_TOKEN!,
-  },
+    type: 'bearer',
+    token: process.env.MCP_BEARER_TOKEN!
+  }
 });
 
 await agent({ llm })
@@ -254,14 +246,14 @@ await agent({ llm })
 Combine authenticated and non-authenticated MCP servers in the same workflow:
 
 ```typescript
-const publicMcp = mcp("http://localhost:3000/mcp"); // No auth
+const publicMcp = mcp("http://localhost:3000/mcp");  // No auth
 const privateMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: "oauth",
+    type: 'oauth',
     clientId: process.env.CLIENT_ID!,
     clientSecret: process.env.CLIENT_SECRET!,
-    tokenEndpoint: "https://api.example.com/oauth/token",
-  },
+    tokenEndpoint: 'https://api.example.com/oauth/token'
+  }
 });
 
 await agent({ llm })
@@ -272,9 +264,7 @@ await agent({ llm })
 // Each server uses its own authentication (or none)
 ```
 
-:::note[MCP Spec Compliance]
-Per the official MCP specification, servers use OAuth 2.1 for authentication. Volcano supports both OAuth (automatic token acquisition) and Bearer (bring your own token).
-:::
+**MCP Spec Compliance:** Per the official MCP specification, servers use OAuth 2.1 for authentication. Volcano supports both OAuth (automatic token acquisition) and Bearer (bring your own token).
 
 ### Authentication Features
 
@@ -284,7 +274,7 @@ Per the official MCP specification, servers use OAuth 2.1 for authentication. Vo
 - **Connection pooling:** Authenticated connections are pooled separately
 - **Spec compliant:** Follows MCP OAuth 2.1 authentication standard
 
-## Connection Pooling & Performance
+## Connection Pooling & Performance {#connection-pooling}
 
 Volcano SDK automatically manages MCP connections for optimal performance.
 
@@ -340,7 +330,7 @@ import {
   __internal_setPoolConfig,
   __internal_setDiscoveryTtl,
   __internal_clearDiscoveryCache,
-  __internal_clearOAuthTokenCache,
+  __internal_clearOAuthTokenCache
 } from "volcano-sdk";
 
 // Configure connection pool
@@ -354,6 +344,4 @@ __internal_clearDiscoveryCache();
 __internal_clearOAuthTokenCache();
 ```
 
-:::warning[Note]
-These are internal APIs for advanced use cases and testing. The default configuration works well for most applications.
-:::
+**Note:** These are internal APIs for advanced use cases and testing. The default configuration works well for most applications.
