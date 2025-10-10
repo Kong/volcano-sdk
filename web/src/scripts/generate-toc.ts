@@ -3,7 +3,7 @@ import path from "path";
 import matter from "gray-matter";
 import { slugify } from "../lib/slugify";
 
-interface Heading {
+export interface Heading {
   level: number;
   text: string;
   id: string;
@@ -16,7 +16,7 @@ interface DocTOC {
 }
 
 // Extract headings from markdown content
-function extractHeadings(content: string): Heading[] {
+export function extractHeadings(content: string): Heading[] {
   const headings: Heading[] = [];
   const idCounts = new Map<string, number>();
 
