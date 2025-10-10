@@ -34,7 +34,7 @@ Volcano SDK supports 100s of models from 7 providers with function calling and M
 
 ### ✅ Azure AI
 
-## OpenAI Provider {#openai}
+## OpenAI Provider
 
 Full support for OpenAI's GPT models with function calling and streaming.
 
@@ -80,9 +80,9 @@ const openai = llmOpenAI({
 | `top_p` | 0-1 | Nucleus sampling - alternative to temperature |
 | `frequency_penalty` | -2 to 2 | Reduces repetition based on token frequency |
 | `presence_penalty` | -2 to 2 | Encourages topic diversity |
-| `stop` | string \| string[] | Stop sequences to end generation |
+| `stop` | string \| string\[\] | Stop sequences to end generation |
 | `seed` | number | For deterministic outputs (same seed = same output) |
-| `response_format` | object | Force JSON output: { type: "json_object" } |
+| `response_format` | object | Force JSON output: `{ type: "json_object" }` |
 
 ### Structured Outputs (JSON Schema Validation)
 
@@ -177,7 +177,7 @@ results.forEach(step => {
 
 **Tip:** Use `llmOpenAIResponses()` when building APIs or extracting structured data. Use regular `llmOpenAI()` for conversational responses and free-form text.
 
-## Anthropic (Claude) Provider {#anthropic}
+## Anthropic (Claude) Provider
 
 Native support for Claude models with tool calling.
 
@@ -223,10 +223,10 @@ const claude = llmAnthropic({
 | `max_tokens` | number | Maximum tokens to generate |
 | `top_p` | 0-1 | Nucleus sampling |
 | `top_k` | number | Sample from top K options |
-| `stop_sequences` | string[] | Array of stop sequences |
+| `stop_sequences` | string\[\] | Array of stop sequences |
 | `thinking` | object | Extended thinking configuration (Claude-specific) |
 
-## Mistral Provider {#mistral}
+## Mistral Provider
 
 Support for Mistral's open and proprietary models via OpenAI-compatible API.
 
@@ -269,12 +269,12 @@ const mistral = llmMistral({
 | `temperature` | 0-1 | Controls randomness |
 | `max_tokens` | number | Maximum tokens to generate |
 | `top_p` | 0-1 | Nucleus sampling |
-| `stop` | string \| string[] | Stop sequences |
+| `stop` | string \| string\[\] | Stop sequences |
 | `safe_prompt` | boolean | Enable safety mode |
 | `random_seed` | number | For deterministic outputs |
-| `response_format` | object | For JSON mode: { type: "json_object" } |
+| `response_format` | object | For JSON mode: `{ type: "json_object" }` |
 
-## Llama Provider {#llama}
+## Llama Provider
 
 Run Llama models locally with Ollama or via OpenAI-compatible endpoints.
 
@@ -323,12 +323,12 @@ const llama = llmLlama({
 | `max_tokens` | number | Maximum tokens to generate |
 | `top_p` | 0-1 | Nucleus sampling |
 | `top_k` | number | Sample from top K options |
-| `stop` | string \| string[] | Stop sequences |
+| `stop` | string \| string\[\] | Stop sequences |
 | `repeat_penalty` | number | Penalize repetitions (Ollama-specific, default: 1.1) |
 | `seed` | number | For deterministic outputs |
 | `num_predict` | number | Number of tokens to predict (Ollama-specific) |
 
-## AWS Bedrock Provider {#bedrock}
+## AWS Bedrock Provider
 
 Access foundation models via AWS Bedrock with native tool calling support using the Converse API.
 
@@ -416,9 +416,9 @@ const bedrock5 = llmBedrock({
 | `temperature` | 0-1 | Controls randomness |
 | `max_tokens` | number | Maximum tokens to generate |
 | `top_p` | 0-1 | Nucleus sampling |
-| `stop_sequences` | string[] | Array of stop sequences |
+| `stop_sequences` | string\[\] | Array of stop sequences |
 
-## Google Vertex Studio Provider {#vertex}
+## Google Vertex Studio Provider
 
 Google's Gemini models with function calling via AI Studio API.
 
@@ -464,13 +464,13 @@ const vertex = llmVertexStudio({
 | `max_output_tokens` | number | Maximum tokens to generate |
 | `top_p` | 0-1 | Nucleus sampling |
 | `top_k` | number | Sample from top K options |
-| `stop_sequences` | string[] | Array of stop sequences |
+| `stop_sequences` | string\[\] | Array of stop sequences |
 | `candidate_count` | number | Number of response variations (usually 1) |
 | `response_mime_type` | string | For JSON mode: "application/json" |
 
 **Function calling limitations:** Multiple tools per call only supported for search tools. Use multi-step workflows for complex tool orchestration.
 
-## Azure AI Provider {#azure}
+## Azure AI Provider
 
 Azure OpenAI Service with enterprise authentication via the Responses API.
 
@@ -534,7 +534,7 @@ const azure3 = llmAzure({
 
 The `AzureOptions` type is defined for API consistency but parameters cannot be used in practice.
 
-## Creating a Custom Provider {#custom}
+## Creating a Custom Provider
 
 You can create your own LLM provider by implementing the `LLMHandle` interface:
 

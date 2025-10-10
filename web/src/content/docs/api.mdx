@@ -6,7 +6,7 @@ title: "API Reference - Volcano SDK"
 
 API documentation for Volcano SDK: agent creation, step types, results, and utility functions.
 
-## agent(options?): AgentBuilder {#agent}
+## agent(options?): AgentBuilder
 
 Create an agent workflow builder.
 
@@ -30,7 +30,7 @@ const myAgent = agent({
 | `llm` | LLMHandle | - | Default LLM provider for all steps |
 | `instructions` | string | - | Global system instructions |
 | `timeout` | number | 60 | Default timeout per step (seconds) |
-| `retry` | RetryConfig | { retries: 3 } | Retry configuration |
+| `retry` | RetryConfig | `{ retries: 3 }` | Retry configuration |
 | `contextMaxChars` | number | 20480 | Soft cap for injected context size |
 | `contextMaxToolResults` | number | 8 | Number of recent tool results to include |
 
@@ -57,7 +57,7 @@ const myAgent = agent({
 | `.retryUntil(body, success, opts?)` | Retry until success condition is met |
 | `.runAgent(subAgent)` | Compose and run sub-agents |
 
-## Step Types {#step}
+## Step Types
 
 Volcano SDK supports three types of steps:
 
@@ -130,7 +130,7 @@ Call a specific tool directly:
 | `pre` | () => void | Hook called before step execution |
 | `post` | () => void | Hook called after successful step execution |
 
-## Step Results {#results}
+## Step Results
 
 Each step returns a `StepResult` object with execution details:
 
@@ -193,7 +193,7 @@ console.log(last.totalLlmMs);          // Total LLM time
 console.log(last.totalMcpMs);          // Total MCP time
 ```
 
-## RetryConfig {#retry-config}
+## RetryConfig
 
 Configuration for retry behavior:
 
@@ -218,7 +218,7 @@ type RetryConfig = {
 { backoff: 2, retries: 4 }
 ```
 
-## Utility Functions {#utilities}
+## Utility Functions
 
 ### mcp(url, options?): MCPHandle
 
@@ -251,7 +251,7 @@ const bearerMcp = mcp("https://api.example.com/mcp", {
 
 **MCP Specification:** Per the official MCP spec, authentication uses OAuth 2.1. Volcano supports OAuth (automatic token acquisition) and Bearer (custom tokens).
 
-### discoverTools(handles): Promise<ToolDefinition[]>
+### discoverTools(handles): Promise\<ToolDefinition\[\]\>
 
 Manually discover tools from MCP servers:
 
@@ -267,7 +267,7 @@ const tools = await discoverTools(handles);
 console.log(tools); // Array of tool definitions
 ```
 
-## Type Reference {#types}
+## Type Reference
 
 ### LLMHandle
 
