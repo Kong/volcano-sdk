@@ -11,8 +11,9 @@ function ExamplesPage() {
   return (
     <>
       <SEOHead
-        title="Examples - Volcano SDK Documentation"
-        description="Ready-to-run examples demonstrating Volcano SDK capabilities from basic usage to advanced patterns."
+        title="Code Examples - Volcano SDK | Tutorials & Sample Projects"
+        description="Ready-to-run TypeScript examples for Volcano SDK. Learn from practical code samples covering basic agents, MCP tools, multi-provider workflows, parallel execution, streaming, and advanced patterns. Copy-paste examples to get started quickly."
+        keywords="Volcano SDK examples, code samples, TypeScript examples, AI agent tutorials, MCP examples, multi-provider examples, workflow examples, sample projects, agent code, tutorial code"
         canonicalUrl="/docs/examples"
       />
       <DocsLayout>

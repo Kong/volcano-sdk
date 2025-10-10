@@ -40,8 +40,8 @@ function HomePage() {
   return (
     <>
       <SEOHead
-        title="Volcano SDK - TypeScript SDK for Multi-Provider AI Agents"
-        description="Build AI agents that chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistral in one workflow. Parallel execution, branching, loops."
+        title="Volcano SDK — Build MCP-powered AI agents in minutes"
+        description="TypeScript SDK for building production-ready AI agents. Chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistral in one workflow. Parallel execution, streaming, retries, and OpenTelemetry observability."
         canonicalUrl="/"
       />
       <script

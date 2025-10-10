@@ -11,8 +11,9 @@ function InstallationPage() {
   return (
     <>
       <SEOHead
-        title="Installation - Volcano SDK Documentation"
-        description="Learn how to install and configure Volcano SDK for your project."
+        title="Installation Guide - Volcano SDK | Quick Setup for TypeScript"
+        description="Install Volcano SDK in minutes. Single npm package includes OpenAI, Claude, Mistral, Llama, and MCP support. Optional packages for AWS Bedrock, Azure AI, and OpenTelemetry. Requires Node.js 18.17+."
+        keywords="install Volcano SDK, npm install, TypeScript setup, Node.js AI SDK, quick start, package installation, AI agent setup, SDK configuration"
         canonicalUrl="/docs/installation"
       />
       <DocsLayout>

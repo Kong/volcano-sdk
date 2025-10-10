@@ -14,8 +14,9 @@ function FeaturesPage() {
   return (
     <>
       <SEOHead
-        title="Features - Volcano SDK Documentation"
-        description="Volcano SDK provides production-ready features for building reliable AI agent workflows."
+        title="Features - Volcano SDK | Streaming, Retries, Error Handling"
+        description="Production-ready features for AI agents: streaming workflows with async generators, three retry strategies (immediate, delayed, exponential), timeout configuration, typed error handling, and step hooks. Build reliable agent systems with TypeScript."
+        keywords="AI agent features, streaming workflows, retry strategies, error handling, timeout configuration, async generators, exponential backoff, step hooks, TypeScript features, production AI"
         canonicalUrl="/docs/features"
       />
       <DocsLayout>
