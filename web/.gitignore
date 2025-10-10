@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 reference/*
+
+# Playwright
+playwright-report/
+test-results/

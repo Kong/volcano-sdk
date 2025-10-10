@@ -13,6 +13,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
     "generate-toc": "tsx src/scripts/generate-toc.ts",
     "generate-search": "tsx src/scripts/generate-search-index.ts",
     "generate-suggestions": "tsx src/scripts/generate-search-suggestions.ts",
@@ -43,6 +46,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@playwright/test": "^1.56.0",
     "@tailwindcss/postcss": "^4.1.14",
     "@tanstack/router-vite-plugin": "^1.132.31",
     "@types/mdast": "^4.0.4",
