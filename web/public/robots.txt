@@ -7,7 +7,7 @@ Disallow: /dist/
 Disallow: /node_modules/
 
 # Sitemap
-Sitemap: https://volcano-sdk.dev/sitemap.xml
+Sitemap: https://volcano.dev/sitemap.xml
 
 # LLM-specific file for AI crawlers
 # See: https://llmstxt.org/
