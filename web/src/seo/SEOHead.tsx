@@ -20,7 +20,7 @@ const defaultMeta = {
   keywords:
     "AI agents, TypeScript SDK, MCP tools, Model Context Protocol, OpenAI, Claude, Anthropic, Mistral, multi-provider AI, LLM workflow, agent framework, tool calling, parallel execution, streaming, observability, OpenTelemetry, retries, TypeScript AI, workflow automation",
   ogImage: "/volcano__icn.png",
-  canonicalUrl: "https://volcano-sdk.dev",
+  canonicalUrl: "https://volcano.dev",
   twitterCard: "summary_large_image",
 };
 
@@ -40,6 +40,12 @@ export function SEOHead({
   const finalOgDescription = ogDescription || description;
   const finalOgUrl =
     ogUrl || (typeof window !== "undefined" ? window.location.href : defaultMeta.canonicalUrl);
+
+  // Ensure canonical URL is absolute
+  const baseUrl = "https://volcano.dev";
+  const finalCanonicalUrl = canonicalUrl.startsWith("http")
+    ? canonicalUrl
+    : `${baseUrl}${canonicalUrl}`;
 
   return (
     <Helmet>
@@ -61,7 +67,7 @@ export function SEOHead({
       <meta name="twitter:image" content={ogImage} />
 
       {/* Canonical URL */}
-      <link rel="canonical" href={canonicalUrl} />
+      <link rel="canonical" href={finalCanonicalUrl} />
 
       {/* Robots */}
       {noindex && <meta name="robots" content="noindex,nofollow" />}
