@@ -14,12 +14,13 @@ interface SEOHeadProps {
 }
 
 const defaultMeta = {
-  title: "Volcano SDK - TypeScript SDK for Multi-Provider AI Agents",
+  title: "Volcano SDK — Build MCP-powered AI agents in minutes",
   description:
-    "Build AI agents that chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistral in one workflow. Parallel execution, branching, loops. TypeScript-first with full type safety.",
+    "TypeScript SDK for building production-ready AI agents. Chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistral in one workflow. Parallel execution, streaming, retries, and OpenTelemetry observability.",
   keywords:
-    "AI agents, TypeScript SDK, Multi-provider AI, MCP tools, OpenAI, Claude, Anthropic, Mistral, LLM workflow, AI development, TypeScript AI, agent framework, tool calling, parallel execution",
-  ogImage: "/og-image.jpg",
+    "AI agents, TypeScript SDK, MCP tools, Model Context Protocol, OpenAI, Claude, Anthropic, Mistral, multi-provider AI, LLM workflow, agent framework, tool calling, parallel execution, streaming, observability, OpenTelemetry, retries, TypeScript AI, workflow automation",
+  ogImage: "/volcano__icn.png",
+  canonicalUrl: "https://volcano-sdk.dev",
   twitterCard: "summary_large_image",
 };
 
@@ -32,13 +33,13 @@ export function SEOHead({
   ogImage = defaultMeta.ogImage,
   ogUrl,
   twitterCard = defaultMeta.twitterCard,
-  canonicalUrl,
+  canonicalUrl = defaultMeta.canonicalUrl,
   noindex = false,
 }: SEOHeadProps) {
   const finalOgTitle = ogTitle || title;
   const finalOgDescription = ogDescription || description;
   const finalOgUrl =
-    ogUrl || (typeof window !== "undefined" ? window.location.href : "");
+    ogUrl || (typeof window !== "undefined" ? window.location.href : defaultMeta.canonicalUrl);
 
   return (
     <Helmet>
@@ -60,7 +61,7 @@ export function SEOHead({
       <meta name="twitter:image" content={ogImage} />
 
       {/* Canonical URL */}
-      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      <link rel="canonical" href={canonicalUrl} />
 
       {/* Robots */}
       {noindex && <meta name="robots" content="noindex,nofollow" />}
