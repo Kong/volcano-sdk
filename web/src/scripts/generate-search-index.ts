@@ -300,25 +300,6 @@ async function generateSearchIndex() {
   const docsDocs = await indexDirectory(docsDir, "/docs", "Documentation");
   documents.push(...docsDocs);
 
-  // Index blog posts
-  const blogDir = path.join(process.cwd(), "src", "content", "blog");
-  const blogDocs = await indexDirectory(blogDir, "/blog", "Blog");
-  documents.push(...blogDocs);
-
-  // Index examples if they exist
-  const examplesDir = path.join(process.cwd(), "src", "content", "examples");
-  const exampleDocs = await indexDirectory(
-    examplesDir,
-    "/examples",
-    "Examples"
-  );
-  documents.push(...exampleDocs);
-
-  // Index API docs if they exist
-  const apiDir = path.join(process.cwd(), "src", "content", "api");
-  const apiDocs = await indexDirectory(apiDir, "/api", "API Reference");
-  documents.push(...apiDocs);
-
   // Sort documents by title
   documents.sort((a, b) => a.title.localeCompare(b.title));
 
