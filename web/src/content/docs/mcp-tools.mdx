@@ -8,7 +8,7 @@ The Model Context Protocol (MCP) enables AI agents to securely interact with ext
 
 **What is MCP?** The Model Context Protocol is an open standard for connecting AI systems to external data sources and tools. It enables LLMs to safely interact with databases, APIs, file systems, and other services through a unified interface.
 
-## Automatic Tool Selection {#automatic}
+## Automatic Tool Selection
 
 Let the LLM intelligently choose which tools to call based on the prompt. This is the recommended approach for most use cases.
 
@@ -98,7 +98,7 @@ await agent({ llm })
 // The LLM automatically orchestrates tools across all three servers
 ```
 
-## Explicit Tool Calling {#explicit}
+## Explicit Tool Calling
 
 Call specific MCP tools directly when you know exactly which tool to use and with what arguments.
 
@@ -137,7 +137,7 @@ await agent({ llm })
 - You want fine-grained control over execution order
 - You're building deterministic workflows
 
-## MCP Authentication {#authentication}
+## MCP Authentication
 
 Volcano SDK supports OAuth 2.1 and Bearer token authentication per the MCP specification. Authentication can be configured at the MCP handle level or centrally at the agent level.
 
@@ -274,7 +274,7 @@ await agent({ llm })
 - **Connection pooling:** Authenticated connections are pooled separately
 - **Spec compliant:** Follows MCP OAuth 2.1 authentication standard
 
-## Connection Pooling & Performance {#connection-pooling}
+## Connection Pooling & Performance
 
 Volcano SDK automatically manages MCP connections for optimal performance.
 

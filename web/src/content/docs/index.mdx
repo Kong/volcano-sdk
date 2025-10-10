@@ -2,61 +2,61 @@
 title: "Volcano SDK - Build MCP-powered AI Agents"
 ---
 
-# Volcano SDK 🌋 {#introduction}
+# Volcano SDK 🌋
 
 A TypeScript SDK for building AI agents that combine LLM reasoning with real-world actions via MCP tools.
 
 **Design Philosophy:** Volcano provides a fluent, chainable API that scales from simple single-step agents to complex multi-provider workflows with parallel execution, retries, and streaming.
 
-### Chainable API {#chainable-api}
+### Chainable API
 
 Chain steps with `.then()` and `.run()`. Promise-like syntax for building multi-step workflows.
 
-### Automatic Tool Selection {#automatic-tool-selection}
+### Automatic Tool Selection
 
 LLM automatically selects and calls appropriate MCP tools based on the prompt. No manual routing required.
 
-### 100s of Models {#100s-of-models}
+### 100s of Models
 
 OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-step or use globally.
 
-### TypeScript-First {#typescript-first}
+### TypeScript-First
 
 Full TypeScript support with type inference and IntelliSense for all APIs.
 
-### Advanced Patterns {#advanced-patterns}
+### Advanced Patterns
 
 Parallel execution, conditional branching, loops, and sub-agent composition for complex workflows.
 
-### Retries & Timeouts {#retries-timeouts}
+### Retries & Timeouts
 
 Three retry strategies: immediate, delayed, and exponential backoff. Per-step timeout configuration.
 
-### Streaming Workflows {#streaming-workflows}
+### Streaming Workflows
 
 Stream step results as they complete using async generators. Perfect for real-time UIs and long-running tasks.
 
-### MCP Integration {#mcp-integration}
+### MCP Integration
 
 Native Model Context Protocol support with connection pooling, tool discovery, and authentication.
 
-### Sub-Agent Composition {#sub-agent-composition}
+### Sub-Agent Composition
 
 Build reusable agent components and compose them into larger workflows. Modular and testable.
 
-### OpenTelemetry Observability {#opentelemetry-observability}
+### OpenTelemetry Observability
 
 Production-ready distributed tracing and metrics. Monitor performance, debug failures. Export to Jaeger, Prometheus, DataDog, NewRelic.
 
-### MCP OAuth Authentication {#mcp-oauth-authentication}
+### MCP OAuth Authentication
 
 OAuth 2.1 and Bearer token authentication per MCP specification. Agent-level or handle-level configuration with automatic token refresh.
 
-### Performance Optimized {#performance-optimized}
+### Performance Optimized
 
 Intelligent connection pooling for MCP servers, tool discovery caching with TTL, and JSON schema validation for reliability.
 
-## Installation {#installation}
+## Installation
 
 Install Volcano SDK - everything you need for OpenAI, Anthropic, Mistral, Llama, and Google Vertex providers:
 
@@ -66,7 +66,7 @@ npm install volcano-sdk
 
 That's it! The core SDK includes MCP support and all common LLM providers.
 
-### Optional Provider Dependencies {#optional-provider-dependencies}
+### Optional Provider Dependencies
 
 For provider-specific features, install additional packages:
 
@@ -78,7 +78,7 @@ npm install @aws-sdk/client-bedrock-runtime @aws-sdk/credential-providers
 npm install @azure/identity
 ```
 
-### Optional Observability {#optional-observability}
+### Optional Observability
 
 For production observability with OpenTelemetry:
 
@@ -93,9 +93,9 @@ See the [Observability guide](observability) for complete setup and backend conf
 
 **Requirements:** Node.js 18.17 or later
 
-## Quick Start {#quick-start}
+## Quick Start
 
-### Hello World {#hello-world}
+### Hello World
 
 The simplest possible agent with a single LLM step:
 
@@ -115,7 +115,7 @@ console.log(results[0].llmOutput);
 // Output: "Hello Marco! Hope you're having a great day!"
 ```
 
-### Two-Step Agent with MCP Tools {#two-step-agent-with-mcp-tools}
+### Two-Step Agent with MCP Tools
 
 Automatically discover and use MCP tools across multiple steps:
 
@@ -144,7 +144,7 @@ console.log(steps[0].toolCalls); // Tools that were called
 console.log(steps[1].llmOutput); // Fortune based on the sign
 ```
 
-### Multi-Provider Workflow {#multi-provider-workflow}
+### Multi-Provider Workflow
 
 Use different LLM providers for different steps in the same workflow:
 
@@ -173,18 +173,18 @@ const results = await agent()
 // Each step uses a different provider. Context flows automatically.
 ```
 
-### Next Steps {#next-steps}
+### Next Steps
 
 - Explore [LLM Providers](providers) for configuration options
 - Learn [Advanced Patterns](patterns) for complex workflows
 - Discover [Features](features) like streaming and error handling
 - Check the [API Reference](api) for complete documentation
 
-## Use Cases {#use-cases}
+## Use Cases
 
 Volcano SDK excels in scenarios that require LLM reasoning combined with real-world actions:
 
-### Customer Support Automation {#customer-support-automation}
+### Customer Support Automation
 
 Build agents that analyze support tickets, look up customer data via MCP tools, and generate personalized responses across multiple LLMs for quality.
 
@@ -201,7 +201,7 @@ await agent({ llm: gpt4 })
   .run();
 ```
 
-### Content Moderation Pipeline {#content-moderation-pipeline}
+### Content Moderation Pipeline
 
 Analyze content in parallel (sentiment, topics, violations), then route based on results with conditional branching.
 
@@ -222,7 +222,7 @@ await agent({ llm })
   .run();
 ```
 
-### Data Processing Workflows {#data-processing-workflows}
+### Data Processing Workflows
 
 Process large datasets with loops, use local Llama for preprocessing, then GPT-4 for final analysis.
 
@@ -235,7 +235,7 @@ await agent()
   .run();
 ```
 
-### Multi-Step Research Agent {#multi-step-research-agent}
+### Multi-Step Research Agent
 
 Use MCP tools to gather data, multiple LLMs for analysis, and streaming for real-time updates.
 
@@ -250,7 +250,7 @@ for await (const step of agent({ llm: gpt4 })
 }
 ```
 
-## Volcano vs Others {#comparison}
+## Volcano vs Others
 
 Factual comparison with other AI frameworks:
 
@@ -269,7 +269,7 @@ Factual comparison with other AI frameworks:
 | **Connection Pooling** | Automatic for MCP | N/A | Manual |
 | **Bundle Size** | Minimal (peer deps only) | Minimal | Large (~500KB+) |
 
-### When to Choose Volcano {#when-to-choose-volcano}
+### When to Choose Volcano
 
 - **MCP-first applications:** Native support for Model Context Protocol
 - **Multi-provider workflows:** Need to mix different LLMs in one workflow
@@ -277,9 +277,9 @@ Factual comparison with other AI frameworks:
 - **Production reliability:** Need retries, timeouts, and error metadata
 - **TypeScript projects:** Want excellent type inference and IntelliSense
 
-## Core Concepts {#core-concepts}
+## Core Concepts
 
-### Agents {#agents}
+### Agents
 
 An agent is a workflow builder that chains together steps. Each step can call an LLM, execute MCP tools, or both. Create an agent with `agent()`:
 
@@ -296,7 +296,7 @@ const myAgent = agent({
 
 **Note:** All options are optional. The minimal configuration is `agent({ llm })`.
 
-### Steps {#steps}
+### Steps
 
 Each step in a workflow can perform one or more of the following:
 
@@ -306,7 +306,7 @@ Each step in a workflow can perform one or more of the following:
 - **Access context** from previous steps automatically
 - **Execute hooks** before or after execution
 
-### Context & History {#context-history}
+### Context & History
 
 Each step automatically receives context from previous steps. This includes:
 
@@ -327,7 +327,7 @@ await agent({ llm })
 
 **Note:** Use `resetHistory()` in long workflows to prevent context from growing too large. Each agent instance maintains its own history.
 
-### Multi-Provider Workflows {#multi-provider-workflows}
+### Multi-Provider Workflows
 
 Different LLM providers can be used for different steps in the same workflow:
 
@@ -352,11 +352,11 @@ await agent()
 - Local Llama for preprocessing, GPT-4 for final processing
 - Test different models to optimize cost and quality
 
-## Questions or Feature Requests? {#questions}
+## Questions or Feature Requests?
 
 We'd love to hear from you!
 
-### GitHub Repository {#github-repository}
+### GitHub Repository
 
 Visit our GitHub repository for:
 
@@ -365,7 +365,7 @@ Visit our GitHub repository for:
 - [Star the project](https://github.com/Kong/volcano-sdk) if you find it useful
 - [Contribute code or documentation](https://github.com/Kong/volcano-sdk/blob/main/CONTRIBUTING.md)
 
-### ⭐ View on GitHub {#view-on-github}
+### ⭐ View on GitHub
 
 - [View on GitHub](https://github.com/Kong/volcano-sdk) - Source code, issues, and discussions
 - [NPM Package](https://www.npmjs.com/package/volcano-sdk) - Install via npm and view package details

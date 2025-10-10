@@ -8,7 +8,7 @@ Production-ready observability with OpenTelemetry traces and metrics. Monitor ag
 
 **Opt-In by Design:** Observability is disabled by default. Enable it by configuring telemetry when creating your agent. No performance impact when disabled.
 
-## OpenTelemetry Integration {#opentelemetry}
+## OpenTelemetry Integration
 
 Volcano SDK uses OpenTelemetry (OTEL), the industry-standard observability framework. Export traces and metrics to any OTEL-compatible backend.
 
@@ -81,7 +81,7 @@ npm install @opentelemetry/exporter-otlp-http
 
 **Optional Dependency:** If `@opentelemetry/api` is not installed, telemetry becomes a no-op. Your code works normally without observability.
 
-## Distributed Tracing {#traces}
+## Distributed Tracing
 
 Volcano creates hierarchical traces showing the complete execution flow of your agent workflows.
 
@@ -129,7 +129,7 @@ try {
 }
 ```
 
-## Metrics {#metrics}
+## Metrics
 
 Volcano records metrics for dashboards and alerting.
 
@@ -152,7 +152,7 @@ Metrics include labels for filtering and grouping:
 - `type` - Step type (llm, mcp_auto, mcp_explicit)
 - `error` - Boolean indicating success/failure
 
-## Observability Backends {#backends}
+## Observability Backends
 
 Volcano works with any OpenTelemetry-compatible backend.
 
@@ -247,7 +247,7 @@ export OTEL_TRACES_EXPORTER="otlp"
 export OTEL_METRICS_EXPORTER="otlp"
 ```
 
-## Advanced Configuration {#advanced}
+## Advanced Configuration
 
 ### Custom Tracer and Meter
 
@@ -285,7 +285,7 @@ const telemetry = createVolcanoTelemetry({
 });
 ```
 
-## Best Practices {#best-practices}
+## Best Practices
 
 - **Production only:** Enable telemetry in production, disable in development for faster iteration
 - **Sampling:** Use OTEL sampling for high-traffic applications to reduce costs

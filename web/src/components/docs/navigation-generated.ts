@@ -25,8 +25,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "agent(options?): AgentBuilder {#agent}",
-        "id": "agentoptions-agentbuilder-{#agent}"
+        "text": "agent(options?): AgentBuilder",
+        "id": "agentoptions-agentbuilder"
       },
       {
         "level": 3,
@@ -50,8 +50,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Step Types {#step}",
-        "id": "step-types-{#step}"
+        "text": "Step Types",
+        "id": "step-types"
       },
       {
         "level": 3,
@@ -75,8 +75,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Step Results {#results}",
-        "id": "step-results-{#results}"
+        "text": "Step Results",
+        "id": "step-results"
       },
       {
         "level": 3,
@@ -85,8 +85,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "RetryConfig {#retry-config}",
-        "id": "retryconfig-{#retry-config}"
+        "text": "RetryConfig",
+        "id": "retryconfig"
       },
       {
         "level": 3,
@@ -95,8 +95,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Utility Functions {#utilities}",
-        "id": "utility-functions-{#utilities}"
+        "text": "Utility Functions",
+        "id": "utility-functions"
       },
       {
         "level": 3,
@@ -105,13 +105,13 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 3,
-        "text": "discoverTools(handles): Promise<ToolDefinition[]>",
-        "id": "discovertoolshandles-promise<tooldefinition[]>"
+        "text": "discoverTools(handles): Promise\\<ToolDefinition\\[\\]\\>",
+        "id": "discovertoolshandles-promise\\<tooldefinition\\[\\]\\>"
       },
       {
         "level": 2,
-        "text": "Type Reference {#types}",
-        "id": "type-reference-{#types}"
+        "text": "Type Reference",
+        "id": "type-reference"
       },
       {
         "level": 3,
@@ -141,8 +141,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Basic Examples {#basic}",
-        "id": "basic-examples-{#basic}"
+        "text": "Basic Examples",
+        "id": "basic-examples"
       },
       {
         "level": 3,
@@ -161,8 +161,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Advanced Patterns {#patterns}",
-        "id": "advanced-patterns-{#patterns}"
+        "text": "Advanced Patterns",
+        "id": "advanced-patterns"
       },
       {
         "level": 3,
@@ -191,8 +191,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Special Features {#features}",
-        "id": "special-features-{#features}"
+        "text": "Special Features",
+        "id": "special-features"
       },
       {
         "level": 3,
@@ -201,8 +201,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Running Examples {#running}",
-        "id": "running-examples-{#running}"
+        "text": "Running Examples",
+        "id": "running-examples"
       },
       {
         "level": 3,
@@ -221,8 +221,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "More Examples {#more}",
-        "id": "more-examples-{#more}"
+        "text": "More Examples",
+        "id": "more-examples"
       },
       {
         "level": 3,
@@ -242,8 +242,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "run() Method {#run}",
-        "id": "run-method-{#run}"
+        "text": "run() Method",
+        "id": "run-method"
       },
       {
         "level": 3,
@@ -267,8 +267,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "stream() Method {#streaming}",
-        "id": "stream-method-{#streaming}"
+        "text": "stream() Method",
+        "id": "stream-method"
       },
       {
         "level": 3,
@@ -297,8 +297,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Retries & Timeouts {#retries}",
-        "id": "retries-timeouts-{#retries}"
+        "text": "Retries & Timeouts",
+        "id": "retries-timeouts"
       },
       {
         "level": 3,
@@ -337,8 +337,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Step Hooks {#hooks}",
-        "id": "step-hooks-{#hooks}"
+        "text": "Step Hooks",
+        "id": "step-hooks"
       },
       {
         "level": 3,
@@ -357,8 +357,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Error Handling {#errors}",
-        "id": "error-handling-{#errors}"
+        "text": "Error Handling",
+        "id": "error-handling"
       },
       {
         "level": 3,
@@ -383,183 +383,183 @@ export const generatedNavigation: NavigationDoc[] = [
     "headings": [
       {
         "level": 1,
-        "text": "Volcano SDK 🌋 {#introduction}",
-        "id": "volcano-sdk-🌋-{#introduction}"
+        "text": "Volcano SDK 🌋",
+        "id": "volcano-sdk-🌋"
       },
       {
         "level": 3,
-        "text": "Chainable API {#chainable-api}",
-        "id": "chainable-api-{#chainable-api}"
+        "text": "Chainable API",
+        "id": "chainable-api"
       },
       {
         "level": 3,
-        "text": "Automatic Tool Selection {#automatic-tool-selection}",
-        "id": "automatic-tool-selection-{#automatic-tool-selection}"
+        "text": "Automatic Tool Selection",
+        "id": "automatic-tool-selection"
       },
       {
         "level": 3,
-        "text": "100s of Models {#100s-of-models}",
-        "id": "100s-of-models-{#100s-of-models}"
+        "text": "100s of Models",
+        "id": "100s-of-models"
       },
       {
         "level": 3,
-        "text": "TypeScript-First {#typescript-first}",
-        "id": "typescript-first-{#typescript-first}"
+        "text": "TypeScript-First",
+        "id": "typescript-first"
       },
       {
         "level": 3,
-        "text": "Advanced Patterns {#advanced-patterns}",
-        "id": "advanced-patterns-{#advanced-patterns}"
+        "text": "Advanced Patterns",
+        "id": "advanced-patterns"
       },
       {
         "level": 3,
-        "text": "Retries & Timeouts {#retries-timeouts}",
-        "id": "retries-timeouts-{#retries-timeouts}"
+        "text": "Retries & Timeouts",
+        "id": "retries-timeouts"
       },
       {
         "level": 3,
-        "text": "Streaming Workflows {#streaming-workflows}",
-        "id": "streaming-workflows-{#streaming-workflows}"
+        "text": "Streaming Workflows",
+        "id": "streaming-workflows"
       },
       {
         "level": 3,
-        "text": "MCP Integration {#mcp-integration}",
-        "id": "mcp-integration-{#mcp-integration}"
+        "text": "MCP Integration",
+        "id": "mcp-integration"
       },
       {
         "level": 3,
-        "text": "Sub-Agent Composition {#sub-agent-composition}",
-        "id": "sub-agent-composition-{#sub-agent-composition}"
+        "text": "Sub-Agent Composition",
+        "id": "sub-agent-composition"
       },
       {
         "level": 3,
-        "text": "OpenTelemetry Observability {#opentelemetry-observability}",
-        "id": "opentelemetry-observability-{#opentelemetry-observability}"
+        "text": "OpenTelemetry Observability",
+        "id": "opentelemetry-observability"
       },
       {
         "level": 3,
-        "text": "MCP OAuth Authentication {#mcp-oauth-authentication}",
-        "id": "mcp-oauth-authentication-{#mcp-oauth-authentication}"
+        "text": "MCP OAuth Authentication",
+        "id": "mcp-oauth-authentication"
       },
       {
         "level": 3,
-        "text": "Performance Optimized {#performance-optimized}",
-        "id": "performance-optimized-{#performance-optimized}"
+        "text": "Performance Optimized",
+        "id": "performance-optimized"
       },
       {
         "level": 2,
-        "text": "Installation {#installation}",
-        "id": "installation-{#installation}"
+        "text": "Installation",
+        "id": "installation"
       },
       {
         "level": 3,
-        "text": "Optional Provider Dependencies {#optional-provider-dependencies}",
-        "id": "optional-provider-dependencies-{#optional-provider-dependencies}"
+        "text": "Optional Provider Dependencies",
+        "id": "optional-provider-dependencies"
       },
       {
         "level": 3,
-        "text": "Optional Observability {#optional-observability}",
-        "id": "optional-observability-{#optional-observability}"
+        "text": "Optional Observability",
+        "id": "optional-observability"
       },
       {
         "level": 2,
-        "text": "Quick Start {#quick-start}",
-        "id": "quick-start-{#quick-start}"
+        "text": "Quick Start",
+        "id": "quick-start"
       },
       {
         "level": 3,
-        "text": "Hello World {#hello-world}",
-        "id": "hello-world-{#hello-world}"
+        "text": "Hello World",
+        "id": "hello-world"
       },
       {
         "level": 3,
-        "text": "Two-Step Agent with MCP Tools {#two-step-agent-with-mcp-tools}",
-        "id": "two-step-agent-with-mcp-tools-{#two-step-agent-with-mcp-tools}"
+        "text": "Two-Step Agent with MCP Tools",
+        "id": "two-step-agent-with-mcp-tools"
       },
       {
         "level": 3,
-        "text": "Multi-Provider Workflow {#multi-provider-workflow}",
-        "id": "multi-provider-workflow-{#multi-provider-workflow}"
+        "text": "Multi-Provider Workflow",
+        "id": "multi-provider-workflow"
       },
       {
         "level": 3,
-        "text": "Next Steps {#next-steps}",
-        "id": "next-steps-{#next-steps}"
+        "text": "Next Steps",
+        "id": "next-steps"
       },
       {
         "level": 2,
-        "text": "Use Cases {#use-cases}",
-        "id": "use-cases-{#use-cases}"
+        "text": "Use Cases",
+        "id": "use-cases"
       },
       {
         "level": 3,
-        "text": "Customer Support Automation {#customer-support-automation}",
-        "id": "customer-support-automation-{#customer-support-automation}"
+        "text": "Customer Support Automation",
+        "id": "customer-support-automation"
       },
       {
         "level": 3,
-        "text": "Content Moderation Pipeline {#content-moderation-pipeline}",
-        "id": "content-moderation-pipeline-{#content-moderation-pipeline}"
+        "text": "Content Moderation Pipeline",
+        "id": "content-moderation-pipeline"
       },
       {
         "level": 3,
-        "text": "Data Processing Workflows {#data-processing-workflows}",
-        "id": "data-processing-workflows-{#data-processing-workflows}"
+        "text": "Data Processing Workflows",
+        "id": "data-processing-workflows"
       },
       {
         "level": 3,
-        "text": "Multi-Step Research Agent {#multi-step-research-agent}",
-        "id": "multi-step-research-agent-{#multi-step-research-agent}"
+        "text": "Multi-Step Research Agent",
+        "id": "multi-step-research-agent"
       },
       {
         "level": 2,
-        "text": "Volcano vs Others {#comparison}",
-        "id": "volcano-vs-others-{#comparison}"
+        "text": "Volcano vs Others",
+        "id": "volcano-vs-others"
       },
       {
         "level": 3,
-        "text": "When to Choose Volcano {#when-to-choose-volcano}",
-        "id": "when-to-choose-volcano-{#when-to-choose-volcano}"
+        "text": "When to Choose Volcano",
+        "id": "when-to-choose-volcano"
       },
       {
         "level": 2,
-        "text": "Core Concepts {#core-concepts}",
-        "id": "core-concepts-{#core-concepts}"
+        "text": "Core Concepts",
+        "id": "core-concepts"
       },
       {
         "level": 3,
-        "text": "Agents {#agents}",
-        "id": "agents-{#agents}"
+        "text": "Agents",
+        "id": "agents"
       },
       {
         "level": 3,
-        "text": "Steps {#steps}",
-        "id": "steps-{#steps}"
+        "text": "Steps",
+        "id": "steps"
       },
       {
         "level": 3,
-        "text": "Context & History {#context-history}",
-        "id": "context-history-{#context-history}"
+        "text": "Context & History",
+        "id": "context-history"
       },
       {
         "level": 3,
-        "text": "Multi-Provider Workflows {#multi-provider-workflows}",
-        "id": "multi-provider-workflows-{#multi-provider-workflows}"
+        "text": "Multi-Provider Workflows",
+        "id": "multi-provider-workflows"
       },
       {
         "level": 2,
-        "text": "Questions or Feature Requests? {#questions}",
-        "id": "questions-or-feature-requests-{#questions}"
+        "text": "Questions or Feature Requests?",
+        "id": "questions-or-feature-requests"
       },
       {
         "level": 3,
-        "text": "GitHub Repository {#github-repository}",
-        "id": "github-repository-{#github-repository}"
+        "text": "GitHub Repository",
+        "id": "github-repository"
       },
       {
         "level": 3,
-        "text": "⭐ View on GitHub {#view-on-github}",
-        "id": "⭐-view-on-github-{#view-on-github}"
+        "text": "⭐ View on GitHub",
+        "id": "⭐-view-on-github"
       }
     ]
   },
@@ -574,8 +574,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Automatic Tool Selection {#automatic}",
-        "id": "automatic-tool-selection-{#automatic}"
+        "text": "Automatic Tool Selection",
+        "id": "automatic-tool-selection"
       },
       {
         "level": 3,
@@ -599,8 +599,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Explicit Tool Calling {#explicit}",
-        "id": "explicit-tool-calling-{#explicit}"
+        "text": "Explicit Tool Calling",
+        "id": "explicit-tool-calling"
       },
       {
         "level": 3,
@@ -614,8 +614,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "MCP Authentication {#authentication}",
-        "id": "mcp-authentication-{#authentication}"
+        "text": "MCP Authentication",
+        "id": "mcp-authentication"
       },
       {
         "level": 3,
@@ -649,8 +649,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Connection Pooling & Performance {#connection-pooling}",
-        "id": "connection-pooling-performance-{#connection-pooling}"
+        "text": "Connection Pooling & Performance",
+        "id": "connection-pooling-performance"
       },
       {
         "level": 3,
@@ -685,8 +685,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "OpenTelemetry Integration {#opentelemetry}",
-        "id": "opentelemetry-integration-{#opentelemetry}"
+        "text": "OpenTelemetry Integration",
+        "id": "opentelemetry-integration"
       },
       {
         "level": 3,
@@ -700,8 +700,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Distributed Tracing {#traces}",
-        "id": "distributed-tracing-{#traces}"
+        "text": "Distributed Tracing",
+        "id": "distributed-tracing"
       },
       {
         "level": 3,
@@ -720,8 +720,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Metrics {#metrics}",
-        "id": "metrics-{#metrics}"
+        "text": "Metrics",
+        "id": "metrics"
       },
       {
         "level": 3,
@@ -735,8 +735,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Observability Backends {#backends}",
-        "id": "observability-backends-{#backends}"
+        "text": "Observability Backends",
+        "id": "observability-backends"
       },
       {
         "level": 3,
@@ -760,8 +760,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Advanced Configuration {#advanced}",
-        "id": "advanced-configuration-{#advanced}"
+        "text": "Advanced Configuration",
+        "id": "advanced-configuration"
       },
       {
         "level": 3,
@@ -775,8 +775,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Best Practices {#best-practices}",
-        "id": "best-practices-{#best-practices}"
+        "text": "Best Practices",
+        "id": "best-practices"
       }
     ]
   },
@@ -791,8 +791,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Multi-LLM Workflows {#multi-llm}",
-        "id": "multi-llm-workflows-{#multi-llm}"
+        "text": "Multi-LLM Workflows",
+        "id": "multi-llm-workflows"
       },
       {
         "level": 3,
@@ -826,8 +826,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Parallel Execution {#parallel}",
-        "id": "parallel-execution-{#parallel}"
+        "text": "Parallel Execution",
+        "id": "parallel-execution"
       },
       {
         "level": 3,
@@ -846,8 +846,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Conditional Branching {#branching}",
-        "id": "conditional-branching-{#branching}"
+        "text": "Conditional Branching",
+        "id": "conditional-branching"
       },
       {
         "level": 3,
@@ -866,8 +866,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Loops {#loops}",
-        "id": "loops-{#loops}"
+        "text": "Loops",
+        "id": "loops"
       },
       {
         "level": 3,
@@ -891,8 +891,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Sub-Agent Composition {#sub-agents}",
-        "id": "sub-agent-composition-{#sub-agents}"
+        "text": "Sub-Agent Composition",
+        "id": "sub-agent-composition"
       },
       {
         "level": 3,
@@ -916,8 +916,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Combined Patterns {#combined}",
-        "id": "combined-patterns-{#combined}"
+        "text": "Combined Patterns",
+        "id": "combined-patterns"
       }
     ]
   },
@@ -972,8 +972,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "OpenAI Provider {#openai}",
-        "id": "openai-provider-{#openai}"
+        "text": "OpenAI Provider",
+        "id": "openai-provider"
       },
       {
         "level": 3,
@@ -1017,8 +1017,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Anthropic (Claude) Provider {#anthropic}",
-        "id": "anthropic-claude-provider-{#anthropic}"
+        "text": "Anthropic (Claude) Provider",
+        "id": "anthropic-claude-provider"
       },
       {
         "level": 3,
@@ -1037,8 +1037,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Mistral Provider {#mistral}",
-        "id": "mistral-provider-{#mistral}"
+        "text": "Mistral Provider",
+        "id": "mistral-provider"
       },
       {
         "level": 3,
@@ -1057,8 +1057,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Llama Provider {#llama}",
-        "id": "llama-provider-{#llama}"
+        "text": "Llama Provider",
+        "id": "llama-provider"
       },
       {
         "level": 3,
@@ -1077,8 +1077,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "AWS Bedrock Provider {#bedrock}",
-        "id": "aws-bedrock-provider-{#bedrock}"
+        "text": "AWS Bedrock Provider",
+        "id": "aws-bedrock-provider"
       },
       {
         "level": 3,
@@ -1102,8 +1102,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Google Vertex Studio Provider {#vertex}",
-        "id": "google-vertex-studio-provider-{#vertex}"
+        "text": "Google Vertex Studio Provider",
+        "id": "google-vertex-studio-provider"
       },
       {
         "level": 3,
@@ -1122,8 +1122,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Azure AI Provider {#azure}",
-        "id": "azure-ai-provider-{#azure}"
+        "text": "Azure AI Provider",
+        "id": "azure-ai-provider"
       },
       {
         "level": 3,
@@ -1147,8 +1147,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
-        "text": "Creating a Custom Provider {#custom}",
-        "id": "creating-a-custom-provider-{#custom}"
+        "text": "Creating a Custom Provider",
+        "id": "creating-a-custom-provider"
       },
       {
         "level": 3,

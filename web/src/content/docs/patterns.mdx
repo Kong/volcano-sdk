@@ -6,7 +6,7 @@ title: "Advanced Patterns - Volcano SDK"
 
 Control flow patterns for building multi-step agents: parallel execution, conditional branching, loops, sub-agent composition, and multi-LLM workflows.
 
-## Multi-LLM Workflows {#multi-llm}
+## Multi-LLM Workflows
 
 One of Volcano's most powerful features: use different LLM providers for different steps in the same workflow. Mix and match to leverage each model's strengths.
 
@@ -135,7 +135,7 @@ await agent({ llm: gpt })
 - **A/B testing:** Compare model outputs in production
 - **Fallback strategies:** Switch to backup provider if primary fails
 
-## Parallel Execution {#parallel}
+## Parallel Execution
 
 Execute multiple steps simultaneously for faster workflows.
 
@@ -179,7 +179,7 @@ await agent({ llm })
 - **Independence:** Suitable for independent analysis tasks
 - **Organization:** Named mode provides structured result access
 
-## Conditional Branching {#branching}
+## Conditional Branching
 
 Route workflows based on conditions.
 
@@ -230,7 +230,7 @@ await agent({ llm })
 - Customer support ticket classification
 - Approval workflows
 
-## Loops {#loops}
+## Loops
 
 Iterate until conditions are met.
 
@@ -295,7 +295,7 @@ await agent({ llm })
 - Self-correcting content generation
 - Iterative refinement
 
-## Sub-Agent Composition {#sub-agents}
+## Sub-Agent Composition
 
 Build reusable agent components and compose them into larger workflows.
 
@@ -370,7 +370,7 @@ await agent({ llm })
 - **Maintainability:** Changes in one place affect all uses
 - **Clarity:** High-level workflows read like documentation
 
-## Combined Patterns {#combined}
+## Combined Patterns
 
 Mix and match patterns for powerful workflows:
 
