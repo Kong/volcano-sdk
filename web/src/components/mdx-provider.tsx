@@ -2,8 +2,21 @@ import { MDXProvider } from "@mdx-js/react";
 import type { ReactNode } from "react";
 import { Highlight, themes } from "prism-react-renderer";
 
+interface CodeProps {
+  children?: ReactNode;
+}
+
+interface PreProps extends CodeProps {
+  children?: {
+    props?: {
+      children?: string;
+      className?: string;
+    };
+  };
+}
+
 const components = {
-  pre: ({ children }: any) => {
+  pre: ({ children }: PreProps) => {
     const code = children?.props?.children || "";
     const language =
       children?.props?.className?.replace("language-", "") || "typescript";
@@ -27,7 +40,7 @@ const components = {
       </Highlight>
     );
   },
-  code: ({ children }: any) => (
+  code: ({ children }: CodeProps) => (
     <code className="rounded px-1.5 py-0.5">{children}</code>
   ),
 };

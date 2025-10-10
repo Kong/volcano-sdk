@@ -27,10 +27,10 @@ export function extractTextContent(markdown: string): string[] {
   content = content.replace(/<[^>]+>/g, "");
 
   // Remove links but keep the text
-  content = content.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
+  content = content.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
 
   // Remove images
-  content = content.replace(/!\[([^\]]*)\]\([^\)]+\)/g, "");
+  content = content.replace(/!\[([^\]]*)\]\([^)]+\)/g, "");
 
   // Remove bold and italic markers but keep the text
   content = content.replace(/\*\*([^*]+)\*\*/g, "$1"); // **bold**

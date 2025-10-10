@@ -52,7 +52,23 @@ export function EnhancedSearchModal({
 
   // Initialize search service
   const searchService = useMemo(() => {
-    return new SearchService(searchIndexData as any);
+    return new SearchService(
+      searchIndexData as Array<{
+        id: string;
+        title: string;
+        description?: string;
+        content: string;
+        headings: string[];
+        path: string;
+        section?: string;
+        type?: string;
+        keywords?: string[];
+        lastModified?: string;
+        popularity?: number;
+        anchor?: string;
+        parentTitle?: string;
+      }>
+    );
   }, []);
 
   // Load recent searches
@@ -219,7 +235,7 @@ export function EnhancedSearchModal({
         }
       }
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, searchResults.length]);
 
   // Scroll selected suggestion into view
   useEffect(() => {

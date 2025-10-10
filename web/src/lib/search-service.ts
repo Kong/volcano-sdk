@@ -88,7 +88,7 @@ export class SearchService {
     const expandedQueries = expandQueryWithSynonyms(parsedQuery.main);
 
     // Perform searches
-    let allResults: SearchResult[] = [];
+    const allResults: SearchResult[] = [];
 
     for (const expandedQuery of expandedQueries) {
       const results = this.fuse.search(expandedQuery, {

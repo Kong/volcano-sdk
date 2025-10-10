@@ -80,7 +80,7 @@ async function extractTextFromMDX(content: string): Promise<{
 
   // Extract code blocks for separate indexing
   const codeBlocks: string[] = [];
-  let textWithoutCode = withoutFrontmatter.replace(
+  const textWithoutCode = withoutFrontmatter.replace(
     /```[\s\S]*?```/g,
     (match) => {
       const codeContent = match.replace(/```\w*\n?/, "").replace(/```$/, "");

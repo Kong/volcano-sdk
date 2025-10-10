@@ -1,5 +1,15 @@
 import type { IFuseOptions } from "fuse.js";
 
+// Generic document type for search
+interface SearchDocument {
+  title: string;
+  headings?: string[];
+  description?: string;
+  content?: string;
+  keywords?: string[];
+  [key: string]: unknown;
+}
+
 // Synonym mappings for common terms
 export const searchSynonyms: Record<string, string[]> = {
   component: ["widget", "element", "ui", "control"],
@@ -20,7 +30,7 @@ export const searchSynonyms: Record<string, string[]> = {
 };
 
 // Search configuration with improved fuzzy matching
-export const searchConfig: IFuseOptions<any> = {
+export const searchConfig: IFuseOptions<SearchDocument> = {
   keys: [
     { name: "title", weight: 0.45 }, // Increased weight for titles
     { name: "headings", weight: 0.25 }, // Headings are important
@@ -41,10 +51,15 @@ export const searchConfig: IFuseOptions<any> = {
   ignoreFieldNorm: false,
   fieldNormWeight: 1,
   // Fuzzy matching configuration
-  getFn: (obj: any, path: string | string[]) => {
+  getFn: (obj: SearchDocument, path: string | string[]) => {
     const pathArray = typeof path === "string" ? [path] : path;
-    const value = pathArray.reduce(
-      (currentObj: any, key: string) => currentObj?.[key],
+    const value = pathArray.reduce<unknown>(
+      (currentObj: unknown, key: string) => {
+        if (currentObj && typeof currentObj === "object" && key in currentObj) {
+          return (currentObj as Record<string, unknown>)[key];
+        }
+        return undefined;
+      },
       obj
     );
     if (typeof value === "string") {

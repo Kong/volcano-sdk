@@ -188,15 +188,15 @@ Even more content.
       }
 
       const navEntry = generatedNavigation.find(
-        (nav: any) => nav.path === routePath
+        (nav: { path: string; headings: Heading[] }) => nav.path === routePath
       );
 
       expect(navEntry).toBeDefined();
-      expect(navEntry.headings).toBeDefined();
+      expect(navEntry?.headings).toBeDefined();
 
       // Verify all source headings are in the generated TOC
       sourceHeadings.forEach((sourceHeading) => {
-        const foundInToc = navEntry.headings.some(
+        const foundInToc = navEntry?.headings.some(
           (tocHeading: Heading) =>
             tocHeading.level === sourceHeading.level &&
             tocHeading.text === sourceHeading.text &&
@@ -207,7 +207,7 @@ Even more content.
       });
 
       // Verify the counts match
-      expect(navEntry.headings.length).toBe(sourceHeadings.length);
+      expect(navEntry?.headings.length).toBe(sourceHeadings.length);
     });
   });
 });

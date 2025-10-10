@@ -1,8 +1,23 @@
 import { CodeBlock, InlineCode } from "./ui/code-block";
 import { Callout } from "./ui/callout";
-import type { ReactNode } from "react";
+import type { ReactNode, ReactElement } from "react";
+
+// Type for MDX directive components
+interface DirectiveProps {
+  children: ReactNode;
+  directiveLabel?: string;
+}
+
+// Type for code elements in pre blocks
+interface CodeElement {
+  props?: {
+    className?: string;
+    children?: string;
+  };
+}
 
 // Custom table component for better styling and mobile responsiveness
+// eslint-disable-next-line react-refresh/only-export-components
 const Table = ({ children }: { children: ReactNode }) => (
   <div className="not-prose my-6 overflow-x-auto lg:my-8">
     <div className="inline-block min-w-full align-middle">
@@ -13,24 +28,29 @@ const Table = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 const THead = ({ children }: { children: ReactNode }) => (
   <thead className="border-b-2 bg-[#FF572D]/20">{children}</thead>
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 const TBody = ({ children }: { children: ReactNode }) => (
   <tbody className="divide-y-2">{children}</tbody>
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 const TR = ({ children }: { children: ReactNode }) => (
   <tr className="transition-colors hover:bg-[#FF572D]/5">{children}</tr>
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 const TH = ({ children }: { children: ReactNode }) => (
   <th className="border-r-2 px-3 py-3 text-left text-xs font-bold tracking-wide uppercase last:border-r-0 sm:px-6 sm:py-4 sm:text-sm">
     {children}
   </th>
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 const TD = ({ children }: { children: ReactNode }) => {
   // Check if content is a checkmark or similar emoji
   const content = String(children);
@@ -40,8 +60,8 @@ const TD = ({ children }: { children: ReactNode }) => {
   const hasBold =
     typeof children === "object" &&
     children &&
-    "type" in (children as any) &&
-    (children as any).type === "strong";
+    "type" in (children as ReactElement) &&
+    (children as ReactElement).type === "strong";
 
   return (
     <td
@@ -65,10 +85,10 @@ export const mdxComponents = {
   pre: ({ children, ...props }: { children: ReactNode }) => {
     // Extract code content and language from the pre/code structure
     if (typeof children === "object" && children && "props" in children) {
-      const codeProps = children.props as any;
-      const className = codeProps?.className || "";
+      const codeElement = children as CodeElement;
+      const className = codeElement.props?.className || "";
       const language = className.replace(/language-/, "");
-      const code = codeProps?.children || "";
+      const code = codeElement.props?.children || "";
 
       return (
         <div className="not-prose">
@@ -97,27 +117,27 @@ export const mdxComponents = {
   ),
 
   // Directive components (:::note, :::warning, etc.)
-  NoteDirective: ({ children, directiveLabel }: any) => (
+  NoteDirective: ({ children, directiveLabel }: DirectiveProps) => (
     <Callout type="note" title={directiveLabel}>
       {children}
     </Callout>
   ),
-  WarningDirective: ({ children, directiveLabel }: any) => (
+  WarningDirective: ({ children, directiveLabel }: DirectiveProps) => (
     <Callout type="warning" title={directiveLabel}>
       {children}
     </Callout>
   ),
-  TipDirective: ({ children, directiveLabel }: any) => (
+  TipDirective: ({ children, directiveLabel }: DirectiveProps) => (
     <Callout type="tip" title={directiveLabel}>
       {children}
     </Callout>
   ),
-  CautionDirective: ({ children, directiveLabel }: any) => (
+  CautionDirective: ({ children, directiveLabel }: DirectiveProps) => (
     <Callout type="caution" title={directiveLabel}>
       {children}
     </Callout>
   ),
-  InfoDirective: ({ children, directiveLabel }: any) => (
+  InfoDirective: ({ children, directiveLabel }: DirectiveProps) => (
     <Callout type="info" title={directiveLabel}>
       {children}
     </Callout>

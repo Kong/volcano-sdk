@@ -201,7 +201,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         }
       }
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, searchResults.length]);
 
   // Scroll selected suggestion into view
   useEffect(() => {
@@ -324,7 +324,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       prev > 0 ? prev - 1 : totalSuggestions - 1
                     );
                     break;
-                  case "Enter":
+                  case "Enter": {
                     e.preventDefault();
                     const allSuggestions = [
                       ...searchSuggestionsData.quickLinks,
@@ -336,10 +336,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     if (selected) {
                       handleSuggestionSelect(
                         selected.query,
-                        (selected as any).path
+                        "path" in selected ? (selected.path as string) : undefined
                       );
                     }
                     break;
+                  }
                 }
               } else if (searchResults.length > 0 && query.length >= 2) {
                 switch (e.key) {

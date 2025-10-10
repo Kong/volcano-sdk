@@ -33,7 +33,7 @@ export function FeatureCard({
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (href) {
       e.preventDefault();
-      const [_path, hash] = href.split("#");
+      const hash = href.split("#")[1];
 
       // Use TanStack Router's client-side navigation
       window.history.pushState({}, "", href);
