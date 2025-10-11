@@ -138,32 +138,13 @@ Even more content.
     });
   });
 
-  it("should verify all headings are included in generated TOC", () => {
-    // Read the generated navigation file
-    const generatedPath = path.join(
-      __dirname,
-      "../components/docs/navigation-generated.ts"
+  it("should verify all headings are included in generated TOC", async () => {
+    // Dynamically import the generated navigation file
+    const generatedModule = await import(
+      "../components/docs/navigation-generated.js"
     );
 
-    // Check if the generated file exists
-    if (!fs.existsSync(generatedPath)) {
-      throw new Error(
-        "navigation-generated.ts does not exist. Run 'npm run generate-toc' first."
-      );
-    }
-
-    const generatedContent = fs.readFileSync(generatedPath, "utf-8");
-
-    // Parse the exported navigation data
-    const jsonMatch = generatedContent.match(
-      /export const generatedNavigation: NavigationDoc\[\] = ([\s\S]+)/
-    );
-
-    if (!jsonMatch) {
-      throw new Error("Could not parse generated navigation data");
-    }
-
-    const generatedNavigation = JSON.parse(jsonMatch[1]);
+    const generatedNavigation = generatedModule.generatedNavigation;
 
     // For each MDX file, verify all its headings are in the generated TOC
     mdxFiles.forEach((file) => {
