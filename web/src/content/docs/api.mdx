@@ -19,43 +19,43 @@ const myAgent = agent({
   llm,
   instructions: "You are a helpful assistant",
   timeout: 60,
-  retry: { retries: 3 }
+  retry: { retries: 3 },
 });
 ```
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `llm` | LLMHandle | - | Default LLM provider for all steps |
-| `instructions` | string | - | Global system instructions |
-| `timeout` | number | 60 | Default timeout per step (seconds) |
-| `retry` | RetryConfig | `{ retries: 3 }` | Retry configuration |
-| `contextMaxChars` | number | 20480 | Soft cap for injected context size |
-| `contextMaxToolResults` | number | 8 | Number of recent tool results to include |
+| Option                  | Type        | Default          | Description                              |
+| ----------------------- | ----------- | ---------------- | ---------------------------------------- |
+| `llm`                   | LLMHandle   | -                | Default LLM provider for all steps       |
+| `instructions`          | string      | -                | Global system instructions               |
+| `timeout`               | number      | 60               | Default timeout per step (seconds)       |
+| `retry`                 | RetryConfig | `{ retries: 3 }` | Retry configuration                      |
+| `contextMaxChars`       | number      | 20480            | Soft cap for injected context size       |
+| `contextMaxToolResults` | number      | 8                | Number of recent tool results to include |
 
 ### Methods
 
 #### Basic Methods
 
-| Method | Description |
-|--------|-------------|
-| `.then(step)` | Add a sequential step to the workflow |
-| `.resetHistory()` | Clear context/history for subsequent steps |
-| `.run(log?)` | Execute workflow and return all results |
-| `.stream(log?)` | Execute workflow and yield results incrementally |
+| Method            | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `.then(step)`     | Add a sequential step to the workflow            |
+| `.resetHistory()` | Clear context/history for subsequent steps       |
+| `.run(log?)`      | Execute workflow and return all results          |
+| `.stream(log?)`   | Execute workflow and yield results incrementally |
 
 #### Advanced Pattern Methods
 
-| Method | Description |
-|--------|-------------|
-| `.parallel(steps)` | Execute steps concurrently (array or dict mode) |
-| `.branch(condition, branches)` | Conditional if/else routing |
-| `.switch(selector, cases)` | Multi-way branching with default |
-| `.while(condition, body, opts?)` | Loop until condition is false |
-| `.forEach(items, body)` | Iterate over array of items |
-| `.retryUntil(body, success, opts?)` | Retry until success condition is met |
-| `.runAgent(subAgent)` | Compose and run sub-agents |
+| Method                              | Description                                     |
+| ----------------------------------- | ----------------------------------------------- |
+| `.parallel(steps)`                  | Execute steps concurrently (array or dict mode) |
+| `.branch(condition, branches)`      | Conditional if/else routing                     |
+| `.switch(selector, cases)`          | Multi-way branching with default                |
+| `.while(condition, body, opts?)`    | Loop until condition is false                   |
+| `.forEach(items, body)`             | Iterate over array of items                     |
+| `.retryUntil(body, success, opts?)` | Retry until success condition is met            |
+| `.runAgent(subAgent)`               | Compose and run sub-agents                      |
 
 ## Step Types
 
@@ -121,14 +121,14 @@ Call a specific tool directly:
 
 ### Common Step Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `llm` | LLMHandle | Override the LLM for this step |
-| `instructions` | string | Override system instructions for this step |
-| `timeout` | number | Step timeout in seconds (overrides agent default) |
-| `retry` | RetryConfig | Retry config for this step (overrides agent default) |
-| `pre` | () => void | Hook called before step execution |
-| `post` | () => void | Hook called after successful step execution |
+| Field          | Type        | Description                                          |
+| -------------- | ----------- | ---------------------------------------------------- |
+| `llm`          | LLMHandle   | Override the LLM for this step                       |
+| `instructions` | string      | Override system instructions for this step           |
+| `timeout`      | number      | Step timeout in seconds (overrides agent default)    |
+| `retry`        | RetryConfig | Retry config for this step (overrides agent default) |
+| `pre`          | () => void  | Hook called before step execution                    |
+| `post`         | () => void  | Hook called after successful step execution          |
 
 ## Step Results
 
@@ -141,15 +141,15 @@ type StepResult = {
   llmOutput?: string;
 
   // Timing metrics (milliseconds)
-  durationMs?: number;        // Total step wall time
-  llmMs?: number;             // Time spent in LLM calls
+  durationMs?: number; // Total step wall time
+  llmMs?: number; // Time spent in LLM calls
 
   // MCP tool results (explicit call)
   mcp?: {
     endpoint: string;
     tool: string;
     result: any;
-    ms?: number;              // Tool execution time
+    ms?: number; // Tool execution time
   };
 
   // MCP tool calls (automatic selection)
@@ -157,7 +157,7 @@ type StepResult = {
     name: string;
     endpoint: string;
     result: any;
-    ms?: number;              // Tool execution time
+    ms?: number; // Tool execution time
   }>;
 
   // Parallel execution results
@@ -180,17 +180,17 @@ const results = await agent({ llm })
   .run();
 
 // Access first step results
-console.log(results[0].prompt);        // "Analyze sentiment"
-console.log(results[0].llmOutput);     // LLM response
-console.log(results[0].toolCalls);     // Tools that were called
-console.log(results[0].durationMs);    // Step duration
-console.log(results[0].llmMs);         // LLM time
+console.log(results[0].prompt); // "Analyze sentiment"
+console.log(results[0].llmOutput); // LLM response
+console.log(results[0].toolCalls); // Tools that were called
+console.log(results[0].durationMs); // Step duration
+console.log(results[0].llmMs); // LLM time
 
 // Access aggregated metrics (on last step)
 const last = results[results.length - 1];
-console.log(last.totalDurationMs);     // Total workflow time
-console.log(last.totalLlmMs);          // Total LLM time
-console.log(last.totalMcpMs);          // Total MCP time
+console.log(last.totalDurationMs); // Total workflow time
+console.log(last.totalLlmMs); // Total LLM time
+console.log(last.totalMcpMs); // Total MCP time
 ```
 
 ## RetryConfig
@@ -199,9 +199,9 @@ Configuration for retry behavior:
 
 ```typescript
 type RetryConfig = {
-  delay?: number;      // Seconds to wait between retries (mutually exclusive with backoff)
-  backoff?: number;    // Exponential factor (waits 1s, factor^n each retry)
-  retries?: number;    // Total attempts including first (default: 3)
+  delay?: number; // Seconds to wait between retries (mutually exclusive with backoff)
+  backoff?: number; // Exponential factor (waits 1s, factor^n each retry)
+  retries?: number; // Total attempts including first (default: 3)
 };
 ```
 
@@ -233,19 +233,19 @@ const astro = mcp("http://localhost:3211/mcp");
 // OAuth authentication
 const protectedMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'oauth',
-    clientId: 'your-client-id',
-    clientSecret: 'your-client-secret',
-    tokenEndpoint: 'https://api.example.com/oauth/token'
-  }
+    type: "oauth",
+    clientId: "your-client-id",
+    clientSecret: "your-client-secret",
+    tokenEndpoint: "https://api.example.com/oauth/token",
+  },
 });
 
 // Bearer token
 const bearerMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'bearer',
-    token: 'your-bearer-token'
-  }
+    type: "bearer",
+    token: "your-bearer-token",
+  },
 });
 ```
 
@@ -260,7 +260,7 @@ import { discoverTools, mcp } from "volcano-sdk";
 
 const handles = [
   mcp("http://localhost:3211/mcp"),
-  mcp("http://localhost:3212/mcp")
+  mcp("http://localhost:3212/mcp"),
 ];
 
 const tools = await discoverTools(handles);
@@ -295,7 +295,7 @@ type MCPHandle = {
 type ToolDefinition = {
   name: string;
   description: string;
-  parameters: any;        // JSON Schema
+  parameters: any; // JSON Schema
   mcpHandle?: MCPHandle;
 };
 ```

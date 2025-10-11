@@ -104,7 +104,7 @@ import { agent, llmOpenAI } from "volcano-sdk";
 
 const llm = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini"
+  model: "gpt-4o-mini",
 });
 
 const results = await agent({ llm })
@@ -124,7 +124,7 @@ import { agent, llmOpenAI, mcp } from "volcano-sdk";
 
 const llm = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini"
+  model: "gpt-4o-mini",
 });
 
 const astro = mcp("http://localhost:3211/mcp");
@@ -132,10 +132,10 @@ const astro = mcp("http://localhost:3211/mcp");
 const steps = await agent({ llm })
   .then({
     prompt: "Determine the astrological sign for 1993-07-11.",
-    mcps: [astro]  // Automatic tool selection
+    mcps: [astro], // Automatic tool selection
   })
   .then({
-    prompt: "Write a one-line fortune for that sign."
+    prompt: "Write a one-line fortune for that sign.",
     // Context from previous step is automatically included
   })
   .run();
@@ -153,15 +153,15 @@ import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
 
 const openai = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini"
+  model: "gpt-4o-mini",
 });
 const claude = llmAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
-  model: "claude-3-5-haiku-20241022"
+  model: "claude-3-5-haiku-20241022",
 });
 const mistral = llmMistral({
   apiKey: process.env.MISTRAL_API_KEY!,
-  model: "mistral-small-latest"
+  model: "mistral-small-latest",
 });
 
 const results = await agent()
@@ -191,13 +191,10 @@ Build agents that analyze support tickets, look up customer data via MCP tools, 
 ```typescript
 await agent({ llm: gpt4 })
   .then({ prompt: "Classify ticket urgency", mcps: [ticketing] })
-  .branch(
-    (h) => h[0].llmOutput?.includes("URGENT"),
-    {
-      true: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
-      false: (a) => a.then({ llm: claude, prompt: "Draft response" })
-    }
-  )
+  .branch((h) => h[0].llmOutput?.includes("URGENT"), {
+    true: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+    false: (a) => a.then({ llm: claude, prompt: "Draft response" }),
+  })
   .run();
 ```
 
@@ -210,13 +207,16 @@ await agent({ llm })
   .parallel({
     sentiment: { prompt: "Analyze sentiment" },
     topics: { prompt: "Extract topics" },
-    violations: { prompt: "Check policy violations" }
+    violations: { prompt: "Check policy violations" },
   })
   .switch(
-    (h) => h[0].parallel?.violations.llmOutput?.includes("VIOLATION") ? "flag" : "approve",
+    (h) =>
+      h[0].parallel?.violations.llmOutput?.includes("VIOLATION")
+        ? "flag"
+        : "approve",
     {
       flag: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
-      approve: (a) => a.then({ mcp: cms, tool: "publish" })
+      approve: (a) => a.then({ mcp: cms, tool: "publish" }),
     }
   )
   .run();
@@ -245,7 +245,6 @@ for await (const step of agent({ llm: gpt4 })
   .then({ llm: claude, prompt: "Analyze findings" })
   .then({ llm: mistral, prompt: "Write comprehensive report" })
   .stream()) {
-
   updateUI(step); // Real-time progress
 }
 ```
@@ -254,20 +253,20 @@ for await (const step of agent({ llm: gpt4 })
 
 Factual comparison with other AI frameworks:
 
-| Feature | Volcano SDK | AI SDK | LangChain |
-|---------|-------------|--------|-----------|
-| **API Style** | Fluent, chainable `.then()` | Function-based | Class-based chains |
-| **MCP Integration** | Native, first-class | Via custom tools | Via custom tools |
-| **Multi-Provider Workflows** | Built-in, per-step LLM switching | Manual configuration | Supported via chains |
-| **Advanced Patterns** | Parallel, branching, loops, sub-agents | Manual implementation | Via agents framework |
-| **Retry Strategies** | 3 modes: immediate, delayed, exponential | Basic retry | Via callbacks |
-| **Streaming** | `stream()` method (async generator) | `streamText()` | Via callbacks |
-| **Type Safety** | Full TypeScript with inference | Full TypeScript | TypeScript available |
-| **Error Handling** | Typed errors with metadata (stepId, provider, retryable) | Standard errors | Custom error handlers |
-| **Context Management** | Automatic with tunable limits | Manual memory | Built-in memory |
-| **Step Hooks** | Pre/post hooks per step | Not available | Via callbacks |
-| **Connection Pooling** | Automatic for MCP | N/A | Manual |
-| **Bundle Size** | Minimal (peer deps only) | Minimal | Large (~500KB+) |
+| Feature                      | Volcano SDK                                              | AI SDK                | LangChain             |
+| ---------------------------- | -------------------------------------------------------- | --------------------- | --------------------- |
+| **API Style**                | Fluent, chainable `.then()`                              | Function-based        | Class-based chains    |
+| **MCP Integration**          | Native, first-class                                      | Via custom tools      | Via custom tools      |
+| **Multi-Provider Workflows** | Built-in, per-step LLM switching                         | Manual configuration  | Supported via chains  |
+| **Advanced Patterns**        | Parallel, branching, loops, sub-agents                   | Manual implementation | Via agents framework  |
+| **Retry Strategies**         | 3 modes: immediate, delayed, exponential                 | Basic retry           | Via callbacks         |
+| **Streaming**                | `stream()` method (async generator)                      | `streamText()`        | Via callbacks         |
+| **Type Safety**              | Full TypeScript with inference                           | Full TypeScript       | TypeScript available  |
+| **Error Handling**           | Typed errors with metadata (stepId, provider, retryable) | Standard errors       | Custom error handlers |
+| **Context Management**       | Automatic with tunable limits                            | Manual memory         | Built-in memory       |
+| **Step Hooks**               | Pre/post hooks per step                                  | Not available         | Via callbacks         |
+| **Connection Pooling**       | Automatic for MCP                                        | N/A                   | Manual                |
+| **Bundle Size**              | Minimal (peer deps only)                                 | Minimal               | Large (~500KB+)       |
 
 ### When to Choose Volcano
 
@@ -285,12 +284,12 @@ An agent is a workflow builder that chains together steps. Each step can call an
 
 ```typescript
 const myAgent = agent({
-  llm,                        // Default LLM provider (OpenAI, Claude, etc.)
-  instructions: "...",        // Global system instructions for ALL steps
-  timeout: 60,                // Default timeout in seconds (prevents hanging)
-  retry: { retries: 3 },      // Retry configuration (automatic failure recovery)
-  contextMaxChars: 20480,     // Context size limit (prevent token overflow)
-  contextMaxToolResults: 8    // How many tool results to keep in context
+  llm, // Default LLM provider (OpenAI, Claude, etc.)
+  instructions: "...", // Global system instructions for ALL steps
+  timeout: 60, // Default timeout in seconds (prevents hanging)
+  retry: { retries: 3 }, // Retry configuration (automatic failure recovery)
+  contextMaxChars: 20480, // Context size limit (prevent token overflow)
+  contextMaxToolResults: 8, // How many tool results to keep in context
 });
 ```
 
@@ -320,7 +319,7 @@ Use `resetHistory()` to clear context:
 await agent({ llm })
   .then({ prompt: "Analyze this document..." })
   .then({ prompt: "What were the key points?" }) // Has context from step 1
-  .resetHistory()  // 🧹 Clear all context
+  .resetHistory() // 🧹 Clear all context
   .then({ prompt: "Now analyze this OTHER document..." }) // Fresh start
   .run();
 ```

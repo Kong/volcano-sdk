@@ -76,7 +76,7 @@ export function Hero() {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-x-0 bottom-0 w-full right-0">
+      <div className="absolute inset-x-0 right-0 bottom-0 w-full">
         <video
           ref={videoRef}
           autoPlay
@@ -115,7 +115,8 @@ export function Hero() {
               </Link>
               <div className="bg-terminal inline-flex w-fit items-center justify-between gap-2 border-2 border-black px-3 py-3 text-sm font-light text-white sm:text-base">
                 <div className="flex w-fit items-center gap-2">
-                  $ npm i <span className="text-color-primary">volcano-sdk</span>
+                  $ npm i{" "}
+                  <span className="text-color-primary">volcano-sdk</span>
                 </div>
                 <button
                   className="text-color-primary cursor-pointer pl-2 transition-opacity hover:opacity-60"

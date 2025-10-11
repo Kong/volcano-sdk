@@ -39,7 +39,10 @@ export function SEOHead({
   const finalOgTitle = ogTitle || title;
   const finalOgDescription = ogDescription || description;
   const finalOgUrl =
-    ogUrl || (typeof window !== "undefined" ? window.location.href : defaultMeta.canonicalUrl);
+    ogUrl ||
+    (typeof window !== "undefined"
+      ? window.location.href
+      : defaultMeta.canonicalUrl);
 
   // Ensure canonical URL is absolute
   const baseUrl = "https://volcano.dev";

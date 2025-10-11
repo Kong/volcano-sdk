@@ -19,17 +19,17 @@ import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
 
 const gpt = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o-mini"
+  model: "gpt-4o-mini",
 });
 
 const claude = llmAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
-  model: "claude-3-5-haiku-20241022"
+  model: "claude-3-5-haiku-20241022",
 });
 
 const mistral = llmMistral({
   apiKey: process.env.MISTRAL_API_KEY!,
-  model: "mistral-small-latest"
+  model: "mistral-small-latest",
 });
 
 // Each step uses a different LLM
@@ -51,20 +51,21 @@ import { agent, llmLlama, llmOpenAI } from "volcano-sdk";
 
 const llama = llmLlama({
   baseURL: "http://127.0.0.1:11434",
-  model: "llama3.2:3b"  // Free, local
+  model: "llama3.2:3b", // Free, local
 });
 
 const gpt4 = llmOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  model: "gpt-4o"  // Expensive, high-quality
+  model: "gpt-4o", // Expensive, high-quality
 });
 
 // Process 100 documents
 await agent()
-  .forEach(documents, (doc, a) =>
-    a.then({ llm: llama, prompt: `Summarize: ${doc}` })  // Cheap preprocessing
+  .forEach(
+    documents,
+    (doc, a) => a.then({ llm: llama, prompt: `Summarize: ${doc}` }) // Cheap preprocessing
   )
-  .then({ llm: gpt4, prompt: "Analyze all summaries and create final report" })  // Quality output
+  .then({ llm: gpt4, prompt: "Analyze all summaries and create final report" }) // Quality output
   .run();
 ```
 
@@ -80,16 +81,16 @@ await agent()
   .then({
     llm: gpt,
     prompt: "Query user data from database",
-    mcps: [database]
+    mcps: [database],
   })
   .then({
     llm: claude,
     prompt: "Perform statistical analysis",
-    mcps: [analytics]
+    mcps: [analytics],
   })
   .then({
     llm: mistral,
-    prompt: "Generate executive summary"
+    prompt: "Generate executive summary",
   })
   .run();
 ```
@@ -101,17 +102,14 @@ Route to different LLMs based on complexity:
 ```typescript
 await agent()
   .then({ llm: gpt, prompt: "Classify this task as SIMPLE or COMPLEX" })
-  .switch(
-    (h) => h[0].llmOutput?.includes("COMPLEX") ? "complex" : "simple",
-    {
-      complex: (a) => a
+  .switch((h) => (h[0].llmOutput?.includes("COMPLEX") ? "complex" : "simple"), {
+    complex: (a) =>
+      a
         .then({ llm: gpt4, prompt: "Handle complex reasoning" })
         .then({ llm: claude, prompt: "Verify the analysis" }),
 
-      simple: (a) => a
-        .then({ llm: llama, prompt: "Handle simple task quickly" })
-    }
-  )
+    simple: (a) => a.then({ llm: llama, prompt: "Handle simple task quickly" }),
+  })
   .run();
 ```
 
@@ -148,7 +146,7 @@ await agent({ llm })
   .parallel([
     { prompt: "Analyze sentiment" },
     { prompt: "Extract entities" },
-    { prompt: "Categorize topic" }
+    { prompt: "Categorize topic" },
   ])
   .then({ prompt: "Combine all analysis results" })
   .run();
@@ -163,7 +161,7 @@ await agent({ llm })
   .parallel({
     sentiment: { prompt: "What's the sentiment?" },
     entities: { prompt: "Extract key entities" },
-    summary: { prompt: "Summarize in 5 words" }
+    summary: { prompt: "Summarize in 5 words" },
   })
   .then((history) => {
     const results = history[0].parallel;
@@ -190,17 +188,16 @@ Binary decision based on a condition:
 ```typescript
 await agent({ llm })
   .then({ prompt: "Is this email spam? Reply YES or NO" })
-  .branch(
-    (history) => history[0].llmOutput?.includes("YES") || false,
-    {
-      true: (a) => a
+  .branch((history) => history[0].llmOutput?.includes("YES") || false, {
+    true: (a) =>
+      a
         .then({ prompt: "Categorize spam type" })
         .then({ mcp: notifications, tool: "alert" }),
-      false: (a) => a
+    false: (a) =>
+      a
         .then({ prompt: "Extract action items" })
-        .then({ prompt: "Draft reply" })
-    }
-  )
+        .then({ prompt: "Draft reply" }),
+  })
   .run();
 ```
 
@@ -211,15 +208,12 @@ Handle multiple branches with a default fallback:
 ```typescript
 await agent({ llm })
   .then({ prompt: "Classify ticket priority: HIGH, MEDIUM, or LOW" })
-  .switch(
-    (history) => history[0].llmOutput?.toUpperCase().trim() || '',
-    {
-      'HIGH': (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
-      'MEDIUM': (a) => a.then({ mcp: jira, tool: "create_ticket" }),
-      'LOW': (a) => a.then({ mcp: email, tool: "queue_for_review" }),
-      default: (a) => a.then({ prompt: "Escalate unknown priority" })
-    }
-  )
+  .switch((history) => history[0].llmOutput?.toUpperCase().trim() || "", {
+    HIGH: (a) => a.then({ mcp: pagerduty, tool: "create_incident" }),
+    MEDIUM: (a) => a.then({ mcp: jira, tool: "create_ticket" }),
+    LOW: (a) => a.then({ mcp: email, tool: "queue_for_review" }),
+    default: (a) => a.then({ prompt: "Escalate unknown priority" }),
+  })
   .run();
 ```
 
@@ -258,12 +252,17 @@ await agent({ llm })
 Process an array of items:
 
 ```typescript
-const customers = ["alice@example.com", "bob@example.com", "charlie@example.com"];
+const customers = [
+  "alice@example.com",
+  "bob@example.com",
+  "charlie@example.com",
+];
 
 await agent({ llm })
   .forEach(customers, (email, a) =>
-    a.then({ prompt: `Generate personalized email for ${email}` })
-     .then({ mcp: sendgrid, tool: "send", args: { to: email } })
+    a
+      .then({ prompt: `Generate personalized email for ${email}` })
+      .then({ mcp: sendgrid, tool: "send", args: { to: email } })
   )
   .then({ prompt: "Summarize campaign results" })
   .run();
@@ -279,7 +278,7 @@ await agent({ llm })
     (a) => a.then({ prompt: "Generate a haiku about AI" }),
     (result) => {
       // Validate 5-7-5 syllable structure
-      const lines = result.llmOutput?.split('\n') || [];
+      const lines = result.llmOutput?.split("\n") || [];
       return lines.length === 3; // Simple validation
     },
     { maxAttempts: 5, backoff: 1.5 }
@@ -322,9 +321,9 @@ const qualityChecker = agent({ llm: mistral })
 // Compose them in a larger workflow
 await agent({ llm })
   .then({ mcp: gmail, tool: "fetch_unread" })
-  .runAgent(emailAnalyzer)      // Run first sub-agent
-  .runAgent(responseGenerator)  // Run second sub-agent
-  .runAgent(qualityChecker)     // Run third sub-agent
+  .runAgent(emailAnalyzer) // Run first sub-agent
+  .runAgent(responseGenerator) // Run second sub-agent
+  .runAgent(qualityChecker) // Run third sub-agent
   .then({ mcp: gmail, tool: "send_reply" })
   .run();
 ```
@@ -334,29 +333,24 @@ await agent({ llm })
 Mix sub-agents with other patterns:
 
 ```typescript
-const contentAnalyzer = agent({ llm })
-  .parallel({
-    sentiment: { prompt: "Analyze sentiment" },
-    topics: { prompt: "Extract main topics" },
-    tone: { prompt: "Determine tone" }
-  });
+const contentAnalyzer = agent({ llm }).parallel({
+  sentiment: { prompt: "Analyze sentiment" },
+  topics: { prompt: "Extract main topics" },
+  tone: { prompt: "Determine tone" },
+});
 
 const contentModerator = agent({ llm })
   .then({ prompt: "Check for policy violations" })
-  .branch(
-    (h) => h[0].llmOutput?.includes("VIOLATION") || false,
-    {
-      true: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
-      false: (a) => a.then({ prompt: "Approve content" })
-    }
-  );
+  .branch((h) => h[0].llmOutput?.includes("VIOLATION") || false, {
+    true: (a) => a.then({ mcp: moderation, tool: "flag_content" }),
+    false: (a) => a.then({ prompt: "Approve content" }),
+  });
 
 // Main workflow
 await agent({ llm })
   .then({ mcp: cms, tool: "fetch_pending_posts" })
   .forEach(posts, (post, a) =>
-    a.runAgent(contentAnalyzer)
-     .runAgent(contentModerator)
+    a.runAgent(contentAnalyzer).runAgent(contentModerator)
   )
   .then({ prompt: "Generate moderation report" })
   .run();
@@ -380,25 +374,21 @@ await agent({ llm })
   .parallel({
     sentiment: { prompt: "Analyze sentiment" },
     intent: { prompt: "Extract intent" },
-    priority: { prompt: "Determine priority" }
+    priority: { prompt: "Determine priority" },
   })
 
   // Route based on priority
-  .switch(
-    (h) => h[0].parallel?.priority.llmOutput?.trim() || '',
-    {
-      'URGENT': (a) => a
-        .then({ mcp: slack, tool: "alert_team" })
-        .runAgent(escalationAgent),
+  .switch((h) => h[0].parallel?.priority.llmOutput?.trim() || "", {
+    URGENT: (a) =>
+      a.then({ mcp: slack, tool: "alert_team" }).runAgent(escalationAgent),
 
-      'NORMAL': (a) => a
-        .forEach(responders, (person, ag) =>
-          ag.then({ prompt: `Assign to ${person}` })
-        ),
+    NORMAL: (a) =>
+      a.forEach(responders, (person, ag) =>
+        ag.then({ prompt: `Assign to ${person}` })
+      ),
 
-      default: (a) => a.then({ prompt: "Queue for review" })
-    }
-  )
+    default: (a) => a.then({ prompt: "Queue for review" }),
+  })
 
   // Final step
   .then({ prompt: "Log outcome" })

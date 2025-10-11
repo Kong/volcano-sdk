@@ -62,7 +62,8 @@ function Features() {
               OpenTelemetry Native
             </div>
             <p className="text-sm sm:text-base">
-              Native distributed tracing and metrics that can be exported to Jaeger, Prometheus, DataDog, NewRelic.
+              Native distributed tracing and metrics that can be exported to
+              Jaeger, Prometheus, DataDog, NewRelic.
             </p>
           </div>
         </div>

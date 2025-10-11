@@ -63,20 +63,13 @@ function Demo1() {
     }
   };
 
-
   return (
-    <section
-      ref={sectionRef}
-      className="overflow-hidden"
-      id="demo"
-    >
+    <section ref={sectionRef} className="overflow-hidden" id="demo">
       <div className="container flex flex-col px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 xl:gap-10">
         {/* Title and Code Block Section */}
         <div
-          className={`mb-8 flex flex-1 flex-col xl:mb-0 transition-all duration-700 ${
-            isVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-8"
+          className={`mb-8 flex flex-1 flex-col transition-all duration-700 xl:mb-0 ${
+            isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
           }`}
         >
           <div className="font-space-mono text-2xl font-bold sm:text-4xl lg:text-5xl">
@@ -87,12 +80,12 @@ function Demo1() {
           </p>
 
           {/* Code Block with Glassmorphism and Animated Border */}
-          <div className="relative group">
+          <div className="group relative">
             {/* Animated gradient border background */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF572D] via-[#FF8C5C] to-[#FF572D] opacity-75 group-hover:opacity-100 blur-sm transition duration-500 animate-gradient-xy" />
+            <div className="animate-gradient-xy absolute -inset-0.5 bg-gradient-to-r from-[#FF572D] via-[#FF8C5C] to-[#FF572D] opacity-75 blur-sm transition duration-500 group-hover:opacity-100" />
 
             {/* Code container */}
-            <div className="relative overflow-hidden border-2 border-transparent backdrop-blur-xl bg-slate-900/90 shadow-2xl">
+            <div className="relative overflow-hidden border-2 border-transparent bg-slate-900/90 shadow-2xl backdrop-blur-xl">
               {/* Terminal Header */}
               <div className="flex items-center justify-between border-b-2 border-slate-700/50 bg-slate-800/50 p-3 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
@@ -110,11 +103,11 @@ function Demo1() {
                 {/* Copy Button */}
                 <button
                   onClick={handleCopy}
-                  className="text-color-primary absolute top-3 right-3 z-10 p-2.5 transition-all duration-300 hover:scale-110 hover:bg-[#FF572D]/20 hover:shadow-lg hover:shadow-[#FF572D]/30 active:scale-95 backdrop-blur-sm bg-slate-800/50 border border-[#FF572D]/30"
+                  className="text-color-primary absolute top-3 right-3 z-10 border border-[#FF572D]/30 bg-slate-800/50 p-2.5 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-[#FF572D]/20 hover:shadow-lg hover:shadow-[#FF572D]/30 active:scale-95"
                   aria-label="Copy code"
                 >
                   {copied ? (
-                    <Check className="h-4 w-4 animate-in zoom-in duration-200" />
+                    <Check className="animate-in zoom-in h-4 w-4 duration-200" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
@@ -128,7 +121,7 @@ function Demo1() {
                 >
                   {({ style, tokens, getLineProps, getTokenProps }) => (
                     <pre
-                      className="overflow-x-auto p-4 sm:p-6 text-sm sm:text-base leading-relaxed"
+                      className="overflow-x-auto p-4 text-sm leading-relaxed sm:p-6 sm:text-base"
                       style={style}
                     >
                       {tokens.map((line, i) => (
@@ -143,7 +136,7 @@ function Demo1() {
                 </Highlight>
 
                 {/* Subtle glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#FF572D]/5 to-transparent pointer-events-none" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#FF572D]/5 to-transparent" />
               </div>
             </div>
           </div>
@@ -154,7 +147,7 @@ function Demo1() {
             Advanced Patterns
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Rows3 className="text-color-primary h-8 w-8" />
@@ -163,19 +156,24 @@ function Demo1() {
                   </code>
                 </div>
                 <p className="text-sm text-slate-600 sm:text-base">
-                  Execute multiple LLM calls simultaneously for faster processing
+                  Execute multiple LLM calls simultaneously for faster
+                  processing
                 </p>
               </div>
-              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
-                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
-                &nbsp;&nbsp;.<span className="text-blue-600">parallel</span>([<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Analyze sentiment" }'},<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Extract entities" }'}<br />
+              <div className="h-full bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600">
+                <span className="text-purple-600">await</span>{" "}
+                <span className="text-blue-600">agent</span>({"{ llm }"})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">parallel</span>([
+                <br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Analyze sentiment" }'},
+                <br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Extract entities" }'}
+                <br />
                 &nbsp;&nbsp;]).<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Split className="text-color-primary h-8 w-8" />
@@ -187,16 +185,20 @@ function Demo1() {
                   Route workflow based on conditions or LLM decisions
                 </p>
               </div>
-              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
-                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
-                &nbsp;&nbsp;.<span className="text-blue-600">branch</span>(state =&gt; [<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;state.positive,<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Respond positive" }'}<br />
+              <div className="h-full bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600">
+                <span className="text-purple-600">await</span>{" "}
+                <span className="text-blue-600">agent</span>({"{ llm }"})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">branch</span>(state
+                =&gt; [<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;state.positive,
+                <br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Respond positive" }'}
+                <br />
                 &nbsp;&nbsp;]).<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Repeat2 className="text-color-primary h-8 w-8" />
@@ -208,16 +210,19 @@ function Demo1() {
                   Iterate until condition met or loop through arrays of data
                 </p>
               </div>
-              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
-                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
+              <div className="h-full bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600">
+                <span className="text-purple-600">await</span>{" "}
+                <span className="text-blue-600">agent</span>({"{ llm }"})<br />
                 &nbsp;&nbsp;.<span className="text-blue-600">while</span>(<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;state =&gt; !state.done,<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Process item" }'}<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;state =&gt; !state.done,
+                <br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{'{ prompt: "Process item" }'}
+                <br />
                 &nbsp;&nbsp;).<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Bot className="text-color-primary h-8 w-8" />
@@ -229,15 +234,19 @@ function Demo1() {
                   Compose complex workflows by nesting and reusing agents
                 </p>
               </div>
-              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
-                <span className="text-purple-600">await</span> <span className="text-blue-600">agent</span>({'{ llm }'})<br />
-                &nbsp;&nbsp;.<span className="text-blue-600">runAgent</span>(summaryAgent)<br />
-                &nbsp;&nbsp;.<span className="text-blue-600">then</span>({'{ prompt: "Analyze" }'})<br />
+              <div className="h-full bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600">
+                <span className="text-purple-600">await</span>{" "}
+                <span className="text-blue-600">agent</span>({"{ llm }"})<br />
+                &nbsp;&nbsp;.<span className="text-blue-600">runAgent</span>
+                (summaryAgent)
+                <br />
+                &nbsp;&nbsp;.<span className="text-blue-600">then</span>(
+                {'{ prompt: "Analyze" }'})<br />
                 &nbsp;&nbsp;.<span className="text-blue-600">run</span>();
               </div>
             </div>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-black hover:outline-offset-[-3px]">
+            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Radio className="text-color-primary h-8 w-8" />
@@ -249,12 +258,20 @@ function Demo1() {
                   Get real-time results as each step completes in the workflow
                 </p>
               </div>
-              <div className="bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600 h-full">
-                <span className="text-purple-600">for await</span> (<span className="text-purple-600">const</span> step <span className="text-purple-600">of</span><br />
-                &nbsp;&nbsp;<span className="text-blue-600">agent</span>({'{ llm }'}).<span className="text-blue-600">then</span>(...).<span className="text-blue-600">stream</span>()<br />
-                ) {'{'}<br />
-                &nbsp;&nbsp;console.<span className="text-blue-600">log</span>(step)<br />
-                {'}'}
+              <div className="h-full bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600">
+                <span className="text-purple-600">for await</span> (
+                <span className="text-purple-600">const</span> step{" "}
+                <span className="text-purple-600">of</span>
+                <br />
+                &nbsp;&nbsp;<span className="text-blue-600">agent</span>(
+                {"{ llm }"}).<span className="text-blue-600">then</span>(...).
+                <span className="text-blue-600">stream</span>()
+                <br />) {"{"}
+                <br />
+                &nbsp;&nbsp;console.<span className="text-blue-600">log</span>
+                (step)
+                <br />
+                {"}"}
               </div>
             </div>
           </div>

@@ -37,7 +37,8 @@ export function TableOfContents({ className }: TableOfContentsProps) {
 
     // If we're between Key Features and the next level 2 heading, and we're level 3+, filter out
     const isAfterKeyFeatures = index > keyFeaturesIndex;
-    const isBeforeNextSection = nextLevel2Index === -1 || index < nextLevel2Index;
+    const isBeforeNextSection =
+      nextLevel2Index === -1 || index < nextLevel2Index;
     const isSubItem = heading.level >= 3;
 
     if (isAfterKeyFeatures && isBeforeNextSection && isSubItem) {

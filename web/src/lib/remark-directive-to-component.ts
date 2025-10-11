@@ -38,7 +38,8 @@ export const remarkDirectiveToComponent: Plugin<[], Root> = () => {
         data.hProperties = {
           ...attributes,
           directiveType: name,
-          directiveLabel: attributes.label || directiveNode.children?.[0]?.value || "",
+          directiveLabel:
+            attributes.label || directiveNode.children?.[0]?.value || "",
         };
       }
     });

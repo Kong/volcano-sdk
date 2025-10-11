@@ -22,7 +22,7 @@ const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 await agent({ llm })
   .then({
     prompt: "Check SF weather for tomorrow and send me a notification.",
-    mcps: [weather, notifications]
+    mcps: [weather, notifications],
   })
   .run();
 
@@ -49,33 +49,33 @@ For complex tasks, the LLM may need multiple tool calls. Configure how many iter
 // Agent-level (default for all steps)
 await agent({
   llm,
-  maxToolIterations: 2  // Limit to 2 iterations (faster)
+  maxToolIterations: 2, // Limit to 2 iterations (faster)
 })
   .then({ prompt: "Task", mcps: [tools] })
   .run();
 
 // Per-step override
-await agent({ llm, maxToolIterations: 4 })  // Default 4
+await agent({ llm, maxToolIterations: 4 }) // Default 4
   .then({
     prompt: "Simple task",
     mcps: [tools],
-    maxToolIterations: 1  // Fast: only 1 tool call
+    maxToolIterations: 1, // Fast: only 1 tool call
   })
   .then({
     prompt: "Complex task",
     mcps: [tools],
-    maxToolIterations: 4  // More iterations for complexity
+    maxToolIterations: 4, // More iterations for complexity
   })
   .run();
 ```
 
 ### Iteration Trade-offs
 
-| maxToolIterations | Speed | Capability | Use Case |
-|-------------------|-------|------------|----------|
-| `1` | ⚡ Fastest | Single tool call | Simple, direct tasks |
-| `2` | 🏃 Fast | Tool + follow-up | Two-step operations |
-| `4` (default) | ⏱️ Moderate | Multi-step workflows | Complex orchestration |
+| maxToolIterations | Speed       | Capability           | Use Case              |
+| ----------------- | ----------- | -------------------- | --------------------- |
+| `1`               | ⚡ Fastest  | Single tool call     | Simple, direct tasks  |
+| `2`               | 🏃 Fast     | Tool + follow-up     | Two-step operations   |
+| `4` (default)     | ⏱️ Moderate | Multi-step workflows | Complex orchestration |
 
 **Performance tip:** Start with `maxToolIterations: 1` for simple tasks. Increase only if the LLM needs multiple tool calls to complete the task.
 
@@ -90,8 +90,9 @@ const analytics = mcp("http://localhost:5002/mcp");
 
 await agent({ llm })
   .then({
-    prompt: "Query user data, analyze it, and email the report to admin@example.com",
-    mcps: [database, email, analytics]
+    prompt:
+      "Query user data, analyze it, and email the report to admin@example.com",
+    mcps: [database, email, analytics],
   })
   .run();
 
@@ -110,7 +111,7 @@ await agent({ llm })
   .then({
     mcp: cafe,
     tool: "order_item",
-    args: { item_id: "espresso", quantity: 2 }
+    args: { item_id: "espresso", quantity: 2 },
   })
   .run();
 ```
@@ -125,7 +126,7 @@ await agent({ llm })
     mcp: database,
     tool: "query_users",
     args: { status: "active" },
-    prompt: "Analyze the results and summarize"  // LLM processes tool output
+    prompt: "Analyze the results and summarize", // LLM processes tool output
   })
   .run();
 ```
@@ -149,19 +150,19 @@ Configure auth directly on the MCP handle:
 // OAuth on handle
 const protectedMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'oauth',
+    type: "oauth",
     clientId: process.env.MCP_CLIENT_ID!,
     clientSecret: process.env.MCP_CLIENT_SECRET!,
-    tokenEndpoint: 'https://api.example.com/oauth/token'
-  }
+    tokenEndpoint: "https://api.example.com/oauth/token",
+  },
 });
 
 // Bearer token on handle
 const bearerMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'bearer',
-    token: process.env.MCP_BEARER_TOKEN!
-  }
+    type: "bearer",
+    token: process.env.MCP_BEARER_TOKEN!,
+  },
 });
 ```
 
@@ -178,17 +179,17 @@ const mcp2 = mcp("https://api.other.com/mcp");
 await agent({
   llm,
   mcpAuth: {
-    'https://api.example.com/mcp': {
-      type: 'oauth',
+    "https://api.example.com/mcp": {
+      type: "oauth",
       clientId: process.env.CLIENT_ID_1!,
       clientSecret: process.env.CLIENT_SECRET_1!,
-      tokenEndpoint: 'https://api.example.com/oauth/token'
+      tokenEndpoint: "https://api.example.com/oauth/token",
     },
-    'https://api.other.com/mcp': {
-      type: 'bearer',
-      token: process.env.TOKEN_2!
-    }
-  }
+    "https://api.other.com/mcp": {
+      type: "bearer",
+      token: process.env.TOKEN_2!,
+    },
+  },
 })
   .then({ prompt: "Use tools from both servers", mcps: [mcp1, mcp2] })
   .run();
@@ -203,17 +204,17 @@ Recommended for production MCP servers. Volcano automatically acquires and refre
 ```typescript
 const protectedMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'oauth',
+    type: "oauth",
     clientId: process.env.MCP_CLIENT_ID!,
     clientSecret: process.env.MCP_CLIENT_SECRET!,
-    tokenEndpoint: 'https://api.example.com/oauth/token'
-  }
+    tokenEndpoint: "https://api.example.com/oauth/token",
+  },
 });
 
 await agent({ llm })
   .then({
     prompt: "Use protected tools",
-    mcps: [protectedMcp]
+    mcps: [protectedMcp],
   })
   .run();
 
@@ -231,9 +232,9 @@ For pre-acquired tokens or custom authentication flows:
 ```typescript
 const authMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'bearer',
-    token: process.env.MCP_BEARER_TOKEN!
-  }
+    type: "bearer",
+    token: process.env.MCP_BEARER_TOKEN!,
+  },
 });
 
 await agent({ llm })
@@ -246,14 +247,14 @@ await agent({ llm })
 Combine authenticated and non-authenticated MCP servers in the same workflow:
 
 ```typescript
-const publicMcp = mcp("http://localhost:3000/mcp");  // No auth
+const publicMcp = mcp("http://localhost:3000/mcp"); // No auth
 const privateMcp = mcp("https://api.example.com/mcp", {
   auth: {
-    type: 'oauth',
+    type: "oauth",
     clientId: process.env.CLIENT_ID!,
     clientSecret: process.env.CLIENT_SECRET!,
-    tokenEndpoint: 'https://api.example.com/oauth/token'
-  }
+    tokenEndpoint: "https://api.example.com/oauth/token",
+  },
 });
 
 await agent({ llm })
@@ -330,7 +331,7 @@ import {
   __internal_setPoolConfig,
   __internal_setDiscoveryTtl,
   __internal_clearDiscoveryCache,
-  __internal_clearOAuthTokenCache
+  __internal_clearOAuthTokenCache,
 } from "volcano-sdk";
 
 // Configure connection pool

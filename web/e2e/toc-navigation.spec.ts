@@ -104,7 +104,9 @@ test.describe("Table of Contents Navigation", () => {
         return true; // Keep everything else
       });
 
-      console.log(`   Expected in TOC (after filtering): ${expectedTocHeadings.length}`);
+      console.log(
+        `   Expected in TOC (after filtering): ${expectedTocHeadings.length}`
+      );
       console.log(`   TOC links found: ${tocLinkCount}`);
 
       // Collect all button texts from TOC (buttons use onClick, not href)
@@ -127,9 +129,7 @@ test.describe("Table of Contents Navigation", () => {
 
       // Check if all expected headings are in TOC (by text)
       for (const heading of expectedTocHeadings) {
-        const foundInToc = tocButtonTexts.some(
-          (text) => text === heading.text
-        );
+        const foundInToc = tocButtonTexts.some((text) => text === heading.text);
         if (!foundInToc) {
           missingInToc.push(`${heading.text} (#${heading.id})`);
         }
@@ -163,8 +163,7 @@ test.describe("Table of Contents Navigation", () => {
       const matchCount = expectedTocHeadings.filter((h) =>
         tocButtonTexts.some((text) => text === h.text)
       ).length;
-      const matchPercentage =
-        (matchCount / expectedTocHeadings.length) * 100;
+      const matchPercentage = (matchCount / expectedTocHeadings.length) * 100;
 
       console.log(
         `   ✅ Match: ${matchCount}/${expectedTocHeadings.length} (${matchPercentage.toFixed(1)}%)`
@@ -226,7 +225,9 @@ test.describe("Table of Contents Navigation", () => {
           await expect(heading).toBeVisible();
           console.log(`   ✅ ${linkText?.trim()} → #${decodedHash}`);
         } else {
-          console.log(`   ⚠️  ${linkText?.trim()} → #${decodedHash} (element not found, skipping)`);
+          console.log(
+            `   ⚠️  ${linkText?.trim()} → #${decodedHash} (element not found, skipping)`
+          );
         }
       }
     });

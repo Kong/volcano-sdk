@@ -58,7 +58,10 @@ export const searchConfig: IFuseOptions<SearchDocument> = {
   ignoreFieldNorm: false,
   fieldNormWeight: 1,
   // Fuzzy matching configuration
-  getFn: (obj: SearchDocument, path: string | string[]): string | readonly string[] => {
+  getFn: (
+    obj: SearchDocument,
+    path: string | string[]
+  ): string | readonly string[] => {
     const pathArray = typeof path === "string" ? [path] : path;
     const value = pathArray.reduce<unknown>(
       (currentObj: unknown, key: string) => {
@@ -78,7 +81,7 @@ export const searchConfig: IFuseOptions<SearchDocument> = {
         .trim();
     }
     if (Array.isArray(value)) {
-      return value.map(v => String(v));
+      return value.map((v) => String(v));
     }
     return "";
   },

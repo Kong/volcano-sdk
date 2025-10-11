@@ -42,9 +42,7 @@ test.describe("Docs Pages Content Verification", () => {
           foundContent.push(text);
         } else {
           // Try a more lenient match - check if most words appear
-          const words = normalizedText
-            .split(" ")
-            .filter((w) => w.length > 3);
+          const words = normalizedText.split(" ").filter((w) => w.length > 3);
           const matchedWords = words.filter((word) =>
             normalizedPage.includes(word)
           );

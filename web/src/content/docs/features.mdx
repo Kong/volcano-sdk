@@ -87,7 +87,6 @@ for await (const stepResult of agent({ llm })
   .then({ prompt: "Generate insights" })
   .then({ prompt: "Create recommendations" })
   .stream()) {
-
   console.log(`Step completed: ${stepResult.prompt}`);
   console.log(`Duration: ${stepResult.durationMs}ms`);
 
@@ -147,7 +146,7 @@ Set per-step or global timeouts (in seconds):
 
 ```typescript
 await agent({ llm, timeout: 60 })
-  .then({ prompt: "Quick check", timeout: 5 })  // Override to 5s
+  .then({ prompt: "Quick check", timeout: 5 }) // Override to 5s
   .then({ prompt: "Next step uses agent default (60s)" })
   .run();
 ```
@@ -210,13 +209,22 @@ await agent({ llm })
   .then({
     prompt: "Analyze the user data",
     mcps: [analytics],
-    pre: () => { console.log("Starting analysis..."); },
-    post: () => { console.log("Analysis complete!"); }
+    pre: () => {
+      console.log("Starting analysis...");
+    },
+    post: () => {
+      console.log("Analysis complete!");
+    },
   })
   .then({
     prompt: "Generate report",
-    pre: () => { startTimer(); },
-    post: () => { endTimer(); saveMetrics(); }
+    pre: () => {
+      startTimer();
+    },
+    post: () => {
+      endTimer();
+      saveMetrics();
+    },
   })
   .run((step, stepIndex) => {
     console.log(`Step ${stepIndex + 1} finished`);
@@ -253,15 +261,15 @@ Volcano surfaces typed errors with rich metadata for easy debugging.
 
 ### Error Types
 
-| Error Type | Description |
-|------------|-------------|
+| Error Type              | Description                         |
+| ----------------------- | ----------------------------------- |
 | `AgentConcurrencyError` | run() called twice on same instance |
-| `TimeoutError` | Step exceeded timeout limit |
-| `ValidationError` | Tool args failed schema validation |
-| `RetryExhaustedError` | Final failure after all retries |
-| `LLMError` | LLM provider error |
-| `MCPToolError` | MCP tool execution error |
-| `MCPConnectionError` | MCP connection error |
+| `TimeoutError`          | Step exceeded timeout limit         |
+| `ValidationError`       | Tool args failed schema validation  |
+| `RetryExhaustedError`   | Final failure after all retries     |
+| `LLMError`              | LLM provider error                  |
+| `MCPToolError`          | MCP tool execution error            |
+| `MCPConnectionError`    | MCP connection error                |
 
 ### Error Metadata
 
@@ -270,18 +278,18 @@ All Volcano errors include metadata for debugging:
 ```typescript
 try {
   await agent({ llm, retry: { backoff: 2, retries: 4 }, timeout: 30 })
-    .then({ prompt: 'auto', mcps: [mcp('http://localhost:3211/mcp')] })
+    .then({ prompt: "auto", mcps: [mcp("http://localhost:3211/mcp")] })
     .run();
 } catch (err) {
-  if (err && typeof err === 'object' && 'meta' in err) {
+  if (err && typeof err === "object" && "meta" in err) {
     const e = err as VolcanoError;
 
     console.error(e.name, e.message);
-    console.error('Metadata:', {
-      stepId: e.meta.stepId,        // 0-based step index
-      provider: e.meta.provider,     // llm:openai or mcp:localhost
-      requestId: e.meta.requestId,   // Upstream request ID
-      retryable: e.meta.retryable    // Should retry?
+    console.error("Metadata:", {
+      stepId: e.meta.stepId, // 0-based step index
+      provider: e.meta.provider, // llm:openai or mcp:localhost
+      requestId: e.meta.requestId, // Upstream request ID
+      retryable: e.meta.retryable, // Should retry?
     });
 
     if (e.meta?.retryable) {

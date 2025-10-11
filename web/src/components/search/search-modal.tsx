@@ -336,7 +336,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     if (selected) {
                       handleSuggestionSelect(
                         selected.query,
-                        "path" in selected ? (selected.path as string) : undefined
+                        "path" in selected
+                          ? (selected.path as string)
+                          : undefined
                       );
                     }
                     break;
