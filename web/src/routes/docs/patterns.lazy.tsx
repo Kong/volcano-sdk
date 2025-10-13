@@ -2,7 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { DocsLayout } from "@/components/docs/docs-layout";
 import { SEOHead } from "@/seo/SEOHead";
 import PatternsContent from "@/content/docs/patterns.mdx";
-import { useHashNavigation } from "@/hooks/useHashNavigation";
+import { useHashNavigation } from "@/hooks/use-hash-navigation";
 
 export const Route = createLazyFileRoute("/docs/patterns")({
   component: PatternsPage,
