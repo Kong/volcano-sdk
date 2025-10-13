@@ -941,41 +941,6 @@ export const generatedNavigation: NavigationDoc[] = [
         "id": "provider-support-matrix"
       },
       {
-        "level": 3,
-        "text": "✅ OpenAI",
-        "id": "openai"
-      },
-      {
-        "level": 3,
-        "text": "✅ Anthropic",
-        "id": "anthropic"
-      },
-      {
-        "level": 3,
-        "text": "✅ Mistral",
-        "id": "mistral"
-      },
-      {
-        "level": 3,
-        "text": "✅ Llama",
-        "id": "llama"
-      },
-      {
-        "level": 3,
-        "text": "✅ AWS Bedrock",
-        "id": "aws-bedrock"
-      },
-      {
-        "level": 3,
-        "text": "✅ Google Vertex",
-        "id": "google-vertex"
-      },
-      {
-        "level": 3,
-        "text": "✅ Azure AI",
-        "id": "azure-ai"
-      },
-      {
         "level": 2,
         "text": "OpenAI Provider",
         "id": "openai-provider"
