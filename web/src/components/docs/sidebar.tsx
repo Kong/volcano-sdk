@@ -20,38 +20,25 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
   // Reference to sidebar element to preserve scroll position
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  // Update active heading when location.hash changes (single source of truth)
   useEffect(() => {
-    // Set initial hash
-    if (typeof window !== "undefined") {
-      setActiveHeadingId(window.location.hash.replace("#", ""));
+    // Use location.hash from TanStack Router as the source of truth
+    setActiveHeadingId(location.hash?.replace("#", "") || "");
+  }, [location.hash]);
 
-      // Listen for hash changes (URL updates from clicks)
-      const handleHashChange = () => {
-        setActiveHeadingId(window.location.hash.replace("#", ""));
-      };
+  // Listen for scroll-based heading changes from right sidebar (table of contents)
+  useEffect(() => {
+    const handleHeadingActive = (e: Event) => {
+      const customEvent = e as CustomEvent<{ id: string }>;
+      setActiveHeadingId(customEvent.detail.id);
+    };
 
-      // Listen for scroll-based heading changes from right sidebar
-      const handleHeadingActive = (e: Event) => {
-        const customEvent = e as CustomEvent<{ id: string }>;
-        setActiveHeadingId(customEvent.detail.id);
-      };
+    window.addEventListener("docs-heading-active", handleHeadingActive);
 
-      window.addEventListener("hashchange", handleHashChange);
-      window.addEventListener("docs-heading-active", handleHeadingActive);
-
-      return () => {
-        window.removeEventListener("hashchange", handleHashChange);
-        window.removeEventListener("docs-heading-active", handleHeadingActive);
-      };
-    }
+    return () => {
+      window.removeEventListener("docs-heading-active", handleHeadingActive);
+    };
   }, []);
-
-  // Also update hash when location changes (including hash changes from navigation)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setActiveHeadingId(window.location.hash.replace("#", ""));
-    }
-  }, [location]);
 
   // Restore sidebar scroll position on mount
   useEffect(() => {
