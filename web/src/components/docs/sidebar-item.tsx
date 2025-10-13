@@ -21,9 +21,9 @@ export function SidebarItem({
   const location = useLocation();
   const currentPath = location.pathname;
   const itemRef = useRef<HTMLLIElement>(null);
-  const prevActiveRef = useRef<boolean>(isActive);
+  const prevActiveRef = useRef<boolean>(false);
 
-  // Auto-scroll into view when becoming active
+  // Auto-scroll into view when becoming active (including on initial mount)
   useEffect(() => {
     // Only scroll if transitioning from false to true
     if (isActive && !prevActiveRef.current && itemRef.current) {
@@ -78,62 +78,19 @@ export function SidebarItem({
 
       if (pathname === currentPath || pathname === "") {
         // Same page hash navigation - use window.location.hash for reliable updates
+        // This triggers hashchange event which handles scrolling
         window.location.hash = hash;
-
-        // Scroll to element immediately using requestAnimationFrame
-        requestAnimationFrame(() => {
-          const element = document.getElementById(hash);
-          const contentContainer = document.getElementById("docs-content");
-          if (element && contentContainer) {
-            const containerRect = contentContainer.getBoundingClientRect();
-            const elementRect = element.getBoundingClientRect();
-            const relativeTop =
-              elementRect.top - containerRect.top + contentContainer.scrollTop;
-
-            contentContainer.scrollTo({
-              top: relativeTop - 32,
-              behavior: "smooth",
-            });
-          }
-        });
       } else {
         // Different page, navigate with hash (non-blocking)
         // Use combined path+hash for reliable TanStack Router updates
+        // Location change triggers scroll via sidebar effect
         navigate({
           to: `${pathname}#${hash}`,
         });
-
-        // Scroll after a minimal delay for page load
-        setTimeout(() => {
-          const element = document.getElementById(hash);
-          const contentContainer = document.getElementById("docs-content");
-          if (element && contentContainer) {
-            const containerRect = contentContainer.getBoundingClientRect();
-            const elementRect = element.getBoundingClientRect();
-            const relativeTop =
-              elementRect.top - containerRect.top + contentContainer.scrollTop;
-
-            contentContainer.scrollTo({
-              top: relativeTop - 32,
-              behavior: "smooth",
-            });
-          }
-        }, 100);
       }
     } else {
       // Regular page navigation (no hash, non-blocking)
       navigate({ to: href });
-
-      // Scroll to top immediately using requestAnimationFrame
-      requestAnimationFrame(() => {
-        const contentContainer = document.getElementById("docs-content");
-        if (contentContainer) {
-          contentContainer.scrollTo({
-            top: 0,
-            behavior: "smooth",
-          });
-        }
-      });
     }
   };
 

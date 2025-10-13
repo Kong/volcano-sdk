@@ -31,21 +31,23 @@ export function FeatureCard({
   );
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (href) {
-      e.preventDefault();
-      const hash = href.split("#")[1];
+    if (!href) return;
 
-      // Use TanStack Router's client-side navigation
-      window.history.pushState({}, "", href);
-      window.dispatchEvent(new PopStateEvent("popstate"));
+    e.preventDefault();
 
-      // Scroll to hash if present
-      if (hash) {
-        setTimeout(() => {
-          const element = document.getElementById(hash);
-          element?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-      }
+    const currentPath = window.location.pathname;
+    const [pathname, hash] = href.split("#");
+    const isSamePage = pathname === currentPath || pathname === "";
+
+    if (isSamePage && hash) {
+      // Same page with hash - just update the hash
+      window.location.hash = hash;
+    } else {
+      // Cross-page navigation - clear sidebar scroll position so it auto-scrolls to active item
+      sessionStorage.removeItem("sidebar-scroll-pos");
+      // Use window.location for full page navigation
+      // This is needed because FeatureCard is rendered outside router context
+      window.location.href = href;
     }
   };
 

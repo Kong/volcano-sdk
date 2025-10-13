@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { buildNavigation } from "./build-navigation";
 import { SidebarItem } from "./sidebar-item";
 import { SearchInput } from "@/components/search/search-input";
+import { scrollToDocElement, scrollToDocTop } from "@/lib/scroll-utils";
 
 const navigation = buildNavigation();
 
@@ -25,6 +26,19 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
     // Use window.location.hash as the source of truth (most reliable)
     const hash = window.location.hash.replace("#", "");
     setActiveHeadingId(hash);
+
+    // Scroll to the element when location changes with a hash (handles cross-page navigation)
+    if (hash) {
+      // Use setTimeout for cross-page navigation to allow content to render
+      setTimeout(() => {
+        scrollToDocElement(hash);
+      }, 100);
+    } else {
+      // No hash: scroll to top of content
+      setTimeout(() => {
+        scrollToDocTop();
+      }, 100);
+    }
   }, [location]);
 
   // Also listen for direct hash changes (for same-page navigation)
@@ -32,6 +46,13 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
     const handleHashChange = () => {
       const hash = window.location.hash.replace("#", "");
       setActiveHeadingId(hash);
+
+      // Scroll to the element when hash changes
+      if (hash) {
+        requestAnimationFrame(() => {
+          scrollToDocElement(hash);
+        });
+      }
     };
 
     window.addEventListener("hashchange", handleHashChange);
@@ -40,6 +61,7 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
       window.removeEventListener("hashchange", handleHashChange);
     };
   }, []);
+
 
   // Listen for scroll-based heading changes from right sidebar (table of contents)
   useEffect(() => {
