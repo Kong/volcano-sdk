@@ -14,6 +14,7 @@ export function TableOfContents({ className }: TableOfContentsProps) {
   const prevActiveIdRef = useRef<string>("");
   const navRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const isManualNavigationRef = useRef<boolean>(false);
 
   // Find the current doc's headings from pre-generated data
   const currentDoc = generatedNavigation.find(
@@ -50,7 +51,7 @@ export function TableOfContents({ className }: TableOfContentsProps) {
 
   // Update active ID based on URL hash
   useEffect(() => {
-    const hash = window.location.hash.replace("#", "");
+    const hash = location.hash?.replace("#", "") || "";
     if (hash) {
       setActiveId(hash);
     }
@@ -122,6 +123,11 @@ export function TableOfContents({ className }: TableOfContentsProps) {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
+          // Skip updates during manual navigation
+          if (isManualNavigationRef.current) {
+            return;
+          }
+
           const id = entry.target.id;
           setActiveId(id);
 
@@ -147,6 +153,12 @@ export function TableOfContents({ className }: TableOfContentsProps) {
   }, [tocItems]);
 
   const scrollToHeading = async (id: string) => {
+    // Set flag to ignore IntersectionObserver updates during manual navigation
+    isManualNavigationRef.current = true;
+
+    // Immediately set active ID for instant visual feedback
+    setActiveId(id);
+
     // Navigate with hash using TanStack Router
     await navigate({
       to: location.pathname,
@@ -168,6 +180,11 @@ export function TableOfContents({ className }: TableOfContentsProps) {
           behavior: "smooth",
         });
       }
+
+      // Re-enable IntersectionObserver after scroll completes
+      setTimeout(() => {
+        isManualNavigationRef.current = false;
+      }, 1000); // Wait for smooth scroll to complete
     }, 0);
   };
 
