@@ -387,6 +387,11 @@ export const generatedNavigation: NavigationDoc[] = [
         "id": "volcano-sdk"
       },
       {
+        "level": 2,
+        "text": "Key Features",
+        "id": "key-features"
+      },
+      {
         "level": 3,
         "text": "Chainable API",
         "id": "chainable-api"
