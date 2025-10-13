@@ -27,8 +27,8 @@ export function SidebarItem({
   useEffect(() => {
     // Only scroll if transitioning from false to true
     if (isActive && !prevActiveRef.current && itemRef.current) {
-      // Small delay to ensure DOM is ready and to avoid conflicts with other scroll operations
-      const scrollTimeout = setTimeout(() => {
+      // Use requestAnimationFrame for better performance and reduced delay
+      const scrollAnimationFrame = requestAnimationFrame(() => {
         // Find the scrollable sidebar container (now it's a div with class sidebar-scroll-container)
         const sidebarContainer = itemRef.current?.closest(
           ".sidebar-scroll-container"
@@ -57,16 +57,16 @@ export function SidebarItem({
             });
           }
         }
-      }, 100); // Small delay to avoid conflicts
+      });
 
-      // Cleanup timeout
-      return () => clearTimeout(scrollTimeout);
+      // Cleanup animation frame
+      return () => cancelAnimationFrame(scrollAnimationFrame);
     }
     // Update previous value
     prevActiveRef.current = isActive;
   }, [isActive, title]);
 
-  const handleClick = async (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     // Prevent any default behavior
     e.preventDefault();
 
@@ -77,14 +77,14 @@ export function SidebarItem({
       const [pathname, hash] = href.split("#");
 
       if (pathname === currentPath || pathname === "") {
-        // Same page, just navigate with hash
-        await navigate({
+        // Same page, just navigate with hash (non-blocking)
+        navigate({
           to: currentPath,
           hash: hash,
         });
 
-        // Scroll to element
-        setTimeout(() => {
+        // Scroll to element immediately using requestAnimationFrame
+        requestAnimationFrame(() => {
           const element = document.getElementById(hash);
           const contentContainer = document.getElementById("docs-content");
           if (element && contentContainer) {
@@ -98,15 +98,15 @@ export function SidebarItem({
               behavior: "smooth",
             });
           }
-        }, 0);
+        });
       } else {
-        // Different page, navigate with hash
-        await navigate({
+        // Different page, navigate with hash (non-blocking)
+        navigate({
           to: pathname,
           hash: hash,
         });
 
-        // Scroll after page loads
+        // Scroll after a minimal delay for page load
         setTimeout(() => {
           const element = document.getElementById(hash);
           const contentContainer = document.getElementById("docs-content");
@@ -121,14 +121,14 @@ export function SidebarItem({
               behavior: "smooth",
             });
           }
-        }, 300);
+        }, 100);
       }
     } else {
-      // Regular page navigation (no hash)
-      await navigate({ to: href });
+      // Regular page navigation (no hash, non-blocking)
+      navigate({ to: href });
 
-      // Scroll to top
-      setTimeout(() => {
+      // Scroll to top immediately using requestAnimationFrame
+      requestAnimationFrame(() => {
         const contentContainer = document.getElementById("docs-content");
         if (contentContainer) {
           contentContainer.scrollTo({
@@ -136,7 +136,7 @@ export function SidebarItem({
             behavior: "smooth",
           });
         }
-      }, 0);
+      });
     }
   };
 
