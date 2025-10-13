@@ -443,7 +443,7 @@ describe("SearchModal", () => {
       const input = screen.getByPlaceholderText("Search documentation...");
 
       // Type rapidly
-      await user.type(input, "abcdefghijklmnop", { delay: 10 });
+      await user.type(input, "abcdefghijklmnop");
 
       // Should not throw errors and input should have value
       expect(input).toHaveValue("abcdefghijklmnop");
@@ -478,7 +478,7 @@ describe("SearchModal", () => {
       await user.keyboard("-");
 
       // Should not crash and component should remain functional
-      expect(input.value.length).toBeGreaterThan(0);
+      expect((input as HTMLInputElement).value.length).toBeGreaterThan(0);
       expect(input).toBeInTheDocument();
     });
   });
