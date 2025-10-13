@@ -165,17 +165,20 @@ export function TableOfContents({ className }: TableOfContentsProps) {
       hash: id,
     });
 
-    // Scroll to element within the docs-content container
+    // Scroll to element within the main scrollable container
     setTimeout(() => {
       const element = document.getElementById(id);
-      const contentContainer = document.getElementById("docs-content");
-      if (element && contentContainer) {
-        const containerRect = contentContainer.getBoundingClientRect();
+      // Find the scrollable main container (not the docs-content div)
+      const contentDiv = document.getElementById("docs-content");
+      const scrollContainer = contentDiv?.closest("main");
+
+      if (element && scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
         const relativeTop =
-          elementRect.top - containerRect.top + contentContainer.scrollTop;
+          elementRect.top - containerRect.top + scrollContainer.scrollTop;
 
-        contentContainer.scrollTo({
+        scrollContainer.scrollTo({
           top: relativeTop - 32,
           behavior: "smooth",
         });

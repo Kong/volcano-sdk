@@ -936,7 +936,7 @@ export const generatedNavigation: NavigationDoc[] = [
         "id": "llm-providers"
       },
       {
-        "level": 3,
+        "level": 2,
         "text": "Provider Support Matrix",
         "id": "provider-support-matrix"
       },
