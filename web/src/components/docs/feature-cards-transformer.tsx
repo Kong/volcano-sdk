@@ -4,18 +4,18 @@ import { FeatureCard } from "@/components/ui/feature-card";
 
 // Map feature titles to their corresponding docs pages
 const featureLinkMap: Record<string, string> = {
-  "Chainable API": "/docs/api#agent",
+  "Chainable API": "/docs/api#agentoptions-agentbuilder",
   "Automatic Tool Selection": "/docs/mcp-tools#automatic-tool-selection",
   "100s of Models": "/docs/providers",
   "TypeScript-First": "/docs/api#type-reference",
   "Advanced Patterns": "/docs/patterns",
-  "Retries & Timeouts": "/docs/features#retries--timeouts",
+  "Retries & Timeouts": "/docs/features#retries-timeouts",
   "Streaming Workflows": "/docs/features#stream-method",
   "MCP Integration": "/docs/mcp-tools",
   "Sub-Agent Composition": "/docs/patterns#sub-agent-composition",
   "OpenTelemetry Observability": "/docs/observability",
   "MCP OAuth Authentication": "/docs/mcp-tools#mcp-authentication",
-  "Performance Optimized": "/docs/mcp-tools#connection-pooling--performance",
+  "Performance Optimized": "/docs/mcp-tools#connection-pooling-performance",
 };
 
 export function FeatureCardsTransformer() {

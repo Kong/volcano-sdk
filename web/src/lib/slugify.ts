@@ -8,11 +8,11 @@ export function slugify(text: string): string {
       .toLowerCase()
       .trim()
       // Remove all non-alphanumeric characters except spaces and hyphens
-      // This removes emojis, dots, special characters, etc.
+      // This removes emojis, dots, special characters (including &), etc.
       .replace(/[^\w\s-]/g, "")
       // Replace whitespace with hyphens
       .replace(/\s+/g, "-")
-      // Collapse multiple hyphens
+      // Collapse multiple hyphens (matches rehype-clean-ids)
       .replace(/-+/g, "-")
       // Remove leading/trailing hyphens (matches rehype-clean-ids)
       .replace(/^-+|-+$/g, "")

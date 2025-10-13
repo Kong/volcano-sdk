@@ -150,4 +150,81 @@ test.describe("Feature Cards Rendering", () => {
 
     console.log(`   ✅ Feature cards grid container has proper layout classes`);
   });
+
+  test("feature card links should point to existing heading IDs", async ({
+    page,
+  }) => {
+    await page.goto("/docs");
+    await page.waitForLoadState("networkidle");
+
+    // Get all feature card links
+    const featureLinks = page.locator(
+      '[data-feature-cards-transformed] a[href^="/docs/"]'
+    );
+
+    const linkCount = await featureLinks.count();
+    console.log(`\n🔗 Validating ${linkCount} feature card links...`);
+
+    const brokenLinks: string[] = [];
+    const validLinks: string[] = [];
+
+    for (let i = 0; i < linkCount; i++) {
+      const link = featureLinks.nth(i);
+      const href = await link.getAttribute("href");
+      const title = (await link.textContent())?.trim().split("\n")[0] || "";
+
+      if (!href) continue;
+
+      // Navigate to the target page
+      const [pagePath, hash] = href.split("#");
+
+      if (hash) {
+        // Navigate to the page
+        await page.goto(href);
+        await page.waitForLoadState("networkidle");
+
+        // Check if the heading with that ID exists
+        const heading = page.locator(`[id="${hash}"]`);
+        const headingExists = (await heading.count()) > 0;
+
+        if (headingExists) {
+          validLinks.push(`${title} → ${href}`);
+          console.log(`   ✅ ${title} → ${href}`);
+        } else {
+          brokenLinks.push(`${title} → ${href} (missing #${hash})`);
+          console.log(`   ❌ ${title} → ${href} (missing #${hash})`);
+        }
+      } else {
+        // No hash, just check if the page loads
+        await page.goto(href);
+        await page.waitForLoadState("networkidle");
+
+        // Check for main content area
+        const mainContent = page.locator("#docs-content");
+        const pageExists = await mainContent.isVisible();
+
+        if (pageExists) {
+          validLinks.push(`${title} → ${href}`);
+          console.log(`   ✅ ${title} → ${href}`);
+        } else {
+          brokenLinks.push(`${title} → ${href} (page not found)`);
+          console.log(`   ❌ ${title} → ${href} (page not found)`);
+        }
+      }
+
+      // Go back to docs page for next iteration
+      await page.goto("/docs");
+      await page.waitForLoadState("networkidle");
+    }
+
+    // Assert no broken links
+    expect(
+      brokenLinks.length,
+      `Found ${brokenLinks.length} broken links: ${brokenLinks.join(", ")}`
+    ).toBe(0);
+
+    console.log(
+      `\n✅ All ${validLinks.length} feature card links are valid and point to existing content`
+    );
+  });
 });
