@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SearchModal } from "./search-modal";
 
@@ -341,7 +341,10 @@ describe("SearchModal", () => {
       const overlay = screen
         .getByPlaceholderText("Search documentation...")
         .closest(".fixed");
-      await user.click(overlay?.parentElement!);
+
+      if (overlay?.parentElement) {
+        await user.click(overlay.parentElement);
+      }
 
       expect(onClose).toHaveBeenCalled();
     });
