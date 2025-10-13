@@ -22,10 +22,24 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
 
   // Update active heading when location changes (single source of truth)
   useEffect(() => {
-    // Use location.hash from TanStack Router as the source of truth
-    // Depend on entire location object to ensure updates trigger properly
-    setActiveHeadingId(location.hash?.replace("#", "") || "");
+    // Use window.location.hash as the source of truth (most reliable)
+    const hash = window.location.hash.replace("#", "");
+    setActiveHeadingId(hash);
   }, [location]);
+
+  // Also listen for direct hash changes (for same-page navigation)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      setActiveHeadingId(hash);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
 
   // Listen for scroll-based heading changes from right sidebar (table of contents)
   useEffect(() => {

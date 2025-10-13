@@ -77,11 +77,8 @@ export function SidebarItem({
       const [pathname, hash] = href.split("#");
 
       if (pathname === currentPath || pathname === "") {
-        // Same page, just navigate with hash (non-blocking)
-        // Use combined path+hash for reliable TanStack Router updates
-        navigate({
-          to: `${currentPath}#${hash}`,
-        });
+        // Same page hash navigation - use window.location.hash for reliable updates
+        window.location.hash = hash;
 
         // Scroll to element immediately using requestAnimationFrame
         requestAnimationFrame(() => {
