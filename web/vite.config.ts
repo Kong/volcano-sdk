@@ -7,6 +7,7 @@ import remarkFrontmatter from "remark-frontmatter";
 import remarkDirective from "remark-directive";
 import { remarkDirectiveToComponent } from "./src/lib/remark-directive-to-component";
 import rehypeSlug from "rehype-slug";
+import { rehypeCleanIds } from "./src/lib/rehype-clean-ids";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -22,7 +23,7 @@ export default defineConfig({
           remarkDirective,
           remarkDirectiveToComponent,
         ],
-        rehypePlugins: [rehypeSlug],
+        rehypePlugins: [rehypeSlug, rehypeCleanIds],
       }),
     },
     react({
