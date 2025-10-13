@@ -20,11 +20,12 @@ export function DocsSidebar({ onMobileClose }: DocsSidebarProps = {}) {
   // Reference to sidebar element to preserve scroll position
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Update active heading when location.hash changes (single source of truth)
+  // Update active heading when location changes (single source of truth)
   useEffect(() => {
     // Use location.hash from TanStack Router as the source of truth
+    // Depend on entire location object to ensure updates trigger properly
     setActiveHeadingId(location.hash?.replace("#", "") || "");
-  }, [location.hash]);
+  }, [location]);
 
   // Listen for scroll-based heading changes from right sidebar (table of contents)
   useEffect(() => {

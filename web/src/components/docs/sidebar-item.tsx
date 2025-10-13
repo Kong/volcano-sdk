@@ -78,9 +78,9 @@ export function SidebarItem({
 
       if (pathname === currentPath || pathname === "") {
         // Same page, just navigate with hash (non-blocking)
+        // Use combined path+hash for reliable TanStack Router updates
         navigate({
-          to: currentPath,
-          hash: hash,
+          to: `${currentPath}#${hash}`,
         });
 
         // Scroll to element immediately using requestAnimationFrame
@@ -101,9 +101,9 @@ export function SidebarItem({
         });
       } else {
         // Different page, navigate with hash (non-blocking)
+        // Use combined path+hash for reliable TanStack Router updates
         navigate({
-          to: pathname,
-          hash: hash,
+          to: `${pathname}#${hash}`,
         });
 
         // Scroll after a minimal delay for page load
