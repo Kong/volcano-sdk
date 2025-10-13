@@ -1,6 +1,6 @@
 import { Outlet, createRootRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import { SEOProvider } from "../seo/SEOProvider";
+import { SEOProvider } from "../seo/seo-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const TanStackRouterDevtools = import.meta.env.PROD

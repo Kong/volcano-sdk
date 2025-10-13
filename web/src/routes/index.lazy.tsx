@@ -8,7 +8,7 @@ import Features from "@/components/landing/features";
 import Demo1 from "@/components/landing/demo1";
 import Demo2 from "@/components/landing/demo2";
 
-import { SEOHead } from "../seo/SEOHead";
+import { SEOHead } from "../seo/seo-head";
 
 export const Route = createLazyFileRoute("/")({
   component: HomePage,

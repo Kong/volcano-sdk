@@ -28,3 +28,4 @@ reference/*
 # Playwright
 playwright-report/
 test-results/
+.tanstack/
