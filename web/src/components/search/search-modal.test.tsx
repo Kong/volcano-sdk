@@ -79,16 +79,22 @@ describe("SearchModal", () => {
   describe("Rendering", () => {
     it("should not render when isOpen is false", () => {
       render(<SearchModal isOpen={false} onClose={vi.fn()} />);
-      expect(screen.queryByPlaceholderText("Search documentation...")).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Search documentation...")
+      ).not.toBeInTheDocument();
     });
 
     it("should render when isOpen is true", () => {
       render(<SearchModal isOpen={true} onClose={vi.fn()} />);
-      expect(screen.getByPlaceholderText("Search documentation...")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Search documentation...")
+      ).toBeInTheDocument();
     });
 
     it("should focus input when modal opens", () => {
-      const { rerender } = render(<SearchModal isOpen={false} onClose={vi.fn()} />);
+      const { rerender } = render(
+        <SearchModal isOpen={false} onClose={vi.fn()} />
+      );
       rerender(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
       const input = screen.getByPlaceholderText("Search documentation...");
@@ -118,12 +124,15 @@ describe("SearchModal", () => {
       await user.type(input, "getting");
 
       // Wait for debounce and search to complete
-      await waitFor(() => {
-        const results = screen.getAllByText((content, element) => {
-          return element?.tagName === 'SPAN' && content.includes('Started');
-        });
-        expect(results.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          const results = screen.getAllByText((content, element) => {
+            return element?.tagName === "SPAN" && content.includes("Started");
+          });
+          expect(results.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
     });
 
     it("should show 'No results found' for queries with no matches", async () => {
@@ -132,9 +141,12 @@ describe("SearchModal", () => {
 
       await user.type(input, "xyz123nonexistent");
 
-      await waitFor(() => {
-        expect(screen.getByText(/No results found for/i)).toBeInTheDocument();
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          expect(screen.getByText(/No results found for/i)).toBeInTheDocument();
+        },
+        { timeout: 500 }
+      );
     });
 
     it("should highlight matching text in results", async () => {
@@ -143,11 +155,14 @@ describe("SearchModal", () => {
 
       await user.type(input, "api");
 
-      await waitFor(() => {
-        // Look for mark elements (highlighting)
-        const marks = document.querySelectorAll("mark");
-        expect(marks.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          // Look for mark elements (highlighting)
+          const marks = document.querySelectorAll("mark");
+          expect(marks.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
     });
 
     it("should hide suggestions when typing starts", async () => {
@@ -169,11 +184,14 @@ describe("SearchModal", () => {
 
       await user.type(input, "a");
 
-      await waitFor(() => {
-        // Should not show results with only 1 character
-        expect(screen.queryByText("Getting Started")).not.toBeInTheDocument();
-        expect(screen.queryByText("API Reference")).not.toBeInTheDocument();
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          // Should not show results with only 1 character
+          expect(screen.queryByText("Getting Started")).not.toBeInTheDocument();
+          expect(screen.queryByText("API Reference")).not.toBeInTheDocument();
+        },
+        { timeout: 500 }
+      );
     });
   });
 
@@ -193,10 +211,13 @@ describe("SearchModal", () => {
       await user.type(input, "api");
 
       // Wait for results
-      await waitFor(() => {
-        const resultButtons = document.querySelectorAll('[data-index]');
-        expect(resultButtons.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          const resultButtons = document.querySelectorAll("[data-index]");
+          expect(resultButtons.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
 
       // Press down arrow
       await user.keyboard("{ArrowDown}");
@@ -225,10 +246,13 @@ describe("SearchModal", () => {
       await user.type(input, "api");
 
       // Wait for results
-      await waitFor(() => {
-        const resultButtons = document.querySelectorAll('[data-index]');
-        expect(resultButtons.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          const resultButtons = document.querySelectorAll("[data-index]");
+          expect(resultButtons.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
 
       // Press Enter
       await user.keyboard("{Enter}");
@@ -246,12 +270,15 @@ describe("SearchModal", () => {
 
       await user.type(input, "guide");
 
-      await waitFor(() => {
-        const resultButtons = document.querySelectorAll('[data-index]');
-        expect(resultButtons.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          const resultButtons = document.querySelectorAll("[data-index]");
+          expect(resultButtons.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
 
-      const resultButtons = document.querySelectorAll('[data-index]');
+      const resultButtons = document.querySelectorAll("[data-index]");
       const totalResults = resultButtons.length;
 
       // Navigate down to last result
@@ -275,17 +302,22 @@ describe("SearchModal", () => {
 
       await user.type(input, "getting");
 
-      await waitFor(() => {
-        const resultButtons = document.querySelectorAll('[data-index]');
-        expect(resultButtons.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          const resultButtons = document.querySelectorAll("[data-index]");
+          expect(resultButtons.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
 
       const result = document.querySelector('[data-index="0"]') as HTMLElement;
       await user.click(result!);
 
       await waitFor(() => {
         expect(onClose).toHaveBeenCalled();
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/docs/getting-started" });
+        expect(mockNavigate).toHaveBeenCalledWith({
+          to: "/docs/getting-started",
+        });
       });
     });
 
@@ -293,7 +325,9 @@ describe("SearchModal", () => {
       const onClose = vi.fn();
       render(<SearchModal isOpen={true} onClose={onClose} />);
 
-      const closeButton = screen.getByRole("button", { name: "" }).closest("button");
+      const closeButton = screen
+        .getByRole("button", { name: "" })
+        .closest("button");
       await user.click(closeButton!);
 
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -304,7 +338,9 @@ describe("SearchModal", () => {
       render(<SearchModal isOpen={true} onClose={onClose} />);
 
       // Click the overlay (backdrop)
-      const overlay = screen.getByPlaceholderText("Search documentation...").closest(".fixed");
+      const overlay = screen
+        .getByPlaceholderText("Search documentation...")
+        .closest(".fixed");
       await user.click(overlay?.parentElement!);
 
       expect(onClose).toHaveBeenCalled();
@@ -345,11 +381,16 @@ describe("SearchModal", () => {
 
       await user.type(input, "api");
 
-      await waitFor(() => {
-        // Look for section badges (they have specific classes)
-        const badges = document.querySelectorAll('.rounded-none.border.border-gray-300.bg-gray-100');
-        expect(badges.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          // Look for section badges (they have specific classes)
+          const badges = document.querySelectorAll(
+            ".rounded-none.border.border-gray-300.bg-gray-100"
+          );
+          expect(badges.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
     });
 
     it("should display description for results that have one", async () => {
@@ -358,9 +399,14 @@ describe("SearchModal", () => {
 
       await user.type(input, "getting");
 
-      await waitFor(() => {
-        expect(screen.getByText("Learn how to get started with the SDK")).toBeInTheDocument();
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText("Learn how to get started with the SDK")
+          ).toBeInTheDocument();
+        },
+        { timeout: 500 }
+      );
     });
 
     it("should show keyboard shortcuts in footer when query is empty", () => {
@@ -377,11 +423,14 @@ describe("SearchModal", () => {
 
       await user.type(input, "guide");
 
-      await waitFor(() => {
-        const results = screen.getAllByRole("button");
-        // API results should have Hash icon, Guide results should have FileText icon
-        expect(results.length).toBeGreaterThan(0);
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          const results = screen.getAllByRole("button");
+          // API results should have Hash icon, Guide results should have FileText icon
+          expect(results.length).toBeGreaterThan(0);
+        },
+        { timeout: 500 }
+      );
     });
   });
 
@@ -398,7 +447,9 @@ describe("SearchModal", () => {
     });
 
     it("should clear search when modal reopens", () => {
-      const { rerender } = render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+      const { rerender } = render(
+        <SearchModal isOpen={true} onClose={vi.fn()} />
+      );
       const input = screen.getByPlaceholderText("Search documentation...");
 
       // Type something
