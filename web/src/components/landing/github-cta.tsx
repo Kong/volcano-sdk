@@ -14,16 +14,24 @@ export function GitHubCTA() {
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-2xl border-2 border-black bg-gray-50 p-8 text-center sm:p-12">
+        <div className="mx-auto max-w-3xl text-center">
           <div className="mb-4 flex items-center justify-center gap-2">
-            <Github className="h-6 w-6 sm:h-7 sm:w-7" />
-            <h2 className="font-space-mono text-2xl font-bold sm:text-3xl">
-              Open Source
+            <Github className="h-7 w-7 sm:h-8 sm:w-8" />
+            <h2 className="font-space-mono text-2xl font-bold sm:text-3xl lg:text-4xl">
+              Built in the Open, For Everyone
             </h2>
           </div>
 
-          <p className="mb-6 text-base text-gray-700">
-            Made by developers, for developers.
+          <p className="mb-4 text-base text-gray-700 sm:text-lg">
+            Volcano SDK is fully open source and community-driven. We believe in
+            transparency, collaboration, and building tools that empower
+            developers to create intelligent AI agents without vendor lock-in.
+          </p>
+
+          <p className="mb-8 text-base text-gray-600">
+            Explore the source code, contribute features, report issues, or
+            simply star the repository to stay updated with the latest
+            developments.
           </p>
 
           {stars !== null && (
