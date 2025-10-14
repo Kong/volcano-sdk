@@ -1,4 +1,4 @@
-import { Star, Github } from "lucide-react";
+import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function GitHubCTA() {
@@ -15,12 +15,9 @@ export function GitHubCTA() {
     <section className="py-16">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-3xl text-center">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            <Github className="h-7 w-7 sm:h-8 sm:w-8" />
-            <h2 className="font-space-mono text-2xl font-bold sm:text-3xl lg:text-4xl">
-              Built in the Open, For Everyone
-            </h2>
-          </div>
+          <h2 className="font-space-mono mb-4 text-2xl font-bold sm:text-3xl lg:text-4xl">
+            Built in the Open, For Everyone
+          </h2>
 
           <p className="mb-8 text-base text-gray-700 sm:text-lg">
             Fully open source and community-driven. Explore the code, contribute, and help shape the future of AI agent development.
