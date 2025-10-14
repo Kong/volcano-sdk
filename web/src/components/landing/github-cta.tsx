@@ -22,16 +22,8 @@ export function GitHubCTA() {
             </h2>
           </div>
 
-          <p className="mb-4 text-base text-gray-700 sm:text-lg">
-            Volcano SDK is fully open source and community-driven. We believe in
-            transparency, collaboration, and building tools that empower
-            developers to create intelligent AI agents without vendor lock-in.
-          </p>
-
-          <p className="mb-8 text-base text-gray-600">
-            Explore the source code, contribute features, report issues, or
-            simply star the repository to stay updated with the latest
-            developments.
+          <p className="mb-8 text-base text-gray-700 sm:text-lg">
+            Fully open source and community-driven. Explore the code, contribute, and help shape the future of AI agent development.
           </p>
 
           {stars !== null && (
