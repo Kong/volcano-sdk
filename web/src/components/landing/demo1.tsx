@@ -148,7 +148,7 @@ function Demo1() {
             Advanced Patterns
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
+            <a href="/docs/patterns#parallel-execution" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Rows3 className="text-color-primary h-8 w-8" />
@@ -172,9 +172,9 @@ function Demo1() {
                 <br />
                 &nbsp;&nbsp;]).<span className="text-blue-600">run</span>();
               </div>
-            </div>
+            </a>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
+            <a href="/docs/patterns#conditional-branching" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Split className="text-color-primary h-8 w-8" />
@@ -197,9 +197,9 @@ function Demo1() {
                 <br />
                 &nbsp;&nbsp;]).<span className="text-blue-600">run</span>();
               </div>
-            </div>
+            </a>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
+            <a href="/docs/patterns#while-loop" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Repeat2 className="text-color-primary h-8 w-8" />
@@ -221,9 +221,9 @@ function Demo1() {
                 <br />
                 &nbsp;&nbsp;).<span className="text-blue-600">run</span>();
               </div>
-            </div>
+            </a>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
+            <a href="/docs/patterns#sub-agent-composition" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Bot className="text-color-primary h-8 w-8" />
@@ -245,9 +245,9 @@ function Demo1() {
                 {'{ prompt: "Analyze" }'})<br />
                 &nbsp;&nbsp;.<span className="text-blue-600">run</span>();
               </div>
-            </div>
+            </a>
 
-            <div className="group flex flex-col border-1 border-black hover:outline hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
+            <a href="/docs/features#stream-method" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Radio className="text-color-primary h-8 w-8" />
@@ -274,7 +274,7 @@ function Demo1() {
                 <br />
                 {"}"}
               </div>
-            </div>
+            </a>
           </div>
           <Link
             to="/docs/patterns"
