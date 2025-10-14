@@ -69,25 +69,18 @@ export function Header() {
         <div className="border-t md:hidden">
           <nav className="container flex flex-col space-y-3 py-4">
             <a
-              href="/docs#quick-start"
-              className="font-space-mono text-stroke-white-hover px-3 py-2 transition-all hover:font-bold"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Get Started
-            </a>
-            <a
-              href="/#demo"
-              className="font-space-mono text-stroke-white-hover px-3 py-2 transition-all hover:font-bold"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Demo
-            </a>
-            <a
-              href="/#features"
+              href="/docs#key-features"
               className="font-space-mono text-stroke-white-hover px-3 py-2 transition-all hover:font-bold"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Features
+            </a>
+            <a
+              href="/docs/examples"
+              className="font-space-mono text-stroke-white-hover px-3 py-2 transition-all hover:font-bold"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Examples
             </a>
             <Link
               to="/docs"
@@ -95,7 +88,6 @@ export function Header() {
               activeProps={{
                 className: "px-3 py-2 font-bold text-black font-space-mono",
               }}
-              activeOptions={{ exact: true }}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Docs
