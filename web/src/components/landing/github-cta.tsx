@@ -26,24 +26,19 @@ export function GitHubCTA() {
             Fully open source and community-driven. Explore the code, contribute, and help shape the future of AI agent development.
           </p>
 
-          {stars !== null && (
-            <div className="mb-6 flex items-center justify-center gap-2 text-sm text-gray-600">
-              <Star className="h-4 w-4 fill-yellow-400 stroke-yellow-600" />
-              <span className="font-space-mono text-lg font-bold text-black">
-                {stars.toLocaleString()}
-              </span>
-              <span>stars</span>
-            </div>
-          )}
-
           <a
             href="https://github.com/kong/volcano-sdk"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-btn-primary inline-flex items-center justify-center gap-2 border-2 border-black px-6 py-3 text-base font-medium transition-transform hover:scale-105"
+            className="bg-btn-primary inline-flex items-center justify-center gap-3 border-2 border-black px-6 py-3 text-base font-medium transition-transform hover:scale-105"
           >
             <Star className="h-5 w-5" />
-            Star on GitHub
+            <span>Star on GitHub</span>
+            {stars !== null && (
+              <span className="font-space-mono ml-1 rounded bg-black px-2 py-1 text-sm font-bold text-white">
+                {stars.toLocaleString()}
+              </span>
+            )}
           </a>
         </div>
       </div>
