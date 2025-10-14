@@ -32,7 +32,7 @@ export function GitHubCTA() {
             <Star className="h-5 w-5" />
             <span>Star on GitHub</span>
             {stars !== null && (
-              <span className="font-space-mono ml-1 rounded bg-black px-2 py-1 text-sm font-bold text-white">
+              <span className="font-space-mono ml-1 bg-black px-2 py-1 text-sm font-bold text-white">
                 {stars.toLocaleString()}
               </span>
             )}
