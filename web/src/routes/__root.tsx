@@ -1,7 +1,9 @@
 import { Outlet, createRootRoute } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { SEOProvider } from "../seo/seo-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { initializeAnalytics } from "@/lib/analytics";
+import { usePageTracking } from "@/hooks/use-analytics";
 
 const TanStackRouterDevtools = import.meta.env.PROD
   ? () => null
@@ -11,8 +13,16 @@ const TanStackRouterDevtools = import.meta.env.PROD
       }))
     );
 
-export const Route = createRootRoute({
-  component: () => (
+function RootComponent() {
+  // Initialize Google Analytics on mount
+  useEffect(() => {
+    initializeAnalytics();
+  }, []);
+
+  // Track page views on route changes
+  usePageTracking();
+
+  return (
     <SEOProvider>
       <ThemeProvider defaultTheme="light" storageKey="volcano-theme-v2">
         <div className="min-h-screen">
@@ -23,5 +33,9 @@ export const Route = createRootRoute({
         </Suspense>
       </ThemeProvider>
     </SEOProvider>
-  ),
+  );
+}
+
+export const Route = createRootRoute({
+  component: RootComponent,
 });
