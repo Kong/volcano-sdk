@@ -3,7 +3,7 @@ function Features() {
     <section id="features">
       <div className="container flex flex-col gap-6 px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="font-space-mono mb-4 text-2xl font-bold sm:text-4xl lg:text-5xl">
-          Everything you need for production agents
+          All you need for production agents
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <a href="/docs/patterns" className="group flex flex-col border-1 border-black p-6 hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">

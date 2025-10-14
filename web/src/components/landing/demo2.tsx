@@ -70,8 +70,7 @@ function Demo2() {
             MCP Native
           </div>
           <p className="py-2 text-base sm:text-xl">
-            The agent finds the astrological sign via an MCP tool, then crafts a
-            one-line fortune using the previous step's context.
+            With automatic MCP tool selection, building MCP-powered workflows is easy as advertising which MCP servers you would like to use for each step.
           </p>
 
           {/* Code Block */}
