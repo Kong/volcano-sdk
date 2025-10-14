@@ -3,6 +3,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/landing/header";
 import { Hero } from "@/components/landing/hero";
 import { Statistics } from "@/components/landing/statistics";
+import { GitHubCTA } from "@/components/landing/github-cta";
 import { Footer } from "@/components/landing/footer";
 import Features from "@/components/landing/features";
 import Demo1 from "@/components/landing/demo1";
@@ -67,6 +68,10 @@ function HomePage() {
           <hr className="border-t border-black" />
           <div className="py-8 sm:py-16">
             <Statistics />
+          </div>
+          <hr className="border-t border-black" />
+          <div className="py-8 sm:py-16">
+            <GitHubCTA />
           </div>
         </main>
         <Footer />
