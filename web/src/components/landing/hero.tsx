@@ -75,8 +75,9 @@ export function Hero() {
   };
 
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-x-0 right-0 bottom-0 w-full">
+    <section className="relative">
+      {/* <div className="absolute right-0 bottom-0 w-full sm:w-2/3 md:w-2/3 lg:w-3/4 xl:w-2/3"> */}
+      <div className="absolute right-0 bottom-0 w-full xl:w-2/3">
         <video
           ref={videoRef}
           autoPlay
@@ -99,7 +100,10 @@ export function Hero() {
 
           <div className="mb-4 h-[100px]">
             <p className="text-stroke-white w-fit text-base sm:text-xl">
-              Build agents that seamlessly combine LLM reasoning with real-world
+              Build agents that seamlessly combine LLM reasoning
+            </p>
+            <p className="text-stroke-white w-fit text-base sm:text-xl">
+              with real-world
               actions via MCP tools &mdash; in just few lines of TypeScript.
             </p>
           </div>

@@ -1,132 +1,5 @@
 [
   {
-    "id": "Documentation-providers--anthropic",
-    "title": "✅ Anthropic",
-    "description": "✅ Anthropic",
-    "content": "✅ Anthropic",
-    "headings": [
-      "✅ Anthropic"
-    ],
-    "path": "/docs/providers#-anthropic",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "anthropic"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-anthropic",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
-    "id": "Documentation-providers--aws-bedrock",
-    "title": "✅ AWS Bedrock",
-    "description": "✅ AWS Bedrock",
-    "content": "✅ AWS Bedrock",
-    "headings": [
-      "✅ AWS Bedrock"
-    ],
-    "path": "/docs/providers#-aws-bedrock",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "bedrock"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-aws-bedrock",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
-    "id": "Documentation-providers--azure-ai",
-    "title": "✅ Azure AI",
-    "description": "✅ Azure AI",
-    "content": "✅ Azure AI",
-    "headings": [
-      "✅ Azure AI"
-    ],
-    "path": "/docs/providers#-azure-ai",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "azure"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-azure-ai",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
-    "id": "Documentation-providers--google-vertex",
-    "title": "✅ Google Vertex",
-    "description": "✅ Google Vertex",
-    "content": "✅ Google Vertex",
-    "headings": [
-      "✅ Google Vertex"
-    ],
-    "path": "/docs/providers#-google-vertex",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "google",
-      "vertex"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-google-vertex",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
-    "id": "Documentation-providers--llama",
-    "title": "✅ Llama",
-    "description": "✅ Llama",
-    "content": "✅ Llama",
-    "headings": [
-      "✅ Llama"
-    ],
-    "path": "/docs/providers#-llama",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "llama"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-llama",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
-    "id": "Documentation-providers--mistral",
-    "title": "✅ Mistral",
-    "description": "✅ Mistral",
-    "content": "✅ Mistral",
-    "headings": [
-      "✅ Mistral"
-    ],
-    "path": "/docs/providers#-mistral",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "mistral"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-mistral",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
-    "id": "Documentation-providers--openai",
-    "title": "✅ OpenAI",
-    "description": "✅ OpenAI",
-    "content": "✅ OpenAI",
-    "headings": [
-      "✅ OpenAI"
-    ],
-    "path": "/docs/providers#-openai",
-    "section": "Documentation",
-    "type": "Documentation",
-    "keywords": [
-      "openai"
-    ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
-    "anchor": "-openai",
-    "parentTitle": "LLM Providers - Volcano SDK"
-  },
-  {
     "id": "Documentation-observability-advanced-configuration",
     "title": "Advanced Configuration",
     "description": "Advanced Configuration",
@@ -345,7 +218,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmAnthropic } from \"volcano-sdk\";\n\nconst claude = llmAnthropic({\n  apiKey: process.env.ANTHROPIC_API_KEY!,\n  model: \"claude-3-5-sonnet-20241022\",\n  baseURL: \"https://api.anthropic.com\", // Optional\n  version: \"2023-06-01\", // Optional\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_k: 50,\n    top_p: 0.9,\n    stop_sequences: [\"\\n\\n\"],\n  },\n});\n"
     ],
@@ -466,7 +339,7 @@
       "openai",
       "platform.openai.com"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -493,7 +366,7 @@
       "------------",
       "--------------------------------------------------------"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -520,7 +393,7 @@
       "mistral",
       "console.mistral.ai"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -547,7 +420,7 @@
       "-----------------------------------------------------------------------",
       "baseurl"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -574,7 +447,7 @@
       "methods",
       "priority"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -601,7 +474,7 @@
       "google",
       "studio"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -628,7 +501,7 @@
       "priority",
       "order):"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "authentication",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -649,7 +522,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "// 1. Explicit credentials\nconst bedrock1 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,\n  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,\n  sessionToken: process.env.AWS_SESSION_TOKEN, // Optional\n});\n\n// 2. Bearer token\nconst bedrock2 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  bearerToken: process.env.AWS_BEARER_TOKEN_BEDROCK!,\n});\n\n// 3. AWS Profile\nconst bedrock3 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  profile: \"my-aws-profile\",\n});\n\n// 4. IAM Role\nconst bedrock4 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  roleArn: \"arn:aws:iam::123456789012:role/my-bedrock-role\",\n});\n\n// 5. Default chain (recommended)\nconst bedrock5 = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  // Automatically uses environment, instance profiles, etc.\n});\n"
     ],
@@ -673,7 +546,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "// 1. API Key (simplest)\nconst azure1 = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  apiKey: process.env.AZURE_AI_API_KEY!,\n});\n\n// 2. Entra ID Access Token\nconst azure2 = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  accessToken: process.env.AZURE_ACCESS_TOKEN!,\n});\n\n// 3. Azure Default Credential Chain\nconst azure3 = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  // Uses Azure SDK credential providers automatically\n});\n"
     ],
@@ -847,7 +720,7 @@
       "using",
       "converse"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmBedrock } from \"volcano-sdk\";\n\nconst bedrock = llmBedrock({\n  model: \"anthropic.claude-3-sonnet-20240229-v1:0\",\n  region: \"us-east-1\",\n  // Uses AWS credential chain by default\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_p: 0.9,\n    stop_sequences: [\"\\n\\n\"],\n  },\n});\n"
     ],
@@ -876,7 +749,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmAzure } from \"volcano-sdk\";\n\nconst azure = llmAzure({\n  model: \"gpt-4o-mini\",\n  endpoint: \"https://your-resource.openai.azure.com/openai/responses\",\n  apiKey: process.env.AZURE_AI_API_KEY!,\n  apiVersion: \"2025-04-01-preview\", // Optional\n});\n"
     ],
@@ -1391,7 +1264,7 @@
       "--------------------------------------------",
       "identifier"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1418,7 +1291,7 @@
       "identifier",
       "(e.g.,"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1445,7 +1318,7 @@
       "identifier",
       "apikey"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1472,7 +1345,7 @@
       "-----------------------------------------------",
       "identifier"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1499,7 +1372,7 @@
       "------------",
       "-------------------------------"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1526,7 +1399,7 @@
       "gemini",
       "identifier"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1553,7 +1426,7 @@
       "endpoint",
       "azure"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "configuration",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -1716,7 +1589,7 @@
       "llmhandle",
       "interface:"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "creating-a-custom-provider",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -2053,7 +1926,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import type { LLMHandle, ToolDefinition, LLMToolResult } from \"volcano-sdk\";\n\nexport function llmCustom(config: {\n  apiKey: string;\n  model: string;\n  baseURL: string;\n}): LLMHandle {\n  return {\n    id: \"custom\",\n    model: config.model,\n    client: null, // Your HTTP client or SDK instance\n\n    async gen(prompt: string): Promise<string> {\n      // Call your LLM API\n      const response = await fetch(`${config.baseURL}/generate`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${config.apiKey}`,\n          \"Content-Type\": \"application/json\",\n        },\n        body: JSON.stringify({\n          model: config.model,\n          prompt: prompt,\n        }),\n      });\n\n      const data = await response.json();\n      return data.text;\n    },\n\n    async genWithTools(\n      prompt: string,\n      tools: ToolDefinition[]\n    ): Promise<LLMToolResult> {\n      // Call your LLM API with tool definitions\n      const response = await fetch(`${config.baseURL}/generate-with-tools`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${config.apiKey}`,\n          \"Content-Type\": \"application/json\",\n        },\n        body: JSON.stringify({\n          model: config.model,\n          prompt: prompt,\n          tools: tools.map((t) => ({\n            name: t.name,\n            description: t.description,\n            parameters: t.parameters,\n          })),\n        }),\n      });\n\n      const data = await response.json();\n\n      // Map your API response to LLMToolResult format\n      return {\n        content: data.text,\n        toolCalls:\n          data.tool_calls?.map((tc: any) => ({\n            name: tc.name,\n            arguments: tc.arguments,\n            mcpHandle: tools.find((t) => t.name === tc.name)?.mcpHandle,\n          })) || [],\n      };\n    },\n\n    async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {\n      // Implement streaming if your provider supports it\n      const response = await fetch(`${config.baseURL}/stream`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${config.apiKey}`,\n          \"Content-Type\": \"application/json\",\n        },\n        body: JSON.stringify({\n          model: config.model,\n          prompt: prompt,\n        }),\n      });\n\n      const reader = response.body?.getReader();\n      if (!reader) return;\n\n      const decoder = new TextDecoder();\n      while (true) {\n        const { done, value } = await reader.read();\n        if (done) break;\n        yield decoder.decode(value);\n      }\n    },\n  };\n}\n"
     ],
@@ -2347,7 +2220,7 @@
       "calling",
       "[code"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmVertexStudio } from \"volcano-sdk\";\n\nconst vertex = llmVertexStudio({\n  model: \"gemini-2.0-flash-exp\",\n  apiKey: process.env.GCP_VERTEX_API_KEY!,\n  baseURL: \"https://aiplatform.googleapis.com/v1\", // Optional\n  options: {\n    temperature: 0.8,\n    max_output_tokens: 2048,\n    top_k: 40,\n    top_p: 0.95,\n    stop_sequences: [\"\\n\\n\"],\n    candidate_count: 1,\n    response_mime_type: \"text/plain\",\n  },\n});\n"
     ],
@@ -2590,7 +2463,7 @@
       "block]",
       "setup:"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmLlama } from \"volcano-sdk\";\n\n// Local Ollama setup\nconst llama = llmLlama({\n  baseURL: \"http://127.0.0.1:11434\",\n  model: \"llama3.2:3b\",\n  apiKey: \"\", // Optional, not needed for local Ollama\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_p: 0.9,\n    top_k: 40,\n    repeat_penalty: 1.1,\n    seed: 42,\n    num_predict: 2000,\n  },\n});\n"
     ],
@@ -2600,17 +2473,10 @@
   {
     "id": "Documentation-providers",
     "title": "LLM Providers - Volcano SDK",
-    "content": "LLM Providers Volcano SDK supports 100s of models from 7 providers with function calling and MCP integration. Providers can be mixed within a single workflow. Provider Support Matrix Provider Basic Generation Function Calling Streaming MCP Integration ------------------------ ---------------- ---------------------------- --------- --------------- OpenAI ✅ Full ✅ Native ✅ Native ✅ Complete Anthropic ✅ Full ✅ Native (tooluse) ✅ Native ✅ Complete Mistral ✅ Full ✅ Native ✅ Native ✅ Complete Llama ✅ Full ✅ Via Ollama ✅ Native ✅ Complete AWS Bedrock ✅ Full ✅ Native (Converse API) ✅ Native ✅ Complete Google Vertex Studio ✅ Full ✅ Native (Function calling) ✅ Native ✅ Complete Azure AI ✅ Full ✅ Native (Responses API) ✅ Native ✅ Complete All providers support automatic tool selection and multi-step workflows. ✅ OpenAI ✅ Anthropic ✅ Mistral ✅ Llama ✅ AWS Bedrock ✅ Google Vertex ✅ Azure AI OpenAI Provider Full support for OpenAI's GPT models with function calling and streaming. [code block] Authentication Method Required Description --------- ------------ -------------------------------------------------------- apiKey Required OpenAI API key from platform.openai.com baseURL Optional Custom API endpoint (default: https://api.openai.com/v1) Configuration Parameter Required Description --------- ------------ -------------------------------------------- model Required Model identifier (e.g., gpt-4o-mini, gpt-4o) apiKey Required OpenAI API key baseURL Optional Custom API endpoint options Optional Model-specific parameters (see below) Options Parameters Parameter Type Description ----------------------- -------------------- ----------------------------------------------------------------- temperature 0-2 Controls randomness. Higher = more creative, lower = more focused maxcompletiontokens number Maximum tokens to generate (recommended for all models) maxtokens number Legacy parameter (use maxcompletiontokens instead) topp 0-1 Nucleus sampling - alternative to temperature frequencypenalty -2 to 2 Reduces repetition based on token frequency presencepenalty -2 to 2 Encourages topic diversity stop string \\ string\\[\\] Stop sequences to end generation seed number For deterministic outputs (same seed = same output) responseformat object Force JSON output: Structured Outputs (JSON Schema Validation) Use llmOpenAIResponses() for guaranteed JSON output that matches your schema exactly. Unlike basic JSON mode, structured outputs enforce strict schema compliance. [code block] Why Use Structured Outputs? Guaranteed schema compliance: Model output always matches your JSON schema No hallucinated fields: Only defined fields appear in output Type safety: Numbers are numbers, strings are strings, arrays are arrays Required fields enforced: All required properties always present Reliable parsing: No unexpected JSON structures or parsing errors Supported Models Structured outputs work with: gpt-4o-mini, gpt-4o, gpt-4o-2024-08-06 and later, o1-mini, o1-preview, o3-mini In Agent Workflows [code block] Structured Outputs vs Regular JSON Mode Feature llmOpenAI() llmOpenAIResponses() ----------------- ----------------- --------------------------------------- Output format Free text or JSON Guaranteed valid JSON Schema validation None Strict JSON Schema Use case General purpose Structured data extraction Required fields Not enforced Always present Extra fields May appear Never appear (strict mode) Best for Conversational AI APIs, data extraction, structured tasks Tip: Use llmOpenAIResponses() when building APIs or extracting structured data. Use regular llmOpenAI() for conversational responses and free-form text. Anthropic (Claude) Provider Native support for Claude models with tool calling. [code block] Authentication Method Required Description --------- ------------ -------------------------------------------------------- apiKey Required Anthropic API key from console.anthropic.com baseURL Optional Custom API endpoint (default: https://api.anthropic.com) version Optional API version header (default: 2023-06-01) Configuration Parameter Required Description --------- ------------ --------------------------------------------------- model Required Model identifier (e.g., claude-3-5-sonnet-20241022) apiKey Required Anthropic API key options Optional Model-specific parameters Options Parameters Parameter Type Description ---------------- ---------- ------------------------------------------------- temperature 0-1 Controls randomness (note: range is 0-1, not 0-2) maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling topk number Sample from top K options stopsequences string\\[\\] Array of stop sequences thinking object Extended thinking configuration (Claude-specific) Mistral Provider Support for Mistral's open and proprietary models via OpenAI-compatible API. [code block] Authentication Method Required Description --------- ------------ ----------------------------------------------------- apiKey Required Mistral API key from console.mistral.ai baseURL Optional Custom API endpoint (default: https://api.mistral.ai) Configuration Parameter Required Description --------- ------------ ------------------------- model Required Model identifier apiKey Required Mistral API key options Optional Model-specific parameters Options Parameters Parameter Type Description ----------------- -------------------- ---------------------------------------- temperature 0-1 Controls randomness maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling stop string \\ string\\[\\] Stop sequences safeprompt boolean Enable safety mode randomseed number For deterministic outputs responseformat object For JSON mode: Llama Provider Run Llama models locally with Ollama or via OpenAI-compatible endpoints. [code block] Setup: Install Ollama from ollama.ai and run ollama pull llama3.2:3b Authentication Method Required Description --------- ---------- ----------------------------------------------------------------------- baseURL Optional OpenAI-compatible endpoint (default: http://localhost:11434 for Ollama) apiKey Optional API key if your endpoint requires authentication Configuration Parameter Required Description --------- ------------ ----------------------------------------------- model Required Model identifier (e.g., llama3.2:3b for Ollama) baseURL Optional Server endpoint options Optional Model-specific parameters Options Parameters Parameter Type Description ---------------- -------------------- ---------------------------------------------------- temperature 0-2 Controls randomness maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling topk number Sample from top K options stop string \\ string\\[\\] Stop sequences repeatpenalty number Penalize repetitions (Ollama-specific, default: 1.1) seed number For deterministic outputs numpredict number Number of tokens to predict (Ollama-specific) AWS Bedrock Provider Access foundation models via AWS Bedrock with native tool calling support using the Converse API. [code block] Authentication AWS Bedrock supports multiple authentication methods (in priority order): Method Parameters Description -------------------- ------------------------------------------------ ------------------------------------------------------- Explicit Credentials accessKeyId, secretAccessKey, sessionToken Directly provide AWS credentials Bearer Token bearerToken Use bearer token authentication AWS Profile profile Use credentials from ~/.aws/credentials IAM Role roleArn Assume an IAM role Default Chain (none) Environment variables, instance profiles, ECS/EKS roles Authentication Examples [code block] Configuration Parameter Required Description --------- ------------ ------------------------------- model Required Bedrock model identifier region Optional AWS region (default: us-east-1) options Optional Model-specific parameters Options Parameters Parameter Type Description ---------------- ---------- -------------------------- temperature 0-1 Controls randomness maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling stopsequences string\\[\\] Array of stop sequences Google Vertex Studio Provider Google's Gemini models with function calling via AI Studio API. [code block] Authentication Method Required Description --------- ------------ ------------------------------------------------------------------- apiKey Required Google AI Studio API key baseURL Optional Custom API endpoint (default: https://aiplatform.googleapis.com/v1) Configuration Parameter Required Description --------- ------------ ------------------------- model Required Gemini model identifier apiKey Required Google AI Studio API key options Optional Model-specific parameters Options Parameters Parameter Type Description -------------------- ---------- ----------------------------------------- temperature 0-2 Controls randomness maxoutputtokens number Maximum tokens to generate topp 0-1 Nucleus sampling topk number Sample from top K options stopsequences string\\[\\] Array of stop sequences candidatecount number Number of response variations (usually 1) responsemimetype string For JSON mode: \"application/json\" Function calling limitations: Multiple tools per call only supported for search tools. Use multi-step workflows for complex tool orchestration. Azure AI Provider Azure OpenAI Service with enterprise authentication via the Responses API. [code block] Authentication Azure AI supports three authentication methods (in priority order): Method Parameters Description ------------------------ ------------- -------------------------------------------------------------------- API Key apiKey Simplest method - use your Azure resource key Entra ID Token accessToken Use Microsoft Entra ID (Azure AD) access token Default Credential Chain (none) Uses Azure SDK: Managed Identity, Service Principal, CLI credentials Authentication Examples [code block] Configuration Parameter Required Description ------------ ------------ ----------------------------------------- model Required Deployment model name endpoint Required Azure resource URL apiVersion Optional API version (default: 2025-04-01-preview) Options Parameters Important: Azure Responses API currently does not support optional configuration parameters. All inference parameters (temperature, maxtokens, seed, etc.) are rejected with HTTP 400 errors. This is a limitation of Azure's Responses API endpoint. The AzureOptions type is defined for API consistency but parameters cannot be used in practice. Creating a Custom Provider You can create your own LLM provider by implementing the LLMHandle interface: LLMHandle Interface [code block] Example: Custom Provider [code block] Using Your Custom Provider [code block] Requirements gen(): Basic text generation method (required) genWithTools(): Function calling support (required for MCP tools) genStream(): Streaming support (optional) id & model: Identifiers for logging and error messages Tip: Look at existing providers in src/llms/ for reference implementations. The OpenAI provider is a good starting point.",
+    "content": "LLM Providers Volcano SDK supports 100s of models from 7 providers with function calling and MCP integration. Providers can be mixed within a single workflow. Provider Support Matrix Provider Basic Generation Function Calling Streaming MCP Integration ------------------------ ---------------- ---------------------------- --------- --------------- OpenAI ✅ Full ✅ Native ✅ Native ✅ Complete Anthropic ✅ Full ✅ Native (tooluse) ✅ Native ✅ Complete Mistral ✅ Full ✅ Native ✅ Native ✅ Complete Llama ✅ Full ✅ Via Ollama ✅ Native ✅ Complete AWS Bedrock ✅ Full ✅ Native (Converse API) ✅ Native ✅ Complete Google Vertex Studio ✅ Full ✅ Native (Function calling) ✅ Native ✅ Complete Azure AI ✅ Full ✅ Native (Responses API) ✅ Native ✅ Complete All providers support automatic tool selection and multi-step workflows. OpenAI Provider Full support for OpenAI's GPT models with function calling and streaming. [code block] Authentication Method Required Description --------- ------------ -------------------------------------------------------- apiKey Required OpenAI API key from platform.openai.com baseURL Optional Custom API endpoint (default: https://api.openai.com/v1) Configuration Parameter Required Description --------- ------------ -------------------------------------------- model Required Model identifier (e.g., gpt-4o-mini, gpt-4o) apiKey Required OpenAI API key baseURL Optional Custom API endpoint options Optional Model-specific parameters (see below) Options Parameters Parameter Type Description ----------------------- -------------------- ----------------------------------------------------------------- temperature 0-2 Controls randomness. Higher = more creative, lower = more focused maxcompletiontokens number Maximum tokens to generate (recommended for all models) maxtokens number Legacy parameter (use maxcompletiontokens instead) topp 0-1 Nucleus sampling - alternative to temperature frequencypenalty -2 to 2 Reduces repetition based on token frequency presencepenalty -2 to 2 Encourages topic diversity stop string \\ string\\[\\] Stop sequences to end generation seed number For deterministic outputs (same seed = same output) responseformat object Force JSON output: Structured Outputs (JSON Schema Validation) Use llmOpenAIResponses() for guaranteed JSON output that matches your schema exactly. Unlike basic JSON mode, structured outputs enforce strict schema compliance. [code block] Why Use Structured Outputs? Guaranteed schema compliance: Model output always matches your JSON schema No hallucinated fields: Only defined fields appear in output Type safety: Numbers are numbers, strings are strings, arrays are arrays Required fields enforced: All required properties always present Reliable parsing: No unexpected JSON structures or parsing errors Supported Models Structured outputs work with: gpt-4o-mini, gpt-4o, gpt-4o-2024-08-06 and later, o1-mini, o1-preview, o3-mini In Agent Workflows [code block] Structured Outputs vs Regular JSON Mode Feature llmOpenAI() llmOpenAIResponses() ----------------- ----------------- --------------------------------------- Output format Free text or JSON Guaranteed valid JSON Schema validation None Strict JSON Schema Use case General purpose Structured data extraction Required fields Not enforced Always present Extra fields May appear Never appear (strict mode) Best for Conversational AI APIs, data extraction, structured tasks Tip: Use llmOpenAIResponses() when building APIs or extracting structured data. Use regular llmOpenAI() for conversational responses and free-form text. Anthropic (Claude) Provider Native support for Claude models with tool calling. [code block] Authentication Method Required Description --------- ------------ -------------------------------------------------------- apiKey Required Anthropic API key from console.anthropic.com baseURL Optional Custom API endpoint (default: https://api.anthropic.com) version Optional API version header (default: 2023-06-01) Configuration Parameter Required Description --------- ------------ --------------------------------------------------- model Required Model identifier (e.g., claude-3-5-sonnet-20241022) apiKey Required Anthropic API key options Optional Model-specific parameters Options Parameters Parameter Type Description ---------------- ---------- ------------------------------------------------- temperature 0-1 Controls randomness (note: range is 0-1, not 0-2) maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling topk number Sample from top K options stopsequences string\\[\\] Array of stop sequences thinking object Extended thinking configuration (Claude-specific) Mistral Provider Support for Mistral's open and proprietary models via OpenAI-compatible API. [code block] Authentication Method Required Description --------- ------------ ----------------------------------------------------- apiKey Required Mistral API key from console.mistral.ai baseURL Optional Custom API endpoint (default: https://api.mistral.ai) Configuration Parameter Required Description --------- ------------ ------------------------- model Required Model identifier apiKey Required Mistral API key options Optional Model-specific parameters Options Parameters Parameter Type Description ----------------- -------------------- ---------------------------------------- temperature 0-1 Controls randomness maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling stop string \\ string\\[\\] Stop sequences safeprompt boolean Enable safety mode randomseed number For deterministic outputs responseformat object For JSON mode: Llama Provider Run Llama models locally with Ollama or via OpenAI-compatible endpoints. [code block] Setup: Install Ollama from ollama.ai and run ollama pull llama3.2:3b Authentication Method Required Description --------- ---------- ----------------------------------------------------------------------- baseURL Optional OpenAI-compatible endpoint (default: http://localhost:11434 for Ollama) apiKey Optional API key if your endpoint requires authentication Configuration Parameter Required Description --------- ------------ ----------------------------------------------- model Required Model identifier (e.g., llama3.2:3b for Ollama) baseURL Optional Server endpoint options Optional Model-specific parameters Options Parameters Parameter Type Description ---------------- -------------------- ---------------------------------------------------- temperature 0-2 Controls randomness maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling topk number Sample from top K options stop string \\ string\\[\\] Stop sequences repeatpenalty number Penalize repetitions (Ollama-specific, default: 1.1) seed number For deterministic outputs numpredict number Number of tokens to predict (Ollama-specific) AWS Bedrock Provider Access foundation models via AWS Bedrock with native tool calling support using the Converse API. [code block] Authentication AWS Bedrock supports multiple authentication methods (in priority order): Method Parameters Description -------------------- ------------------------------------------------ ------------------------------------------------------- Explicit Credentials accessKeyId, secretAccessKey, sessionToken Directly provide AWS credentials Bearer Token bearerToken Use bearer token authentication AWS Profile profile Use credentials from ~/.aws/credentials IAM Role roleArn Assume an IAM role Default Chain (none) Environment variables, instance profiles, ECS/EKS roles Authentication Examples [code block] Configuration Parameter Required Description --------- ------------ ------------------------------- model Required Bedrock model identifier region Optional AWS region (default: us-east-1) options Optional Model-specific parameters Options Parameters Parameter Type Description ---------------- ---------- -------------------------- temperature 0-1 Controls randomness maxtokens number Maximum tokens to generate topp 0-1 Nucleus sampling stopsequences string\\[\\] Array of stop sequences Google Vertex Studio Provider Google's Gemini models with function calling via AI Studio API. [code block] Authentication Method Required Description --------- ------------ ------------------------------------------------------------------- apiKey Required Google AI Studio API key baseURL Optional Custom API endpoint (default: https://aiplatform.googleapis.com/v1) Configuration Parameter Required Description --------- ------------ ------------------------- model Required Gemini model identifier apiKey Required Google AI Studio API key options Optional Model-specific parameters Options Parameters Parameter Type Description -------------------- ---------- ----------------------------------------- temperature 0-2 Controls randomness maxoutputtokens number Maximum tokens to generate topp 0-1 Nucleus sampling topk number Sample from top K options stopsequences string\\[\\] Array of stop sequences candidatecount number Number of response variations (usually 1) responsemimetype string For JSON mode: \"application/json\" Function calling limitations: Multiple tools per call only supported for search tools. Use multi-step workflows for complex tool orchestration. Azure AI Provider Azure OpenAI Service with enterprise authentication via the Responses API. [code block] Authentication Azure AI supports three authentication methods (in priority order): Method Parameters Description ------------------------ ------------- -------------------------------------------------------------------- API Key apiKey Simplest method - use your Azure resource key Entra ID Token accessToken Use Microsoft Entra ID (Azure AD) access token Default Credential Chain (none) Uses Azure SDK: Managed Identity, Service Principal, CLI credentials Authentication Examples [code block] Configuration Parameter Required Description ------------ ------------ ----------------------------------------- model Required Deployment model name endpoint Required Azure resource URL apiVersion Optional API version (default: 2025-04-01-preview) Options Parameters Important: Azure Responses API currently does not support optional configuration parameters. All inference parameters (temperature, maxtokens, seed, etc.) are rejected with HTTP 400 errors. This is a limitation of Azure's Responses API endpoint. The AzureOptions type is defined for API consistency but parameters cannot be used in practice. Creating a Custom Provider You can create your own LLM provider by implementing the LLMHandle interface: LLMHandle Interface [code block] Example: Custom Provider [code block] Using Your Custom Provider [code block] Requirements gen(): Basic text generation method (required) genWithTools(): Function calling support (required for MCP tools) genStream(): Streaming support (optional) id & model: Identifiers for logging and error messages Tip: Look at existing providers in src/llms/ for reference implementations. The OpenAI provider is a good starting point.",
     "headings": [
       "LLM Providers",
       "Provider Support Matrix",
-      "✅ OpenAI",
-      "✅ Anthropic",
-      "✅ Mistral",
-      "✅ Llama",
-      "✅ AWS Bedrock",
-      "✅ Google Vertex",
-      "✅ Azure AI",
       "OpenAI Provider",
       "Authentication",
       "Configuration",
@@ -2669,7 +2535,7 @@
       "provider",
       "[code"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmOpenAI } from \"volcano-sdk\";\n\nconst openai = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n  baseURL: \"https://api.openai.com/v1\", // Optional\n  options: {\n    temperature: 0.7,\n    max_completion_tokens: 2000,\n    top_p: 0.9,\n    seed: 42,\n  },\n});\n",
       "import { llmOpenAIResponses } from \"volcano-sdk\";\n\nconst llm = llmOpenAIResponses({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n  options: {\n    jsonSchema: {\n      name: \"order_response\",\n      description: \"Order information\",\n      schema: {\n        type: \"object\",\n        properties: {\n          item: { type: \"string\" },\n          price: { type: \"number\" },\n          category: { type: \"string\" },\n        },\n        required: [\"item\", \"price\", \"category\"],\n        additionalProperties: false,\n      },\n    },\n  },\n});\n\nconst response = await llm.gen(\"Info for Espresso: $5.25, Coffee\");\nconst data = JSON.parse(response);\n// Guaranteed: { item: \"Espresso\", price: 5.25, category: \"Coffee\" }\n",
@@ -2754,7 +2620,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "type LLMHandle = {\n  id: string;\n  model: string;\n  gen: (prompt: string) => Promise<string>;\n  genWithTools: (\n    prompt: string,\n    tools: ToolDefinition[]\n  ) => Promise<LLMToolResult>;\n  genStream: (prompt: string) => AsyncGenerator<string, void, unknown>;\n  client: any; // Your provider-specific client\n};\n"
     ],
@@ -3066,7 +2932,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmMistral } from \"volcano-sdk\";\n\nconst mistral = llmMistral({\n  apiKey: process.env.MISTRAL_API_KEY!,\n  model: \"mistral-small-latest\",\n  baseURL: \"https://api.mistral.ai\", // Optional\n  options: {\n    temperature: 0.7,\n    max_tokens: 2000,\n    top_p: 0.9,\n    safe_prompt: true,\n    random_seed: 42,\n  },\n});\n"
     ],
@@ -3380,7 +3246,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmOpenAI } from \"volcano-sdk\";\n\nconst openai = llmOpenAI({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n  baseURL: \"https://api.openai.com/v1\", // Optional\n  options: {\n    temperature: 0.7,\n    max_completion_tokens: 2000,\n    top_p: 0.9,\n    seed: 42,\n  },\n});\n"
     ],
@@ -3464,7 +3330,7 @@
       "--------------------",
       "-----------------------------------------------------------------"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3491,7 +3357,7 @@
       "-------------------------------------------------",
       "temperature"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3518,7 +3384,7 @@
       "temperature",
       "controls"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3545,7 +3411,7 @@
       "----------------------------------------------------",
       "temperature"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3572,7 +3438,7 @@
       "controls",
       "randomness"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3599,7 +3465,7 @@
       "temperature",
       "controls"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3626,7 +3492,7 @@
       "configuration",
       "parameters."
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "options-parameters",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3775,7 +3641,7 @@
       "calling",
       "streaming"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "provider-support-matrix",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -3863,7 +3729,7 @@
       "function",
       "calling"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "anchor": "requirements",
     "parentTitle": "LLM Providers - Volcano SDK"
   },
@@ -4372,7 +4238,7 @@
       "matches",
       "exactly."
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { llmOpenAIResponses } from \"volcano-sdk\";\n\nconst llm = llmOpenAIResponses({\n  apiKey: process.env.OPENAI_API_KEY!,\n  model: \"gpt-4o-mini\",\n  options: {\n    jsonSchema: {\n      name: \"order_response\",\n      description: \"Order information\",\n      schema: {\n        type: \"object\",\n        properties: {\n          item: { type: \"string\" },\n          price: { type: \"number\" },\n          category: { type: \"string\" },\n        },\n        required: [\"item\", \"price\", \"category\"],\n        additionalProperties: false,\n      },\n    },\n  },\n});\n\nconst response = await llm.gen(\"Info for Espresso: $5.25, Coffee\");\nconst data = JSON.parse(response);\n// Guaranteed: { item: \"Espresso\", price: 5.25, category: \"Coffee\" }\n"
     ],
@@ -4684,7 +4550,7 @@
       "[code",
       "block]"
     ],
-    "lastModified": "2025-10-11T05:21:51.880Z",
+    "lastModified": "2025-10-13T20:49:33.789Z",
     "codeBlocks": [
       "import { agent } from \"volcano-sdk\";\nimport { llmCustom } from \"./my-custom-provider\";\n\nconst customLLM = llmCustom({\n  apiKey: process.env.CUSTOM_API_KEY!,\n  model: \"my-model-v1\",\n  baseURL: \"https://api.myservice.com/v1\",\n});\n\nconst results = await agent({ llm: customLLM })\n  .then({ prompt: \"Hello from custom provider!\" })\n  .run();\n\nconsole.log(results[0].llmOutput);\n"
     ],
