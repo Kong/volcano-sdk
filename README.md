@@ -141,8 +141,6 @@ console.log(results[1].llmOutput);
 ### Multi-Provider Workflow
 
 ```ts
-import { agent, llmOpenAI, mcp } from "volcano-sdk";
-
 import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
 
 const gpt = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
