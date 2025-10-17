@@ -1,0 +1,168 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+
+@layer base {
+  body {
+    font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-space-mono {
+    font-family: "Space Mono", monospace;
+  }
+}
+
+@layer utilities {
+  .container {
+    /* max-width: 96rem; */
+    max-width: 67.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    /* padding-left: 1rem; */
+    /* padding-right: 1rem; */
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  .prose {
+    max-width: none;
+    font-size: 0.875rem;
+  }
+
+  .prose h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+  }
+
+  .prose h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    margin-top: 2rem;
+  }
+
+  .prose h3 {
+    font-size: 1.3125rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .prose h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .prose p {
+    margin-bottom: 1rem;
+    line-height: 1.75;
+  }
+
+  .prose ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .prose li {
+    margin-bottom: 0.5rem;
+  }
+
+  .prose pre {
+    padding: 1rem;
+    border-radius: 0;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+  }
+
+  .prose code {
+    padding: 0.125rem 0.25rem;
+    border-radius: 0;
+    font-size: 0.875rem;
+  }
+
+  .prose pre code {
+    padding: 0;
+  }
+}
+
+@utility bg-btn-primary {
+  background-color: #ff572d;
+}
+
+@utility bg-terminal {
+  background-color: black;
+}
+
+@utility text-color-primary {
+  color: #ff572d;
+}
+
+@utility text-blur {
+  /* color: rgba(255, 255, 255, 0.1);
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.8),
+    0 0 1px rgba(255, 255, 255, 0.8),
+    0 0 1px rgba(255, 255, 255, 0.8);
+
+  -webkit-font-smoothing: antialiased; */
+
+  color: white;
+  -webkit-text-stroke: 2px white; /* sharp, no blur */
+  text-stroke: 2px white; /* standard syntax */
+}
+
+@utility text-stroke-white {
+  text-shadow:
+    -1px -1px 0 white,
+    1px -1px 0 white,
+    -1px 1px 0 white,
+    1px 1px 0 white;
+}
+
+@utility icon-stroke-white {
+  filter: drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white)
+    drop-shadow(-1px 1px 0 white) drop-shadow(1px 1px 0 white);
+}
+
+.text-stroke-white-hover {
+  text-shadow:
+    -1px -1px 0 white,
+    1px -1px 0 white,
+    -1px 1px 0 white,
+    1px 1px 0 white;
+}
+
+.text-stroke-white-hover:hover,
+.text-stroke-white-hover.active {
+  text-shadow: none;
+}
+
+.icon-stroke-white-hover {
+  filter: drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white)
+    drop-shadow(-1px 1px 0 white) drop-shadow(1px 1px 0 white);
+}
+
+.icon-stroke-white-hover:hover,
+.icon-stroke-white-hover.active {
+  filter: none;
+}

@@ -1,0 +1,124 @@
+{
+  "quickLinks": [
+    {
+      "label": "Quick Start",
+      "query": "quick start",
+      "path": "/docs#quick-start",
+      "description": "Get started with Volcano SDK in minutes"
+    },
+    {
+      "label": "API Reference - Volcano SDK",
+      "query": "api",
+      "path": "/docs/api"
+    },
+    {
+      "label": "Features - Volcano SDK",
+      "query": "features",
+      "path": "/docs/features"
+    },
+    {
+      "label": "LLM Providers - Volcano SDK",
+      "query": "providers",
+      "path": "/docs/providers"
+    },
+    {
+      "label": "MCP Tools - Volcano SDK",
+      "query": "mcp-tools",
+      "path": "/docs/mcp-tools"
+    }
+  ],
+  "popular": [
+    {
+      "label": "Installation",
+      "query": "install"
+    },
+    {
+      "label": "Getting Started",
+      "query": "getting started"
+    },
+    {
+      "label": "Configuration",
+      "query": "configuration"
+    },
+    {
+      "label": "Error Handling",
+      "query": "error handling"
+    },
+    {
+      "label": "Examples",
+      "query": "examples"
+    },
+    {
+      "label": "Authentication",
+      "query": "authentication"
+    }
+  ],
+  "api": [
+    {
+      "label": "StepResult",
+      "query": "StepResult",
+      "description": "API Method"
+    },
+    {
+      "label": "ToolDefinition",
+      "query": "ToolDefinition",
+      "description": "API Method"
+    },
+    {
+      "label": "llmOpenAI",
+      "query": "llmOpenAI",
+      "description": "API Method"
+    },
+    {
+      "label": "agent",
+      "query": "agent",
+      "description": "API Method"
+    },
+    {
+      "label": "metrics",
+      "query": "metrics",
+      "description": "API Method"
+    },
+    {
+      "label": "results",
+      "query": "results",
+      "description": "API Method"
+    },
+    {
+      "label": "calls",
+      "query": "calls",
+      "description": "API Method"
+    },
+    {
+      "label": "then",
+      "query": "then",
+      "description": "API Method"
+    }
+  ],
+  "concepts": [
+    {
+      "label": "Provider",
+      "query": "provider"
+    },
+    {
+      "label": "Agent",
+      "query": "agent"
+    },
+    {
+      "label": "Agents",
+      "query": "agents"
+    },
+    {
+      "label": "Tool",
+      "query": "tool"
+    },
+    {
+      "label": "Tools",
+      "query": "tools"
+    },
+    {
+      "label": "Mcp",
+      "query": "mcp"
+    }
+  ]
+}
