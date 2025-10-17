@@ -39,13 +39,15 @@ export type OpenAIResponsesConfig = {
   apiKey: string;
   model: string; // Required - models that support structured outputs (gpt-4o-mini, gpt-4o, o1, o3, etc.)
   baseURL?: string;
+  defaultHeaders?: Record<string, string>; // Custom headers to include in all requests
   options?: OpenAIResponsesOptions;
 };
 
-export type OpenAIConfig = { 
-  apiKey: string; 
+export type OpenAIConfig = {
+  apiKey: string;
   model: string; // Required - be explicit about which model to use
   baseURL?: string;
+  defaultHeaders?: Record<string, string>; // Custom headers to include in all requests
   options?: OpenAIOptions;
 };
 
@@ -59,7 +61,11 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
   }
   const model = cfg.model;
   const id = `OpenAI-${model}`;
-  const client = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
+  const client = new OpenAI({
+    apiKey: cfg.apiKey,
+    baseURL: cfg.baseURL,
+    defaultHeaders: cfg.defaultHeaders,
+  });
   const options = cfg.options || {};
 
   return {
@@ -132,7 +138,11 @@ export function llmOpenAIResponses(cfg: OpenAIResponsesConfig): LLMHandle {
   
   const model = cfg.model;
   const id = `OpenAI-Responses-${model}`;
-  const client = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
+  const client = new OpenAI({
+    apiKey: cfg.apiKey,
+    baseURL: cfg.baseURL,
+    defaultHeaders: cfg.defaultHeaders,
+  });
   const { jsonSchema, ...otherOptions } = cfg.options;
   
   // Build response_format with json_schema mode

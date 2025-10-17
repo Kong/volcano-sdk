@@ -1,5 +1,5 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
-import { sanitizeToolName, parseToolArguments } from "./utils.js";
+import { sanitizeToolName, parseToolArguments, mergeHeaders } from "./utils.js";
 
 type AzureAIClient = {
   createResponse: (params: any) => Promise<any>;
@@ -18,13 +18,14 @@ export type AzureConfig = {
   model: string; // Required - no default (e.g., "gpt-5-mini")
   endpoint: string; // Required - Azure resource endpoint
   apiVersion?: string; // Default: "2025-04-01-preview"
-  
+
   // Authentication methods (in priority order)
   apiKey?: string; // API key authentication
   accessToken?: string; // Entra ID access token
-  
+
   // Custom client
   client?: AzureAIClient;
+  defaultHeaders?: Record<string, string>; // Custom headers to include in all requests
   options?: AzureOptions;
 };
 
@@ -47,6 +48,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
   const model = cfg.model;
   const endpoint = cfg.endpoint.replace(/\/$/, "");
   const apiVersion = cfg.apiVersion || "2025-04-01-preview";
+  const defaultHeaders = cfg.defaultHeaders;
   const options = cfg.options || {};
   let client = cfg.client;
 
@@ -89,7 +91,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
 
         const response = await fetch(url, {
           method: "POST",
-          headers,
+          headers: mergeHeaders(headers, defaultHeaders),
           body: JSON.stringify(params),
         });
 
@@ -244,7 +246,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
 
       const response = await fetch(url, {
         method: "POST",
-        headers,
+        headers: mergeHeaders(headers, defaultHeaders),
         body: JSON.stringify(params),
       });
 
