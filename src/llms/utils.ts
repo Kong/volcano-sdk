@@ -87,3 +87,22 @@ export function parseOpenAICompatibleResponse(
     toolCalls,
   };
 }
+
+/**
+ * Merge headers with proper precedence.
+ * Priority: requiredHeaders > defaultHeaders
+ * This ensures required headers (like auth) cannot be overridden by default headers.
+ */
+export function mergeHeaders(
+  requiredHeaders: Record<string, string>,
+  defaultHeaders?: Record<string, string>
+): Record<string, string> {
+  if (!defaultHeaders) {
+    return requiredHeaders;
+  }
+
+  return {
+    ...defaultHeaders,
+    ...requiredHeaders,
+  };
+}
