@@ -7,7 +7,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kong/volcano-sdk.git"
+    "url": "https://github.com/kong/volcano-sdk.git"
   },
   "homepage": "https://github.com/kong/volcano-sdk",
   "bugs": {
