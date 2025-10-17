@@ -98,7 +98,7 @@ Intelligent connection pooling for MCP servers, tool discovery caching with TTL,
 </tr>
 </table>
 
-**[Explore all features →](https://volcano.dev/docs/)**
+**[Explore all features →](https://volcano.dev/docs#key-features)**
 
 ## Quick Start
 
@@ -110,7 +110,7 @@ npm install volcano-sdk
 
 That's it! Includes MCP support and all common LLM providers (OpenAI, Anthropic, Mistral, Llama, Vertex).
 
-**[View installation guide →](https://volcano.dev/docs/index.html#installation)**
+**[View installation guide →](https://volcano.dev/docs#installation)**
 
 ### Hello World
 
@@ -155,19 +155,19 @@ await agent()
   .run();
 ```
 
-**[View more examples →](https://volcano.dev/docs/examples.html)**
+**[View more examples →](https://volcano.dev/docs/examples)**
 
 ## Documentation
 
 ### 📖 Comprehensive Guides
-- **[Getting Started](https://volcano.dev/docs/)** - Installation, quick start, core concepts
-- **[LLM Providers](https://volcano.dev/docs/providers.html)** - OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure
-- **[MCP Tools](https://volcano.dev/docs/mcp-tools.html)** - Automatic selection, OAuth authentication, connection pooling
-- **[Advanced Patterns](https://volcano.dev/docs/patterns.html)** - Parallel, branching, loops, multi-LLM workflows
-- **[Features](https://volcano.dev/docs/features.html)** - Streaming, retries, timeouts, hooks, error handling
-- **[Observability](https://volcano.dev/docs/observability.html)** - OpenTelemetry traces and metrics
-- **[API Reference](https://volcano.dev/docs/api.html)** - Complete API documentation
-- **[Examples](https://volcano.dev/docs/examples.html)** - Ready-to-run code examples
+- **[Getting Started](https://volcano.dev/docs)** - Installation, quick start, core concepts
+- **[LLM Providers](https://volcano.dev/docs/providers)** - OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure
+- **[MCP Tools](https://volcano.dev/docs/mcp-tools)** - Automatic selection, OAuth authentication, connection pooling
+- **[Advanced Patterns](https://volcano.dev/docs/patterns)** - Parallel, branching, loops, multi-LLM workflows
+- **[Features](https://volcano.dev/docs/features)** - Streaming, retries, timeouts, hooks, error handling
+- **[Observability](https://volcano.dev/docs/observability)** - OpenTelemetry traces and metrics
+- **[API Reference](https://volcano.dev/docs/api)** - Complete API documentation
+- **[Examples](https://volcano.dev/docs/examples)** - Ready-to-run code examples
 
 ## Contributing
 
