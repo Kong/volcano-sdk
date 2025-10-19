@@ -153,14 +153,17 @@ async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<str
     throw new Error(`OAuth auth requires tokenEndpoint, clientId, and clientSecret`);
   }
   
+  // OAuth 2.0 RFC 6749 requires application/x-www-form-urlencoded for token requests
+  const params = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: auth.clientId,
+    client_secret: auth.clientSecret
+  });
+  
   const response = await fetch(auth.tokenEndpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      client_id: auth.clientId,
-      client_secret: auth.clientSecret
-    })
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString()
   });
   
   if (!response.ok) {
