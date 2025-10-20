@@ -24,7 +24,7 @@ A good bug report should not leave others needing to chase you up for more infor
 
 ## Feature Requests
 
-Feature requests are welcome. But take a moment to find out whether your idea fits with the scope and aims of the project. It's up to _you_ to make a strong case to convince the project's developers of the merits of this feature. Please provide as much detail and context as possible.
+If you're comfortable implementing the idea yourself, **we strongly encourage opening a pull request (PR) rather than just a feature request.** Even a draft or partial implementation helps start a concrete discussion and speeds up review and decision-making. Proposals backed by working code are much more likely to be accepted and refined collaboratively.
 
 You can also use [GitHub Discussions](https://github.com/Kong/volcano-sdk/discussions) to discuss ideas and ask questions before submitting a formal feature request.
 
@@ -38,19 +38,26 @@ Good pull requests (patches, improvements, new features) are a fantastic help. T
 
 1. Fork and clone the repository
 2. Install dependencies:
+
    ```bash
    npm install
    ```
+
 3. Make your changes
 4. Run tests:
+
    ```bash
    npm test
    ```
+
 5. Run the linter:
+
    ```bash
    npm run lint
    ```
+
 6. Build the project:
+
    ```bash
    npm run build
    ```
@@ -71,9 +78,10 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 - `refactor:` - Code change that neither fixes a bug nor adds a feature
 - `test:` - Adding or updating tests
 - `chore:` - Maintenance tasks (deps, build, configs)
-- `BREAKING CHANGE:` - Breaking changes (correlates with MAJOR version bump)
+- `BREAKING CHANGE:` - Breaking changes (correlates with MAJOR version bump) or append ! to the commit type. e.g. `feat!:`
 
 Examples:
+
 - `feat(agent): add parallel execution support`
 - `fix(mcp): resolve connection pooling issue`
 - `docs(readme): update installation instructions`
