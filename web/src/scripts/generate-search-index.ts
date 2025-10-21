@@ -201,8 +201,19 @@ async function indexDirectory(
       }
 
       const filePath = path.join(dir, file);
-      const stats = await fs.stat(filePath);
-      const rawContent = await fs.readFile(filePath, "utf-8");
+
+      // Use file handle to avoid TOCTOU vulnerability
+      let fh;
+      let stats;
+      let rawContent;
+
+      try {
+        fh = await fs.open(filePath, "r");
+        stats = await fh.stat();
+        rawContent = await fh.readFile("utf-8");
+      } finally {
+        await fh?.close();
+      }
 
       // Parse frontmatter
       const { data: frontmatter, content } = matter(rawContent);
