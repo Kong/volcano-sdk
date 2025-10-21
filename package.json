@@ -82,9 +82,12 @@
     "llm",
     "openai",
     "sdk",
-    "wasm",
     "agents",
     "ai",
+    "anthropic",
+    "mistral",
+    "bedrock",
+    "vertex",
     "volcano"
   ],
   "dependencies": {

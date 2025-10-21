@@ -138,6 +138,45 @@ for await (const stepResult of workflow.stream((step, stepIndex) => {
 - **Progressive display:** Results appear as they complete
 - **Same execution model:** Retries, timeouts, and validation work identically to `run()`
 
+### Token-Level Streaming
+
+Stream individual tokens as they arrive from the LLM for real-time chat interfaces.
+
+#### Per-Step Token Streaming
+
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Explain AI",
+    onToken: (token: string) => {
+      process.stdout.write(token);
+      // Or: res.write(`data: ${token}\n\n`);
+    },
+  })
+  .run();
+```
+
+#### Stream-Level Token Streaming with Metadata
+
+```typescript
+for await (const step of agent({ llm })
+  .then({ prompt: "Analyze data" })
+  .then({ prompt: "Generate report" })
+  .stream({
+    onToken: (token, meta) => {
+      // meta.stepIndex, meta.handledByStep, meta.stepPrompt, meta.llmProvider
+      res.write(`data: ${JSON.stringify({ token, step: meta.stepIndex })}\n\n`);
+    },
+    onStep: (step, index) => {
+      console.log(`Step ${index} complete`);
+    },
+  })) {
+  // Step results yield here
+}
+```
+
+**💡 Precedence:** Step-level `onToken` takes precedence over stream-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and stream-level callback won't receive those tokens.
+
 ## Retries & Timeouts
 
 ### Timeouts

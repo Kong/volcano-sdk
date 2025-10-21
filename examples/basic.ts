@@ -4,7 +4,10 @@ import { agent, llmOpenAI, mcp } from "../dist/volcano-sdk.js";
 // (make sure OPENAI_API_KEY is set, and MCP servers are running locally)
 
 (async () => {
-  const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const llm = llmOpenAI({ 
+    apiKey: process.env.OPENAI_API_KEY!, 
+    model: "gpt-4o-mini" 
+  });
   const cafe = mcp("http://localhost:3000/mcp");
   const twilio = mcp("http://localhost:4000/mcp");
 

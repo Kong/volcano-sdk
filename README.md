@@ -59,7 +59,7 @@ Three retry strategies: immediate, delayed, and exponential backoff. Per-step ti
 <td width="33%">
 
 ### 📡 Streaming Workflows
-Stream step results as they complete using async generators. Perfect for real-time UIs and long-running tasks.
+Stream step results as they complete, or stream individual tokens in real-time with metadata. Perfect for SSE, real-time chat UIs, and long-running tasks.
 
 </td>
 <td width="33%">
