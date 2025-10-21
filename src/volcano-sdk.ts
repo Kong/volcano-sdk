@@ -91,6 +91,7 @@ export type MCPAuthConfig = {
   clientId?: string;        // For OAuth: client credentials
   clientSecret?: string;
   tokenEndpoint?: string;   // OAuth token endpoint (for OAuth)
+  scope?: string;           // OAuth scope (optional, some servers require it)
 };
 
 export type MCPHandle = { 
@@ -159,6 +160,11 @@ async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<str
     client_id: auth.clientId,
     client_secret: auth.clientSecret
   });
+  
+  // Add scope if provided (some OAuth servers require it)
+  if (auth.scope) {
+    params.set('scope', auth.scope);
+  }
   
   const response = await fetch(auth.tokenEndpoint, {
     method: 'POST',
