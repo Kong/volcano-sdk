@@ -466,11 +466,29 @@ export type RetryConfig = {
   retries?: number;    // total attempts including the first one; default 3
 };
 
+/**
+ * Metadata provided to stream-level onToken callback.
+ */
+export type TokenMetadata = {
+  stepIndex: number;        // Index of the current step
+  handledByStep: boolean;   // True if step-level onToken handled this token
+  stepPrompt?: string;      // The prompt for this step
+  llmProvider?: string;     // The LLM provider ID (e.g., "OpenAI-gpt-4o-mini")
+};
+
+/**
+ * Options for the stream() method.
+ */
+export type StreamOptions = {
+  onToken?: (token: string, meta: TokenMetadata) => void;
+  onStep?: (step: StepResult, stepIndex: number) => void;
+};
+
 export type Step =
-  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
   | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
   | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void };
+  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void };
 
 export type StepResult = {
   prompt?: string;
@@ -504,7 +522,7 @@ export interface AgentBuilder {
   retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number; pre?: () => void; post?: () => void }): AgentBuilder;
   runAgent(subAgent: AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]>;
-  stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown>;
+  stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown>;
 }
 
 function buildHistoryContextChunked(history: StepResult[], maxToolResults: number, maxChars: number): string {
@@ -916,7 +934,22 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
-                r.llmOutput = await usedLlm.gen(finalPrompt);
+                // Use token-level streaming if onToken callback is provided
+                const onToken = (s as any).onToken;
+                if (onToken && typeof usedLlm.genStream === 'function') {
+                  const tokens: string[] = [];
+                  for await (const token of usedLlm.genStream(finalPrompt)) {
+                    tokens.push(token);
+                    try {
+                      onToken(token);
+                    } catch (e) {
+                      console.warn('onToken callback failed:', e);
+                    }
+                  }
+                  r.llmOutput = tokens.join('');
+                } else {
+                  r.llmOutput = await usedLlm.gen(finalPrompt);
+                }
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {
@@ -1051,14 +1084,30 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         isRunning = false;
       }
     },
-    async *stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown> {
+    async *stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown> {
       if (isRunning) {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
       isRunning = true;
       
+      // Parse options for backward compatibility
+      let streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined;
+      let log: ((s: StepResult, stepIndex: number) => void) | undefined;
+      
+      if (typeof optionsOrLog === 'function') {
+        // Old API: stream(callback)
+        log = optionsOrLog;
+      } else if (optionsOrLog) {
+        // New API: stream({ onToken, onStep })
+        streamOnToken = optionsOrLog.onToken;
+        log = optionsOrLog.onStep;
+      }
+      
       // Start agent span
       const agentSpan = telemetry?.startAgentSpan(steps.length) || null;
+      
+      // Capture streamOnToken from stream() context for use in doStep
+      const capturedStreamOnToken = streamOnToken;
       
       try {
         const out: StepResult[] = [];
@@ -1299,7 +1348,39 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
-                r.llmOutput = await usedLlm.gen(finalPrompt);
+                // Determine which onToken to use: step-level takes precedence over stream-level
+                const stepOnToken = (s as any).onToken;
+                const hasStepOnToken = !!stepOnToken;
+                const effectiveOnToken = stepOnToken || capturedStreamOnToken;
+                
+                // Use token-level streaming if any onToken callback is provided
+                if (effectiveOnToken && typeof usedLlm.genStream === 'function') {
+                  const tokens: string[] = [];
+                  const tokenMeta: TokenMetadata = {
+                    stepIndex: out.length,
+                    handledByStep: hasStepOnToken,
+                    stepPrompt: (s as any).prompt,
+                    llmProvider: (usedLlm as any).id || usedLlm.model
+                  };
+                  
+                  for await (const token of usedLlm.genStream(finalPrompt)) {
+                    tokens.push(token);
+                    try {
+                      if (hasStepOnToken) {
+                        // Step-level handler only receives token
+                        stepOnToken(token);
+                      } else {
+                        // Stream-level handler receives token + metadata
+                        capturedStreamOnToken!(token, tokenMeta);
+                      }
+                    } catch (e) {
+                      console.warn('onToken callback failed:', e);
+                    }
+                  }
+                  r.llmOutput = tokens.join('');
+                } else {
+                  r.llmOutput = await usedLlm.gen(finalPrompt);
+                }
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {
