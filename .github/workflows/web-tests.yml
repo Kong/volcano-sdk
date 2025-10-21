@@ -1,4 +1,6 @@
 name: Web Tests
+permissions:
+  contents: read
 
 on:
   push:
