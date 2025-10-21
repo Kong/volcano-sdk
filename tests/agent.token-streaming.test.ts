@@ -96,6 +96,45 @@ describe('Token-level streaming', () => {
       expect(results[0].llmOutput).toBe('First step');
       expect(results[1].llmOutput).toBe('Second step');
     });
+
+    it('onToken is ignored when using mcps (automatic tool selection)', async () => {
+      const tokens: string[] = [];
+
+      const mockLLM: LLMHandle = {
+        id: 'mock-llm',
+        model: 'mock-model',
+        client: null,
+        gen: async () => 'Direct response',
+        genWithTools: async (prompt: string, tools: any[]) => {
+          return {
+            llmOutput: 'Used genWithTools',
+            toolCalls: [],
+          };
+        },
+        async *genStream() {
+          yield 'This';
+          yield ' should';
+          yield ' not';
+          yield ' fire';
+        },
+      };
+
+      const results = await agent({ llm: mockLLM })
+        .then({
+          prompt: 'Test with mcps',
+          mcps: [], // Triggers automatic tool selection path
+          onToken: (token: string) => {
+            // Should NOT be called with mcps
+            tokens.push(token);
+          },
+        })
+        .run();
+
+      // onToken should be ignored when mcps is present
+      expect(tokens).toEqual([]);
+      // Should use genWithTools, not genStream
+      expect(results[0].llmOutput).toContain('No tools available');
+    });
   });
 
   // Stream-level onToken tests

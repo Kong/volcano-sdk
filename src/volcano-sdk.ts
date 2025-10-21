@@ -94,17 +94,55 @@ export type MCPAuthConfig = {
 };
 
 export type MCPHandle = { 
+  listTools: () => Promise<{ tools: Array<{ name: string; description?: string; inputSchema?: any }> }>;
+  callTool: (name: string, args: Record<string, any>) => Promise<any>;
   id: string; 
   url: string; 
   auth?: MCPAuthConfig;
 };
 
+/**
+ * Connect to an MCP (Model Context Protocol) server via HTTP.
+ * Supports connection pooling, OAuth/Bearer authentication, and automatic reconnection.
+ * 
+ * @param url - HTTP endpoint URL for the MCP server (e.g., "http://localhost:3000/mcp")
+ * @param options - Optional authentication configuration (OAuth 2.1 or Bearer token)
+ * @returns MCPHandle for listing and calling tools
+ * 
+ * @example
+ * // Basic usage
+ * const weather = mcp("http://localhost:3000/mcp");
+ * const tools = await weather.listTools();
+ * const forecast = await weather.callTool("get_forecast", { city: "San Francisco" });
+ * 
+ * @example
+ * // With OAuth authentication
+ * const github = mcp("https://api.github.com/mcp", {
+ *   auth: {
+ *     type: 'oauth',
+ *     clientId: process.env.GITHUB_CLIENT_ID!,
+ *     clientSecret: process.env.GITHUB_SECRET!,
+ *     tokenUrl: 'https://github.com/login/oauth/access_token'
+ *   }
+ * });
+ */
 export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle {
   // Use hash-based ID to keep tool names under OpenAI's 64-char limit
   // Tool names are: ${id}.${toolName}, so short ID = more room for tool names
   const hash = createHash('md5').update(url).digest('hex').substring(0, 8);
   const id = `mcp_${hash}`; // e.g., "mcp_f3c8a9b1" (12 chars, deterministic)
-  return { id, url, auth: options?.auth };
+  
+  return { 
+    id, 
+    url, 
+    auth: options?.auth,
+    listTools: async () => {
+      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.listTools());
+    },
+    callTool: async (name, args) => {
+      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.callTool({ name, arguments: args }));
+    }
+  };
 }
 
 // Ajv validator instance
@@ -384,6 +422,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label = 'Step'): Promis
 const TOOL_CACHE = new Map<string, { tools: ToolDefinition[]; ts: number }>();
 let TOOL_CACHE_TTL_MS = 60_000;
 
+/**
+ * Discover all available tools from one or more MCP servers.
+ * Results are cached for 60 seconds to improve performance.
+ * 
+ * @param handles - Array of MCP handles to query for tools
+ * @returns Combined array of all available tools from all servers
+ * 
+ * @example
+ * const weather = mcp("http://localhost:3000/mcp");
+ * const calendar = mcp("http://localhost:4000/mcp");
+ * const tools = await discoverTools([weather, calendar]);
+ * console.log(tools.map(t => t.name)); // ["get_forecast", "create_event", ...]
+ */
 export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinition[]> {
   const allTools: ToolDefinition[] = [];
   
@@ -468,16 +519,57 @@ export type RetryConfig = {
 
 /**
  * Metadata provided to stream-level onToken callback.
+ * Allows conditional processing based on whether step-level handler already processed the token.
+ * 
+ * @property stepIndex - Index of the current step (0-based)
+ * @property handledByStep - True if step-level onToken handled this token. Use this to avoid double-processing.
+ * @property stepPrompt - The prompt for this step (useful for conditional formatting)
+ * @property llmProvider - The LLM provider ID (e.g., "OpenAI-gpt-4o-mini", "Anthropic-claude-3")
+ * 
+ * @example
+ * .stream({
+ *   onToken: (token, meta) => {
+ *     if (!meta.handledByStep) {
+ *       // Only process if step didn't handle it
+ *       res.write(`data: ${token}\n\n`);
+ *     }
+ *     // Always log analytics
+ *     analytics.track(token, meta.stepIndex);
+ *   }
+ * })
  */
 export type TokenMetadata = {
-  stepIndex: number;        // Index of the current step
-  handledByStep: boolean;   // True if step-level onToken handled this token
-  stepPrompt?: string;      // The prompt for this step
-  llmProvider?: string;     // The LLM provider ID (e.g., "OpenAI-gpt-4o-mini")
+  stepIndex: number;
+  handledByStep: boolean;
+  stepPrompt?: string;
+  llmProvider?: string;
 };
 
 /**
  * Options for the stream() method.
+ * Supports both token-level and step-level callbacks for maximum flexibility.
+ * 
+ * @property onToken - Called for each token as it arrives (with metadata). 
+ *                     Step-level onToken takes precedence - when a step has its own onToken,
+ *                     this callback won't receive tokens from that step (meta.handledByStep will be true).
+ * @property onStep - Called when each step completes. Equivalent to the callback in stream(callback).
+ * 
+ * @example
+ * // Both token and step callbacks
+ * .stream({
+ *   onToken: (token, meta) => {
+ *     console.log(`Token from step ${meta.stepIndex}: ${token}`);
+ *   },
+ *   onStep: (step, index) => {
+ *     console.log(`Step ${index} complete: ${step.durationMs}ms`);
+ *   }
+ * })
+ * 
+ * @example
+ * // Backward compatible: just a callback
+ * .stream((step, index) => {
+ *   console.log(`Step ${index} done`);
+ * })
  */
 export type StreamOptions = {
   onToken?: (token: string, meta: TokenMetadata) => void;
@@ -560,6 +652,47 @@ function buildHistoryContextChunked(history: StepResult[], maxToolResults: numbe
   return out;
 }
 
+/**
+ * Helper function to execute LLM generation with optional token streaming.
+ * Handles both step-level and stream-level onToken callbacks with proper precedence.
+ */
+async function executeLLMWithStreaming(
+  llm: LLMHandle,
+  prompt: string,
+  stepOnToken: ((token: string) => void) | undefined,
+  streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined,
+  meta: { stepIndex: number; stepPrompt?: string }
+): Promise<string> {
+  const hasStepOnToken = !!stepOnToken;
+  const effectiveOnToken = stepOnToken || streamOnToken;
+  
+  if (effectiveOnToken && typeof llm.genStream === 'function') {
+    const tokens: string[] = [];
+    const tokenMeta: TokenMetadata = {
+      stepIndex: meta.stepIndex,
+      handledByStep: hasStepOnToken,
+      stepPrompt: meta.stepPrompt,
+      llmProvider: (llm as any).id || llm.model
+    };
+    
+    for await (const token of llm.genStream(prompt)) {
+      tokens.push(token);
+      try {
+        if (hasStepOnToken) {
+          stepOnToken!(token);
+        } else {
+          streamOnToken!(token, tokenMeta);
+        }
+      } catch (e) {
+        console.warn('onToken callback failed:', e);
+      }
+    }
+    return tokens.join('');
+  } else {
+    return await llm.gen(prompt);
+  }
+}
+
 type AgentOptions = {
   llm?: LLMHandle;
   instructions?: string;
@@ -576,6 +709,28 @@ type AgentOptions = {
   maxToolIterations?: number;
 };
 
+/**
+ * Create an AI agent that chains LLM reasoning with MCP tool calls.
+ * 
+ * @param opts - Optional configuration including LLM provider, instructions, timeout, retry policy, and observability
+ * @returns AgentBuilder for chaining steps with .then(), run(), and stream()
+ * 
+ * @example
+ * // Simple agent
+ * const results = await agent({ llm: llmOpenAI({...}) })
+ *   .then({ prompt: "Analyze data" })
+ *   .then({ prompt: "Generate insights" })
+ *   .run();
+ * 
+ * @example
+ * // With automatic tool selection
+ * await agent({ llm })
+ *   .then({ 
+ *     prompt: "Book a meeting and send confirmation", 
+ *     mcps: [calendar, email] 
+ *   })
+ *   .run();
+ */
 export function agent(opts?: AgentOptions): AgentBuilder {
   const steps: Array<Step | StepFactory | { __reset: true }> = [];
   const defaultLlm = opts?.llm;
@@ -934,22 +1089,13 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
-                // Use token-level streaming if onToken callback is provided
-                const onToken = (s as any).onToken;
-                if (onToken && typeof usedLlm.genStream === 'function') {
-                  const tokens: string[] = [];
-                  for await (const token of usedLlm.genStream(finalPrompt)) {
-                    tokens.push(token);
-                    try {
-                      onToken(token);
-                    } catch (e) {
-                      console.warn('onToken callback failed:', e);
-                    }
-                  }
-                  r.llmOutput = tokens.join('');
-                } else {
-                  r.llmOutput = await usedLlm.gen(finalPrompt);
-                }
+                r.llmOutput = await executeLLMWithStreaming(
+                  usedLlm,
+                  finalPrompt,
+                  (s as any).onToken,
+                  undefined, // No stream-level onToken in run()
+                  { stepIndex: out.length, stepPrompt: (s as any).prompt }
+                );
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {
@@ -1348,39 +1494,13 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
-                // Determine which onToken to use: step-level takes precedence over stream-level
-                const stepOnToken = (s as any).onToken;
-                const hasStepOnToken = !!stepOnToken;
-                const effectiveOnToken = stepOnToken || capturedStreamOnToken;
-                
-                // Use token-level streaming if any onToken callback is provided
-                if (effectiveOnToken && typeof usedLlm.genStream === 'function') {
-                  const tokens: string[] = [];
-                  const tokenMeta: TokenMetadata = {
-                    stepIndex: out.length,
-                    handledByStep: hasStepOnToken,
-                    stepPrompt: (s as any).prompt,
-                    llmProvider: (usedLlm as any).id || usedLlm.model
-                  };
-                  
-                  for await (const token of usedLlm.genStream(finalPrompt)) {
-                    tokens.push(token);
-                    try {
-                      if (hasStepOnToken) {
-                        // Step-level handler only receives token
-                        stepOnToken(token);
-                      } else {
-                        // Stream-level handler receives token + metadata
-                        capturedStreamOnToken!(token, tokenMeta);
-                      }
-                    } catch (e) {
-                      console.warn('onToken callback failed:', e);
-                    }
-                  }
-                  r.llmOutput = tokens.join('');
-                } else {
-                  r.llmOutput = await usedLlm.gen(finalPrompt);
-                }
+                r.llmOutput = await executeLLMWithStreaming(
+                  usedLlm,
+                  finalPrompt,
+                  (s as any).onToken,
+                  capturedStreamOnToken,
+                  { stepIndex: out.length, stepPrompt: (s as any).prompt }
+                );
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {

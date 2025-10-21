@@ -4,7 +4,10 @@ import { agent, llmOpenAI, mcp, discoverTools } from "../dist/volcano-sdk.js";
 // This example demonstrates the new automatic tool selection feature
 
 (async () => {
-  const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const llm = llmOpenAI({ 
+    apiKey: process.env.OPENAI_API_KEY!, 
+    model: "gpt-4o-mini" 
+  });
   
   // Set up multiple MCP services
   const weather = mcp("http://localhost:3000/mcp");
