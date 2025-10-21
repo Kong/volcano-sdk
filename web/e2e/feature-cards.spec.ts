@@ -176,7 +176,7 @@ test.describe("Feature Cards Rendering", () => {
       if (!href) continue;
 
       // Navigate to the target page
-      const [pagePath, hash] = href.split("#");
+      const hash = href.split("#")[1];
 
       if (hash) {
         // Navigate to the page
