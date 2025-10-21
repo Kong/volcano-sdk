@@ -92,10 +92,17 @@ async function extractTextFromMDX(content: string): Promise<{
   // Remove MDX/JSX components and imports
   let text = textWithoutCode
     .replace(/import\s+.*?from\s+['"].*?['"]/g, "")
-    .replace(/<([A-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/g, "") // Remove JSX components
-    .replace(/<[^>]*\/>/g, "") // Self-closing tags
     .replace(/{\/\*.*?\*\/}/g, "") // Remove comments
     .replace(/\{[^}]*\}/g, " "); // Keep space for JSX expressions
+
+  // Repeatedly remove HTML/JSX tags to prevent injection from nested tags
+  let previous;
+  do {
+    previous = text;
+    text = text
+      .replace(/<([A-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/g, "") // Remove JSX components
+      .replace(/<[^>]*\/>/g, ""); // Self-closing tags
+  } while (text !== previous);
 
   // Remove inline code backticks but keep content
   text = text.replace(/`([^`]+)`/g, "$1");
