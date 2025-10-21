@@ -24,7 +24,13 @@ export function extractTextContent(markdown: string): string[] {
   // Remove MDX/JSX components (like :::warning, <Component />, etc.)
   content = content.replace(/:::[a-z]+\[.*?\][\s\S]*?:::/g, "");
   content = content.replace(/:::[a-z]+/g, ""); // Remove ::: markers
-  content = content.replace(/<[^>]+>/g, "");
+
+  // Repeatedly remove HTML tags to prevent injection from nested tags
+  let previous;
+  do {
+    previous = content;
+    content = content.replace(/<[^>]+>/g, "");
+  } while (content !== previous);
 
   // Remove links but keep the text
   content = content.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
