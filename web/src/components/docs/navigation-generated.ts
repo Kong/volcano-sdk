@@ -200,6 +200,16 @@ export const generatedNavigation: NavigationDoc[] = [
         "id": "streamingts"
       },
       {
+        "level": 3,
+        "text": "token-streaming.ts",
+        "id": "token-streamingts"
+      },
+      {
+        "level": 3,
+        "text": "multi-agent-crew.ts",
+        "id": "multi-agent-crewts"
+      },
+      {
         "level": 2,
         "text": "Running Examples",
         "id": "running-examples"
@@ -294,6 +304,21 @@ export const generatedNavigation: NavigationDoc[] = [
         "level": 3,
         "text": "Characteristics",
         "id": "characteristics-1"
+      },
+      {
+        "level": 3,
+        "text": "Token-Level Streaming",
+        "id": "token-level-streaming"
+      },
+      {
+        "level": 4,
+        "text": "Per-Step Token Streaming",
+        "id": "per-step-token-streaming"
+      },
+      {
+        "level": 4,
+        "text": "Stream-Level Token Streaming with Metadata",
+        "id": "stream-level-token-streaming-with-metadata"
       },
       {
         "level": 2,
