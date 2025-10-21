@@ -1,0 +1,169 @@
+# Volcano SDK
+
+> TypeScript SDK for building production-ready AI agents. Chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistral in one workflow. Parallel execution, streaming, retries, and OpenTelemetry observability.
+
+## Overview
+
+Volcano SDK is a TypeScript framework for building AI agents that:
+- Integrates with Model Context Protocol (MCP) tools for real-world actions
+- Supports multiple LLM providers (OpenAI, Anthropic, Mistral, Llama, AWS Bedrock, Google Vertex AI, Azure)
+- Provides chainable API for building complex multi-step workflows
+- Includes production-ready observability with OpenTelemetry integration
+- Offers streaming and batch execution modes for real-time and complete results
+- Features automatic retries, timeouts, and typed error handling
+
+## Key Features
+
+- **Chainable API**: Build multi-step workflows with intuitive `.then()` chaining and Promise-like syntax
+- **MCP Tool Integration**: Native Model Context Protocol support with automatic tool discovery, connection pooling, and OAuth authentication
+- **Multi-Provider Support**: Switch between 100+ LLMs per-step or globally without code changes
+- **Streaming & Batch**: Choose `stream()` for real-time updates or `run()` for complete results
+- **Built-in Observability**: OpenTelemetry integration for distributed tracing and metrics (Jaeger, Prometheus, DataDog, NewRelic)
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions and IntelliSense
+- **Retries & Timeouts**: Three retry strategies (immediate, delayed, exponential backoff) with per-step configuration
+- **Error Handling**: Graceful error handling with typed errors and step hooks (beforeStep, afterStep)
+- **Advanced Patterns**: Parallel execution, conditional branching, loops, and sub-agent composition
+
+## Installation
+
+```bash
+npm install volcano-sdk
+```
+
+Requires Node.js 18.17 or later.
+
+## Documentation
+
+Main documentation: https://volcano.dev/docs
+
+### Getting Started
+- Installation: https://volcano.dev/docs/installation
+- Quick Start: https://volcano.dev/docs#quick-start
+- Core Concepts: https://volcano.dev/docs#core-concepts
+- Examples: https://volcano.dev/docs/examples
+
+### Providers
+- Overview: https://volcano.dev/docs/providers
+- OpenAI: https://volcano.dev/docs/providers#openai-provider
+- Anthropic (Claude): https://volcano.dev/docs/providers#anthropic-claude-provider
+- Mistral: https://volcano.dev/docs/providers#mistral-provider
+- Llama: https://volcano.dev/docs/providers#llama-provider
+- AWS Bedrock: https://volcano.dev/docs/providers#aws-bedrock-provider
+- Google Vertex AI: https://volcano.dev/docs/providers#google-vertex-ai-provider
+- Azure AI: https://volcano.dev/docs/providers#azure-ai-provider
+
+### MCP Tools
+- Overview: https://volcano.dev/docs/mcp-tools
+- Automatic Tool Selection: https://volcano.dev/docs/mcp-tools#automatic-tool-selection
+- Explicit Tool Calling: https://volcano.dev/docs/mcp-tools#explicit-tool-calling
+- OAuth Authentication: https://volcano.dev/docs/mcp-tools#mcp-authentication
+- Connection Pooling: https://volcano.dev/docs/mcp-tools#connection-pooling-performance
+
+### Advanced Patterns
+- Multi-LLM Workflows: https://volcano.dev/docs/patterns#multi-llm-workflows
+- Parallel Execution: https://volcano.dev/docs/patterns#parallel-execution
+- Conditional Branching: https://volcano.dev/docs/patterns#conditional-branching
+- Loops: https://volcano.dev/docs/patterns#loops
+- Sub-Agent Composition: https://volcano.dev/docs/patterns#sub-agent-composition
+
+### Features
+- run() Method: https://volcano.dev/docs/features#run-method
+- stream() Method: https://volcano.dev/docs/features#stream-method
+- Retries & Timeouts: https://volcano.dev/docs/features#retries-timeouts
+- Step Hooks: https://volcano.dev/docs/features#step-hooks
+- Error Handling: https://volcano.dev/docs/features#error-handling
+
+### Observability
+- Overview: https://volcano.dev/docs/observability
+- OpenTelemetry Integration: https://volcano.dev/docs/observability#opentelemetry-integration
+- Distributed Tracing: https://volcano.dev/docs/observability#distributed-tracing
+- Metrics: https://volcano.dev/docs/observability#metrics
+- Observability Backends: https://volcano.dev/docs/observability#observability-backends
+
+### API Reference
+- agent() function: https://volcano.dev/docs/api#agentoptions-agentbuilder
+- Step Types: https://volcano.dev/docs/api#step-types
+- Step Results: https://volcano.dev/docs/api#step-results
+- LLM Providers: https://volcano.dev/docs/api#llm-providers
+- MCP Functions: https://volcano.dev/docs/api#mcp-functions
+
+## Quick Example
+
+### Hello World
+```typescript
+import { agent, llmOpenAI } from "volcano-sdk";
+
+const llm = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+});
+
+const results = await agent({ llm })
+  .then({ prompt: "Say hello to Marco in one short sentence." })
+  .run();
+
+console.log(results[0].llmOutput);
+// Output: "Hello Marco! Hope you're having a great day!"
+```
+
+### Two-Step Agent with MCP Tools
+```typescript
+import { agent, llmOpenAI, mcp } from "volcano-sdk";
+
+const llm = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+});
+
+const astro = mcp("http://localhost:3211/mcp");
+
+const steps = await agent({ llm })
+  .then({
+    prompt: "Determine the astrological sign for 1993-07-11.",
+    mcps: [astro], // Automatic tool selection
+  })
+  .then({
+    prompt: "Write a one-line fortune for that sign.",
+    // Context from previous step is automatically included
+  })
+  .run();
+
+console.log(steps[0].toolCalls); // Tools that were called
+console.log(steps[1].llmOutput); // Fortune based on the sign
+```
+
+### Multi-Provider Workflow
+```typescript
+import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
+
+const openai = llmOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: "gpt-4o-mini",
+});
+const claude = llmAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-3-5-haiku-20241022",
+});
+const mistral = llmMistral({
+  apiKey: process.env.MISTRAL_API_KEY!,
+  model: "mistral-small-latest",
+});
+
+const results = await agent()
+  .then({ llm: openai, prompt: "Extract key data from this report..." })
+  .then({ llm: claude, prompt: "Analyze the data for patterns" })
+  .then({ llm: mistral, prompt: "Write a creative summary" })
+  .run();
+
+// Each step uses a different provider. Context flows automatically.
+```
+
+## Community
+
+- GitHub: https://github.com/Kong/volcano-sdk
+- Questions & Feature Requests: https://github.com/Kong/volcano-sdk/discussions
+- Report Issues: https://github.com/Kong/volcano-sdk/issues
+
+## License
+
+MIT License - see project repository for details
