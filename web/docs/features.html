@@ -77,6 +77,7 @@
           <a href="features.html" class="nav-link active">Overview</a>
           <a href="#run" class="nav-link">run() Method</a>
           <a href="#streaming" class="nav-link">stream() Method</a>
+          <a href="#agent-crews" class="nav-link">Autonomous Agent Crews</a>
           <a href="#retries" class="nav-link">Retries & Timeouts</a>
           <a href="#hooks" class="nav-link">Step Hooks</a>
           <a href="#errors" class="nav-link">Error Handling</a>
@@ -250,6 +251,84 @@ for await (const stepResult of workflow.stream((step, stepIndex) => {
             <li><strong>Progressive display:</strong> Results appear as they complete</li>
             <li><strong>Same execution model:</strong> Retries, timeouts, and validation work identically to <code>run()</code></li>
           </ul>
+        </section>
+
+        <!-- Autonomous Agent Crews -->
+        <section id="agent-crews" class="doc-section">
+          <h2>Autonomous Multi-Agent Crews</h2>
+          <p>Let specialized agents autonomously coordinate to accomplish complex tasks. Similar to automatic tool selection (<code>mcps</code>), but for agents.</p>
+          
+          <h3>Quick Example</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">// Define specialized agents
+const researcher = agent({
+  llm,
+  name: "researcher",
+  description: "Analyzes topics and provides factual information"
+});
+
+const writer = agent({
+  llm,
+  name: "writer",
+  description: "Creates engaging content"
+});
+
+// LLM autonomously coordinates them
+await agent({ llm })
+  .then({
+    prompt: "Create a blog post about AI",
+    agents: [researcher, writer]
+  })
+  .run();
+
+// LLM decides which agents to use and when:
+// 1. "I need facts" → USE researcher: Research AI
+// 2. "Now create content" → USE writer: Write using [research]
+// 3. "DONE: Final blog post..."</code></pre>
+          </div>
+
+          <h3>How It Works</h3>
+          <p>When you provide <code>agents: [...]</code>, the SDK automatically:</p>
+          <ol>
+            <li>Injects agent descriptions into the prompt</li>
+            <li>LLM selects which agent to delegate to</li>
+            <li>Executes the selected agent</li>
+            <li>Feeds result back to coordinator</li>
+            <li>Repeats until task is complete</li>
+          </ol>
+
+          <h3>Requirements</h3>
+          <ul>
+            <li>Each agent must have <code>name</code> (unique identifier)</li>
+            <li>Each agent must have <code>description</code> (what it does and when to use it)</li>
+            <li>Good descriptions help the LLM make better choices</li>
+          </ul>
+
+          <div class="info-box tip">
+            <strong>💡 Pro Tip:</strong> Write descriptions that explain WHEN to use each agent, not just WHAT it does. Example: "Use for complex analysis requiring data validation" is better than "Analyzes data".
+          </div>
+
+          <h3>Configuration</h3>
+          <div class="code-block">
+            <pre><code class="language-typescript">await agent({ llm })
+  .then({
+    prompt: "Complex task",
+    agents: [agent1, agent2, agent3],
+    maxAgentIterations: 10  // Default: 4
+  })
+  .run();</code></pre>
+          </div>
+
+          <h3>Observability</h3>
+          <p>Agent crews are fully observable via OpenTelemetry:</p>
+          <ul>
+            <li><strong>Spans:</strong> step.type = <code>agent_crew</code></li>
+            <li><strong>Metrics:</strong> <code>volcano.agent.calls.total</code> (by agent name)</li>
+            <li><strong>Metrics:</strong> <code>volcano.agent.delegation.count</code> (agents per step)</li>
+            <li><strong>Metadata:</strong> <code>agentCalls</code> in StepResult shows which agents were used</li>
+          </ul>
+
+          <p><strong>Full details:</strong> <a href="observability.html">Observability documentation →</a></p>
         </section>
 
         <!-- Retries & Timeouts -->

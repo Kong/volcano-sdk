@@ -69,6 +69,7 @@
           <a href="#parallel" class="nav-link">Parallel Execution</a>
           <a href="#branching" class="nav-link">Conditional Branching</a>
           <a href="#loops" class="nav-link">Loops</a>
+          <a href="#agent-crews" class="nav-link">Autonomous Agent Crews</a>
           <a href="#sub-agents" class="nav-link">Sub-Agent Composition</a>
         </div>
 
@@ -398,6 +399,104 @@ await agent({ llm })
             <li>Self-correcting content generation</li>
             <li>Iterative refinement</li>
           </ul>
+        </section>
+
+        <!-- Autonomous Agent Crews -->
+        <section id="agent-crews" class="doc-section">
+          <h2>Autonomous Multi-Agent Crews</h2>
+          <p>Define specialized agents that autonomously coordinate based on their descriptions. Like automatic tool selection (<code>mcps</code>), but for agents.</p>
+          
+          <h3>How It Works</h3>
+          <p>When you provide <code>agents: [...]</code> in a step, the LLM automatically selects which agents to use and coordinates them to accomplish the task.</p>
+          
+          <div class="code-block">
+            <pre><code class="language-typescript">// Define specialized agents
+const researcher = agent({
+  llm,
+  name: "researcher",
+  description: "Analyzes topics and provides factual information"
+});
+
+const writer = agent({
+  llm,
+  name: "writer",
+  description: "Creates engaging, creative content"
+});
+
+const editor = agent({
+  llm,
+  name: "editor",
+  description: "Reviews and improves content for clarity"
+});
+
+// LLM autonomously coordinates them
+await agent({ llm })
+  .then({
+    prompt: "Create a blog post about quantum computing",
+    agents: [researcher, writer, editor]
+  })
+  .run();
+
+// The LLM decides:
+// 1. "I need research first" → calls researcher
+// 2. "Now create content" → calls writer
+// 3. "Let me polish it" → calls editor
+// 4. Returns final result</code></pre>
+          </div>
+
+          <div class="info-box tip">
+            <strong>💡 Key Difference:</strong> Unlike manual workflows (sequential .runAgent() calls), autonomous crews let the LLM decide which agents to use and when. Perfect for complex tasks where the optimal agent sequence isn't predetermined.
+          </div>
+
+          <h3>Requirements</h3>
+          <ul>
+            <li>Each agent must have a <code>name</code> (unique identifier)</li>
+            <li>Each agent must have a <code>description</code> (what it does and when to use it)</li>
+            <li>The coordinator LLM uses descriptions to select appropriate agents</li>
+          </ul>
+
+          <h3>Behind the Scenes</h3>
+          <p>The SDK automatically:</p>
+          <ol>
+            <li>Injects agent descriptions into the prompt</li>
+            <li>LLM decides which agent to use: <code>USE researcher: [task]</code></li>
+            <li>Executes the selected agent</li>
+            <li>Feeds result back to coordinator</li>
+            <li>Repeats until LLM says: <code>DONE: [final answer]</code></li>
+          </ol>
+
+          <div class="code-block">
+            <pre><code class="language-typescript">// Configure max iterations to prevent infinite loops
+await agent({ llm })
+  .then({
+    prompt: "Complex multi-step task",
+    agents: [agent1, agent2, agent3],
+    maxAgentIterations: 10  // Default: 4
+  })
+  .run();</code></pre>
+          </div>
+
+          <h3>When to Use Agent Crews vs Manual Workflows</h3>
+          <div class="comparison-table">
+            <div class="comparison-column">
+              <h4>Use Agent Crews for:</h4>
+              <ul>
+                <li>Tasks with variable complexity</li>
+                <li>Dynamic agent selection based on context</li>
+                <li>Exploratory or creative tasks</li>
+                <li>When optimal sequence is unclear</li>
+              </ul>
+            </div>
+            <div class="comparison-column">
+              <h4>Use Manual Workflows for:</h4>
+              <ul>
+                <li>Fixed, predictable sequences</li>
+                <li>Performance-critical paths</li>
+                <li>When you know the exact steps</li>
+                <li>Simpler, more deterministic tasks</li>
+              </ul>
+            </div>
+          </div>
         </section>
 
         <!-- Sub-Agent Composition -->

@@ -467,10 +467,11 @@ export type RetryConfig = {
 };
 
 export type Step =
-  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
   | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
   | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void };
+  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
+  | { prompt: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
   prompt?: string;
@@ -494,6 +495,8 @@ type StepFactory = (history: StepResult[]) => Step;
 
 // Agent builder interface for type safety
 export interface AgentBuilder {
+  name?: string;
+  description?: string;
   resetHistory(): AgentBuilder;
   then(s: Step | StepFactory): AgentBuilder;
   parallel(stepsOrDict: Step[] | Record<string, Step>, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
@@ -542,9 +545,64 @@ function buildHistoryContextChunked(history: StepResult[], maxToolResults: numbe
   return out;
 }
 
+/**
+ * Build agent context string for multi-agent coordination.
+ */
+function buildAgentContext(agents: AgentBuilder[]): string {
+  const agentList = agents
+    .filter(a => a.name && a.description)
+    .map(a => `- ${a.name}: ${a.description}`)
+    .join('\n');
+  
+  return `
+
+Available agents to help you:
+${agentList}
+
+To delegate to an agent, respond with: USE [agent_name]: [specific task for that agent]
+When you have the final answer, respond with: DONE: [your final answer]
+`;
+}
+
+/**
+ * Parse coordinator LLM response for agent delegation.
+ */
+function parseAgentDecision(response: string): 
+  | { type: 'use_agent'; agentName: string; task: string }
+  | { type: 'done'; answer: string }
+  | { type: 'continue'; raw: string }
+{
+  // Check for USE directive
+  const useMatch = response.match(/USE\s+(\w+):\s*(.+?)(?=\n(?:USE|DONE:)|$)/s);
+  if (useMatch) {
+    return {
+      type: 'use_agent',
+      agentName: useMatch[1].trim(),
+      task: useMatch[2].trim()
+    };
+  }
+  
+  // Check for DONE directive
+  const doneMatch = response.match(/DONE:\s*(.+)/s);
+  if (doneMatch) {
+    return {
+      type: 'done',
+      answer: doneMatch[1].trim()
+    };
+  }
+  
+  // If no directive found, ask LLM to continue (or treat as done after max iterations)
+  return {
+    type: 'continue',
+    raw: response
+  };
+}
+
 type AgentOptions = {
   llm?: LLMHandle;
   instructions?: string;
+  name?: string;                       // Agent name for multi-agent coordination
+  description?: string;                // Agent description for automatic selection
   timeout?: number;
   retry?: RetryConfig;
   // Context compaction options
@@ -563,6 +621,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const defaultLlm = opts?.llm;
   let contextHistory: StepResult[] = [];
   const globalInstructions = opts?.instructions;
+  const agentName = opts?.name;
+  const agentDescription = opts?.description;
   const defaultTimeoutMs = ((typeof opts?.timeout === 'number' ? opts!.timeout! : 60)) * 1000; // seconds -> ms
   const defaultRetry: RetryConfig = opts?.retry ?? { delay: 0, retries: 3 };
   const contextMaxChars = typeof opts?.contextMaxChars === 'number' ? opts!.contextMaxChars! : 20480;
@@ -583,6 +643,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   }
   
   const builder: AgentBuilder = {
+    name: agentName,
+    description: agentDescription,
     resetHistory() { steps.push({ __reset: true }); return builder; },
     then(s: Step | StepFactory) { steps.push(s); return builder; },
     
@@ -826,7 +888,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             
             // Determine step type for telemetry
             let stepType = 'unknown';
-            if ("mcps" in s) stepType = 'mcp_auto';
+            if ("agents" in s) stepType = 'agent_crew';
+            else if ("mcps" in s) stepType = 'mcp_auto';
             else if ("mcp" in s) stepType = 'mcp_explicit';
             else if ("prompt" in s) stepType = 'llm';
             
@@ -903,8 +966,88 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 if (!r.toolCalls) r.toolCalls = [];
               }
             }
+            // Automatic agent selection with iterative delegation
+            else if ("agents" in s && "prompt" in s) {
+              const usedLlm = (s as any).llm ?? defaultLlm;
+              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+              const stepInstructions = (s as any).instructions ?? globalInstructions;
+              const cmr = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+              const cmc = (s as any).contextMaxChars ?? contextMaxChars;
+              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
+              r.prompt = (s as any).prompt;
+              
+              const availableAgents = (s as any).agents as AgentBuilder[];
+              if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
+                r.llmOutput = "No agents available or agents missing name/description.";
+              } else {
+                const agentContext = buildAgentContext(availableAgents);
+                const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
+                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
+                const agentCalls: Array<{ name: string; task: string; result: string }> = [];
+                
+                for (let i = 0; i < maxIterations; i++) {
+                  const llmStart = Date.now();
+                  let coordinatorResponse: string;
+                  try {
+                    coordinatorResponse = await usedLlm.gen(workingPrompt);
+                  } catch (e) {
+                    const provider = classifyProviderFromLlm(usedLlm);
+                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
+                  }
+                  llmTotalMs += Date.now() - llmStart;
+                  
+                  const decision = parseAgentDecision(coordinatorResponse);
+                  
+                  if (decision.type === 'done') {
+                    r.llmOutput = decision.answer;
+                    break;
+                  } else if (decision.type === 'use_agent') {
+                    const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
+                    if (!selectedAgent) {
+                      workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
+                      continue;
+                    }
+                    
+                    const agentStart = Date.now();
+                    let agentResult: StepResult[];
+                    try {
+                      agentResult = await selectedAgent.then({ prompt: decision.task }).run();
+                    } catch (e) {
+                      workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
+                      continue;
+                    }
+                    const agentMs = Date.now() - agentStart;
+                    
+                    const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
+                    agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
+                    
+                    workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
+                  } else {
+                    if (i === maxIterations - 1) {
+                      r.llmOutput = decision.raw;
+                    } else {
+                      workingPrompt += `\n\nPlease use the USE or DONE directive.`;
+                    }
+                  }
+                }
+                
+                // Fallback: if no DONE was received, use last agent's result
+                if (!r.llmOutput && agentCalls.length > 0) {
+                  r.llmOutput = agentCalls[agentCalls.length - 1].result;
+                }
+                
+                if (agentCalls.length > 0) {
+                  (r as any).agentCalls = agentCalls;
+                  // Record metrics for agent delegation
+                  telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
+                  for (const agentCall of agentCalls) {
+                    telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
+                  }
+                }
+              }
+            }
             // LLM-only steps
-            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s)) {
+            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
               const usedLlm = (s as any).llm ?? defaultLlm;
               if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
               const stepInstructions = (s as any).instructions ?? globalInstructions;
@@ -1209,7 +1352,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             
             // Determine step type for telemetry
             let stepType = 'unknown';
-            if ("mcps" in s) stepType = 'mcp_auto';
+            if ("agents" in s) stepType = 'agent_crew';
+            else if ("mcps" in s) stepType = 'mcp_auto';
             else if ("mcp" in s) stepType = 'mcp_explicit';
             else if ("prompt" in s) stepType = 'llm';
             
@@ -1286,8 +1430,88 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 if (!r.toolCalls) r.toolCalls = [];
               }
             }
+            // Automatic agent selection with iterative delegation
+            else if ("agents" in s && "prompt" in s) {
+              const usedLlm = (s as any).llm ?? defaultLlm;
+              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+              const stepInstructions = (s as any).instructions ?? globalInstructions;
+              const cmr = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+              const cmc = (s as any).contextMaxChars ?? contextMaxChars;
+              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
+              r.prompt = (s as any).prompt;
+              
+              const availableAgents = (s as any).agents as AgentBuilder[];
+              if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
+                r.llmOutput = "No agents available or agents missing name/description.";
+              } else {
+                const agentContext = buildAgentContext(availableAgents);
+                const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
+                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
+                const agentCalls: Array<{ name: string; task: string; result: string }> = [];
+                
+                for (let i = 0; i < maxIterations; i++) {
+                  const llmStart = Date.now();
+                  let coordinatorResponse: string;
+                  try {
+                    coordinatorResponse = await usedLlm.gen(workingPrompt);
+                  } catch (e) {
+                    const provider = classifyProviderFromLlm(usedLlm);
+                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
+                  }
+                  llmTotalMs += Date.now() - llmStart;
+                  
+                  const decision = parseAgentDecision(coordinatorResponse);
+                  
+                  if (decision.type === 'done') {
+                    r.llmOutput = decision.answer;
+                    break;
+                  } else if (decision.type === 'use_agent') {
+                    const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
+                    if (!selectedAgent) {
+                      workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
+                      continue;
+                    }
+                    
+                    const agentStart = Date.now();
+                    let agentResult: StepResult[];
+                    try {
+                      agentResult = await selectedAgent.then({ prompt: decision.task }).run();
+                    } catch (e) {
+                      workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
+                      continue;
+                    }
+                    const agentMs = Date.now() - agentStart;
+                    
+                    const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
+                    agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
+                    
+                    workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
+                  } else {
+                    if (i === maxIterations - 1) {
+                      r.llmOutput = decision.raw;
+                    } else {
+                      workingPrompt += `\n\nPlease use the USE or DONE directive.`;
+                    }
+                  }
+                }
+                
+                // Fallback: if no DONE was received, use last agent's result
+                if (!r.llmOutput && agentCalls.length > 0) {
+                  r.llmOutput = agentCalls[agentCalls.length - 1].result;
+                }
+                
+                if (agentCalls.length > 0) {
+                  (r as any).agentCalls = agentCalls;
+                  // Record metrics for agent delegation
+                  telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
+                  for (const agentCall of agentCalls) {
+                    telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
+                  }
+                }
+              }
+            }
             // LLM-only steps
-            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s)) {
+            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
               const usedLlm = (s as any).llm ?? defaultLlm;
               if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
               const stepInstructions = (s as any).instructions ?? globalInstructions;

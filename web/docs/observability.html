@@ -232,7 +232,7 @@ npm install @opentelemetry/exporter-otlp-http</code></pre>
               </tr>
               <tr>
                 <td><strong>step.execute</strong></td>
-                <td><code>step.index</code>, <code>step.type</code> (llm | mcp_auto | mcp_explicit)</td>
+                <td><code>step.index</code>, <code>step.type</code> (llm | mcp_auto | mcp_explicit | agent_crew)</td>
               </tr>
               <tr>
                 <td><strong>llm.generate</strong></td>
@@ -297,6 +297,16 @@ try {
                 <td><code>volcano.mcp.calls.total</code></td>
                 <td>Counter</td>
                 <td>Total MCP tool calls</td>
+              </tr>
+              <tr>
+                <td><code>volcano.agent.calls.total</code></td>
+                <td>Counter</td>
+                <td>Total sub-agent delegations, labeled by agent name</td>
+              </tr>
+              <tr>
+                <td><code>volcano.agent.delegation.count</code></td>
+                <td>Histogram</td>
+                <td>Number of agents delegated to per coordination step</td>
               </tr>
               <tr>
                 <td><code>volcano.errors.total</code></td>
