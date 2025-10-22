@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+.vite
+
+# Generated files
+*.toc.json
+*.search-index.json
+*.search-suggestions.json
+
+# Logs
+*.log
+
+# Package manager
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Misc
+.DS_Store
+*.min.js
+*.min.css

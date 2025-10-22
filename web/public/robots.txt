@@ -1,0 +1,37 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow build artifacts and temp files
+Disallow: /dist/
+Disallow: /node_modules/
+
+# Sitemap
+Sitemap: https://volcano.dev/sitemap.xml
+
+# LLM-specific file for AI crawlers
+# See: https://llmstxt.org/
+Allow: /llms.txt
+
+# Crawl-delay for specific bots
+User-agent: Googlebot
+Crawl-delay: 0
+
+User-agent: Bingbot
+Crawl-delay: 0
+
+# AI/LLM crawlers
+User-agent: GPTBot
+Crawl-delay: 1
+
+User-agent: ChatGPT-User
+Crawl-delay: 1
+
+User-agent: Claude-Web
+Crawl-delay: 1
+
+User-agent: anthropic-ai
+Crawl-delay: 1
+
+User-agent: PerplexityBot
+Crawl-delay: 1
