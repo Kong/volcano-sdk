@@ -70,8 +70,8 @@ Native Model Context Protocol support with connection pooling, tool discovery, a
 </td>
 <td width="33%">
 
-### 🧩 Sub-Agent Composition
-Build reusable agent components and compose them into larger workflows. Modular and testable.
+### 🧩 Multi-Agent Crews
+Define specialized agents that autonomously coordinate based on descriptions. LLM automatically selects the right agent for each task - like automatic tool selection, but for agents.
 
 </td>
 </tr>

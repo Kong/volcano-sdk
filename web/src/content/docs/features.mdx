@@ -21,7 +21,7 @@ const results = await agent({ llm })
 console.log(results); // Array of all StepResult objects
 console.log(results[0].llmOutput); // First step output
 console.log(results[1].llmOutput); // Second step output
-console.log(results[results.length - 1].totalDurationMs); // Total time
+console.log(results.at(-1).totalDurationMs); // Total time
 ```
 
 ### With Logging Callback
@@ -176,6 +176,164 @@ for await (const step of agent({ llm })
 ```
 
 **💡 Precedence:** Step-level `onToken` takes precedence over stream-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and stream-level callback won't receive those tokens.
+
+## Events & Progress Tracking
+
+Volcano provides rich event hooks and beautiful built-in progress output for real-time visibility into workflow execution.
+
+### Built-In Progress Output
+
+Enable gorgeous TTY progress for any workflow:
+
+```typescript
+agent({ llm, showProgress: true })
+  .then({ prompt: "Analyze data" })
+  .then({ prompt: "Generate insights", agents: [researcher, writer] })
+  .run();
+```
+
+**Output:**
+```
+🌋 Volcano SDK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔷 Step 1/2: Analyze data
+   💭 GPT-4o | 127 tokens | 2.3s | ⚡ 55 tok/s
+✅ Complete (2.3s)
+
+🔷 Step 2/2: Generate insights
+   ⚡ researcher → Researching...
+      💭 234 tokens | 2.4s | ⚡ 98 tok/s
+   ✅ researcher complete (612 chars, 2.4s)
+   
+   ⚡ writer → Creating content...
+      💭 412 tokens | 3.8s | ⚡ 108 tok/s
+   ✅ writer complete (934 chars, 3.8s)
+✅ Complete (6.2s)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Workflow complete! 2 steps in 8.5s
+```
+
+**Features:**
+- ✨ Animated live updates
+- 📊 Token counts and throughput
+- ⏱️ Real-time timing
+- 🎨 TTY-aware (safe for CI logs)
+- 🔄 Works for all step types
+
+### Custom Event Handlers
+
+#### Agent Lifecycle Events
+
+Track autonomous agent coordination:
+
+```typescript
+.then({
+  agents: [researcher, writer, editor],
+  
+  onAgentEvent: (event) => {
+    if (event.type === 'start') {
+      console.log(`Starting ${event.agentName}: ${event.task}`);
+      startTimer(event.agentName);
+    } else if (event.type === 'complete') {
+      console.log(`${event.agentName} done: ${event.result.length} chars in ${event.durationMs}ms`);
+      logMetrics(event);
+    } else if (event.type === 'error') {
+      console.error(`${event.agentName} failed: ${event.error}`);
+      sendAlert(event);
+    }
+  }
+})
+```
+
+**Event Types:**
+- `start` - Agent begins execution
+- `complete` - Agent finishes successfully
+- `error` - Agent encounters error
+
+#### Token-Level Events with Agent Context
+
+When using agent coordination, `onToken` receives enhanced metadata:
+
+```typescript
+.then({
+  agents: [researcher, writer],
+  
+  onToken: (token, meta) => {
+    if (meta.agentName) {
+      // Inside agent execution
+      console.log(`${meta.agentName}: token #${meta.tokenCount}`);
+      sendToSSE({ agent: meta.agentName, token, count: meta.tokenCount });
+    } else {
+      // Regular step
+      console.log(`${meta.llmProvider}: token`);
+    }
+  }
+})
+```
+
+**Enhanced TokenMetadata fields:**
+- `agentName` - Which agent is executing (when in agent coordination)
+- `agentTask` - Task delegated to the agent
+- `tokenCount` - Total tokens processed by this agent
+
+#### Combining Progress + Custom Events
+
+Built-in progress + custom handlers:
+
+```typescript
+agent({ llm, showProgress: true })  // Beautiful default progress
+  .then({
+    agents: [researcher, writer],
+    
+    // Add custom logic without losing default progress
+    onAgentEvent: (event) => {
+      // This OVERRIDES default - but you can call both:
+      if (event.type === 'complete') {
+        sendToAnalytics(event);  // Your custom logic
+      }
+    }
+  })
+  .run();
+```
+
+**💡 Tip:** If you provide custom `onAgentEvent` or `onToken`, the default progress for that callback is disabled. To keep defaults, just use `showProgress: true` without custom callbacks.
+
+### SSE Integration Example
+
+Perfect for real-time web UIs:
+
+```typescript
+app.post('/api/create-content', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  
+  await agent({ llm })
+    .then({
+      prompt: req.body.prompt,
+      agents: [researcher, writer, editor],
+      
+      onAgentEvent: (event) => {
+        res.write(`data: ${JSON.stringify({ type: 'agent', ...event })}\n\n`);
+      },
+      
+      onToken: (token, meta) => {
+        if (meta.agentName) {
+          res.write(`data: ${JSON.stringify({ 
+            type: 'token',
+            agent: meta.agentName,
+            token,
+            count: meta.tokenCount
+          })}\n\n`);
+        }
+      }
+    })
+    .run();
+  
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+```
 
 ## Retries & Timeouts
 

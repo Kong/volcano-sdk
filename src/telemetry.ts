@@ -88,6 +88,8 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
   let stepDurationHistogram: Histogram | null = null;
   let llmCallsCounter: Counter | null = null;
   let mcpCallsCounter: Counter | null = null;
+  let agentCallsCounter: Counter | null = null;
+  let agentDelegationHistogram: Histogram | null = null;
   let errorsCounter: Counter | null = null;
   
   if (meter) {
@@ -107,6 +109,14 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       mcpCallsCounter = meter.createCounter('volcano.mcp.calls.total', {
         description: 'Total MCP tool calls',
         unit: 'calls'
+      });
+      agentCallsCounter = meter.createCounter('volcano.agent.calls.total', {
+        description: 'Total sub-agent delegations',
+        unit: 'calls'
+      });
+      agentDelegationHistogram = meter.createHistogram('volcano.agent.delegation.count', {
+        description: 'Number of agents delegated to per step',
+        unit: 'agents'
       });
       errorsCounter = meter.createCounter('volcano.errors.total', {
         description: 'Total errors by type',
@@ -224,6 +234,10 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
           llmCallsCounter.add(1, attributes);
         } else if (name === 'mcp.call' && mcpCallsCounter) {
           mcpCallsCounter.add(1, attributes);
+        } else if (name === 'agent.call' && agentCallsCounter) {
+          agentCallsCounter.add(value, attributes);
+        } else if (name === 'agent.delegation' && agentDelegationHistogram) {
+          agentDelegationHistogram.record(value, attributes);
         } else if (name === 'error' && errorsCounter) {
           errorsCounter.add(1, attributes);
         }

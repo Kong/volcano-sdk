@@ -154,7 +154,7 @@ describe('Token streaming e2e (live APIs)', () => {
     expect(results[1].llmOutput).toContain('Bedrock');
   });
 
-  it('validates handledByStep flag accurately in mixed scenarios', async () => {
+  it('validates handledByStep flag accurately in mixed scenarios', { timeout: 30000 }, async () => {
     if (!process.env.OPENAI_API_KEY) {
       console.log('Skipping: OPENAI_API_KEY not set');
       return;

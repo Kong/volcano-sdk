@@ -42,7 +42,7 @@ console.log(JSON.stringify(parsed1, null, 2));
 console.log("✅ Valid JSON matching schema!\n");
 
 // Example 2: In an agent workflow
-const result2 = await agent({ llm })
+const result2 = await agent({ llm, showProgress: true })
   .then({ 
     prompt: 'Analyze this menu item: Cappuccino at $6.75 in Coffee category. Is it recommended for beginners?' 
   })

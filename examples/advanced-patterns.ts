@@ -8,7 +8,7 @@ async function main() {
   });
 
   console.log("=== 1. Parallel Execution ===");
-  const parallelResults = await agent({ llm })
+  const parallelResults = await agent({ llm, showProgress: true })
     .parallel({
       sentiment: { prompt: "What's the sentiment of: 'I love this product!'?" },
       topic: { prompt: "What's the main topic of: 'I love this product!'?" },
@@ -19,7 +19,7 @@ async function main() {
   console.log("Parallel results:", parallelResults[0].parallel);
 
   console.log("\n=== 2. Conditional Branching ===");
-  const branchResults = await agent({ llm })
+  const branchResults = await agent({ llm, showProgress: true })
     .then({ prompt: "Is 10 > 5? Reply YES or NO" })
     .branch(
       (h) => h[0].llmOutput?.includes("YES") || false,
@@ -33,7 +33,7 @@ async function main() {
   console.log("Branch result:", branchResults[branchResults.length - 1].llmOutput);
 
   console.log("\n=== 3. Switch Statement ===");
-  const switchResults = await agent({ llm })
+  const switchResults = await agent({ llm, showProgress: true })
     .then({ prompt: "Pick a number: 1, 2, or 3" })
     .switch(
       (h) => h[0].llmOutput?.trim() || '',
@@ -50,7 +50,7 @@ async function main() {
 
   console.log("\n=== 4. ForEach Loop ===");
   const colors = ["red", "blue", "green"];
-  const forEachResults = await agent({ llm })
+  const forEachResults = await agent({ llm, showProgress: true })
     .forEach(colors, (color, a) => 
       a.then({ prompt: `Describe the color ${color} in one word` })
     )
@@ -61,7 +61,7 @@ async function main() {
 
   console.log("\n=== 5. While Loop ===");
   let counter = 0;
-  const whileResults = await agent({ llm })
+  const whileResults = await agent({ llm, showProgress: true })
     .while(
       (history) => {
         counter++;
@@ -95,13 +95,13 @@ async function main() {
   console.log("Retry succeeded after", retryResults.length, "attempts");
 
   console.log("\n=== 7. Sub-Agent Composition ===");
-  const analyzer = agent({ llm })
+  const analyzer = agent({ llm, showProgress: true })
     .then({ prompt: "Extract key points from: 'AI is transforming industries'" });
   
-  const writer = agent({ llm })
+  const writer = agent({ llm, showProgress: true })
     .then({ prompt: "Write a tweet about it" });
   
-  const composedResults = await agent({ llm })
+  const composedResults = await agent({ llm, showProgress: true })
     .runAgent(analyzer)
     .runAgent(writer)
     .run();
@@ -109,7 +109,7 @@ async function main() {
   console.log("Composed result:", composedResults[composedResults.length - 1].llmOutput);
 
   console.log("\n=== 8. Combined Patterns ===");
-  const combinedResults = await agent({ llm })
+  const combinedResults = await agent({ llm, showProgress: true })
     .parallel({
       check1: { prompt: "Is 'hello world' friendly? YES/NO" },
       check2: { prompt: "Is 'hello world' formal? YES/NO" }

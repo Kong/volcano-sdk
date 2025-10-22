@@ -187,7 +187,7 @@ console.log(results[0].durationMs); // Step duration
 console.log(results[0].llmMs); // LLM time
 
 // Access aggregated metrics (on last step)
-const last = results[results.length - 1];
+const last = results.at(-1);
 console.log(last.totalDurationMs); // Total workflow time
 console.log(last.totalLlmMs); // Total LLM time
 console.log(last.totalMcpMs); // Total MCP time

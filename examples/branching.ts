@@ -11,7 +11,7 @@ const llm = llmOpenAI({
 console.log("=== If/Else Branch ===");
 const email = "Congratulations! You won $1,000,000!";
 
-const branchResult = await agent({ llm })
+const branchResult = await agent({ llm, showProgress: true })
   .then({ prompt: `Is this email spam? "${email}". Reply YES or NO only.` })
   .branch(
     (history) => history[0].llmOutput?.toUpperCase().includes("YES") || false,
@@ -29,7 +29,7 @@ console.log("Action:", branchResult[1].llmOutput);
 console.log("\n=== Switch Statement ===");
 const ticket = "My account is locked and I can't log in!";
 
-const switchResult = await agent({ llm })
+const switchResult = await agent({ llm, showProgress: true })
   .then({ prompt: `Classify support ticket priority: "${ticket}". Reply: URGENT, HIGH, MEDIUM, or LOW` })
   .switch(
     (history) => history[0].llmOutput?.toUpperCase().trim() || '',
@@ -48,7 +48,7 @@ console.log("Action:", switchResult[1].llmOutput);
 
 // Example 3: Nested branching
 console.log("\n=== Nested Branches ===");
-const nestedResult = await agent({ llm })
+const nestedResult = await agent({ llm, showProgress: true })
   .then({ prompt: "Is 42 > 20? YES or NO" })
   .branch(
     (h) => h[0].llmOutput?.includes("YES") || false,

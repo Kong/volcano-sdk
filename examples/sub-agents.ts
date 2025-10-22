@@ -8,17 +8,17 @@ const openai = llmOpenAI({
 });
 
 // Define reusable sub-agents
-const textAnalyzer = agent({ llm: openai })
+const textAnalyzer = agent({ llm: openai, showProgress: true })
   .then({ prompt: "Extract the main topic" })
   .then({ prompt: "Determine the sentiment (positive/negative/neutral)" });
 
-const contentEnhancer = agent({ llm: openai })
+const contentEnhancer = agent({ llm: openai, showProgress: true })
   .then({ prompt: "Make the text more engaging" })
   .then({ prompt: "Add a call-to-action" });
 
 // Example 1: Simple sub-agent composition
 console.log("=== Simple Composition ===");
-const simpleResult = await agent({ llm: openai })
+const simpleResult = await agent({ llm: openai, showProgress: true })
   .then({ prompt: "Input text: 'AI is changing the world'. Remember this." })
   .runAgent(textAnalyzer)
   .then({ prompt: "Based on the analysis, write a headline" })
@@ -29,7 +29,7 @@ console.log("Final headline:", simpleResult[simpleResult.length - 1].llmOutput);
 
 // Example 2: Chaining multiple sub-agents
 console.log("\n=== Chaining Sub-Agents ===");
-const chainResult = await agent({ llm: openai })
+const chainResult = await agent({ llm: openai, showProgress: true })
   .then({ prompt: "Text: 'Our new product launches next week.'" })
   .runAgent(textAnalyzer)
   .runAgent(contentEnhancer)
@@ -49,15 +49,15 @@ if (process.env.ANTHROPIC_API_KEY) {
     model: "claude-3-haiku-20240307" 
   });
 
-  const claudeAnalyzer = agent({ llm: claude })
+  const claudeAnalyzer = agent({ llm: claude, showProgress: true })
     .then({ prompt: "Analyze writing style (formal/casual/technical)" })
     .then({ prompt: "Suggest improvements" });
 
-  const gptWriter = agent({ llm: openai })
+  const gptWriter = agent({ llm: openai, showProgress: true })
     .then({ prompt: "Rewrite with improvements applied" });
 
   console.log("\n=== Multi-LLM Sub-Agents ===");
-  const multiResult = await agent()
+  const multiResult = await agent({ showProgress: true })
     .then({ llm: openai, prompt: "Text: 'The API is down and users are complaining.'" })
     .runAgent(claudeAnalyzer)
     .runAgent(gptWriter)
@@ -68,11 +68,11 @@ if (process.env.ANTHROPIC_API_KEY) {
 }
 
 // Example 4: Reusable validator sub-agent
-const jsonValidator = agent({ llm: openai })
+const jsonValidator = agent({ llm: openai, showProgress: true })
   .then({ prompt: "Check if the previous output is valid JSON. Reply VALID or INVALID only." });
 
 console.log("\n=== Validator Sub-Agent ===");
-const validationResult = await agent({ llm: openai })
+const validationResult = await agent({ llm: openai, showProgress: true })
   .then({ prompt: 'Generate JSON: {"name": "Alice", "age": 30}' })
   .runAgent(jsonValidator)
   .run();

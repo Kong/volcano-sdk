@@ -11,7 +11,7 @@ const llm = llmOpenAI({
 console.log("=== ForEach: Process List ===");
 const tasks = ["Write email", "Review document", "Schedule meeting"];
 
-const forEachResult = await agent({ llm })
+const forEachResult = await agent({ llm, showProgress: true })
   .forEach(tasks, (task, a) => 
     a.then({ prompt: `For task "${task}", say: Task completed` })
   )
@@ -26,7 +26,7 @@ console.log("Summary:", forEachResult[forEachResult.length - 1].llmOutput);
 console.log("\n=== While: Process Until Done ===");
 let stepCount = 0;
 
-const whileResult = await agent({ llm })
+const whileResult = await agent({ llm, showProgress: true })
   .while(
     (history) => {
       if (history.length === 0) return true;
@@ -79,7 +79,7 @@ retryResult.forEach((r, i) => console.log(`  Attempt ${i + 1}: ${r.llmOutput}`))
 console.log("\n=== Batch Processing ===");
 const numbers = [5, 12, 7, 23, 9];
 
-const batchResult = await agent({ llm })
+const batchResult = await agent({ llm, showProgress: true })
   .forEach(numbers, (num, a) => 
     a.then({ prompt: `Is ${num} even or odd? One word answer.` })
   )

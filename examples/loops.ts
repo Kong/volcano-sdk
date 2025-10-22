@@ -11,7 +11,7 @@ const llm = llmOpenAI({
 console.log("=== ForEach Loop ===");
 const cities = ["Paris", "Tokyo", "New York"];
 
-const forEachResult = await agent({ llm })
+const forEachResult = await agent({ llm, showProgress: true })
   .forEach(cities, (city, a) => 
     a.then({ prompt: `Give me one fun fact about ${city}` })
   )
@@ -26,7 +26,7 @@ forEachResult.forEach((result, i) => {
 console.log("\n=== While Loop ===");
 let counter = 0;
 
-const whileResult = await agent({ llm })
+const whileResult = await agent({ llm, showProgress: true })
   .while(
     (history) => {
       if (history.length === 0) return true;
@@ -80,7 +80,7 @@ console.log("Final answer:", retryResult[retryResult.length - 1].llmOutput);
 console.log("\n=== Data Processing Pipeline ===");
 const temperatures = [{ city: "Boston", temp: 72 }, { city: "Miami", temp: 95 }, { city: "Seattle", temp: 58 }];
 
-const pipelineResult = await agent({ llm })
+const pipelineResult = await agent({ llm, showProgress: true })
   .forEach(temperatures, (data, a) => 
     a.then({ prompt: `${data.city} is ${data.temp}°F. Is this hot, mild, or cold? One word only.` })
   )
