@@ -1,5 +1,5 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
-import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
+import { createOpenAICompatibleTools, parseOpenAICompatibleResponse, mergeHeaders } from "./utils.js";
 
 type OpenAILikeClient = {
   chat: { completions: { create: (args: any) => Promise<any> } };
@@ -20,6 +20,7 @@ export type MistralConfig = {
   client?: OpenAILikeClient;
   apiKey?: string;
   baseURL?: string; // default https://api.mistral.ai
+  defaultHeaders?: Record<string, string>; // Custom headers to include in all requests
   options?: MistralOptions;
 };
 
@@ -33,6 +34,7 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
   }
   const model = cfg.model;
   const options = cfg.options || {};
+  const defaultHeaders = cfg.defaultHeaders;
   let client = cfg.client;
 
   if (!client && (cfg.apiKey || cfg.baseURL)) {
@@ -44,10 +46,13 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
           create: async (params) => {
             const res = await fetch(`${base}/v1/chat/completions`, {
               method: "POST",
-              headers: {
-                "content-type": "application/json",
-                ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-              },
+              headers: mergeHeaders(
+                {
+                  "content-type": "application/json",
+                  ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+                },
+                defaultHeaders
+              ),
               body: JSON.stringify(params),
             });
             if (!res.ok) {

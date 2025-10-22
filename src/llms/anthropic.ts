@@ -1,5 +1,5 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
-import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
+import { createOpenAICompatibleTools, parseOpenAICompatibleResponse, mergeHeaders } from "./utils.js";
 
 type AnthropicLikeClient = {
   messages: {
@@ -25,6 +25,7 @@ export type AnthropicConfig = {
   apiKey?: string;
   baseURL?: string; // default https://api.anthropic.com
   version?: string; // default 2023-06-01
+  defaultHeaders?: Record<string, string>; // Custom headers to include in all requests
   options?: AnthropicOptions;
 };
 
@@ -40,6 +41,7 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
   const apiKey = cfg.apiKey;
   const baseURL = (cfg.baseURL || "https://api.anthropic.com").replace(/\/$/, "");
   const version = cfg.version || "2023-06-01";
+  const defaultHeaders = cfg.defaultHeaders;
   const options = cfg.options || {};
 
   let client: AnthropicLikeClient | undefined = cfg.client;
@@ -61,11 +63,14 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
           
           const res = await fetch(`${baseURL}/v1/messages`, {
             method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-api-key": apiKey!,
-              "anthropic-version": version,
-            },
+            headers: mergeHeaders(
+              {
+                "content-type": "application/json",
+                "x-api-key": apiKey!,
+                "anthropic-version": version,
+              },
+              defaultHeaders
+            ),
             body: JSON.stringify(payload),
           });
           if (!res.ok) {

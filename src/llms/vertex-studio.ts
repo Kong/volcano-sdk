@@ -1,5 +1,5 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
-import { sanitizeToolName } from "./utils.js";
+import { sanitizeToolName, mergeHeaders } from "./utils.js";
 
 type VertexStudioClient = {
   generateContent: (params: any) => Promise<any>;
@@ -20,6 +20,7 @@ export type VertexStudioConfig = {
   apiKey: string; // Google AI Studio API key
   baseURL?: string; // Default: "https://aiplatform.googleapis.com/v1"
   client?: VertexStudioClient;
+  defaultHeaders?: Record<string, string>; // Custom headers to include in all requests
   options?: VertexStudioOptions;
 };
 
@@ -41,6 +42,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
 
   const model = cfg.model;
   const baseURL = (cfg.baseURL || "https://aiplatform.googleapis.com/v1").replace(/\/$/, "");
+  const defaultHeaders = cfg.defaultHeaders;
   const options = cfg.options || {};
   let client = cfg.client;
 
@@ -51,9 +53,12 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
         
         const response = await fetch(endpoint, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: mergeHeaders(
+            {
+              "Content-Type": "application/json",
+            },
+            defaultHeaders
+          ),
           body: JSON.stringify(params),
         });
 
@@ -197,9 +202,12 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
 
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: mergeHeaders(
+          {
+            "Content-Type": "application/json",
+          },
+          defaultHeaders
+        ),
         body: JSON.stringify(params),
       });
 
