@@ -67,7 +67,7 @@ describe('maxToolIterations Configuration', () => {
         genStream: async function*(){}
       };
       
-      await agent({ llm }) // No maxToolIterations specified
+      await agent({ llm, hideProgress: true }) // No maxToolIterations specified
         .then({ prompt: 'Test', mcps: [astro] })
         .run();
       
@@ -101,7 +101,7 @@ describe('maxToolIterations Configuration', () => {
         genStream: async function*(){}
       };
       
-      await agent({ llm, maxToolIterations: 2 }) // Limit to 2
+      await agent({ llm, maxToolIterations: 2 , hideProgress: true }) // Limit to 2
         .then({ prompt: 'Test', mcps: [astro] })
         .run();
       
@@ -137,7 +137,7 @@ describe('maxToolIterations Configuration', () => {
         genStream: async function*(){}
       };
       
-      const results = await agent({ llm, maxToolIterations: 1 })
+      const results = await agent({ llm, maxToolIterations: 1 , hideProgress: true })
         .then({ prompt: 'Test', mcps: [astro] })
         .run();
       
@@ -186,7 +186,7 @@ describe('maxToolIterations Configuration', () => {
         genStream: async function*(){}
       };
       
-      await agent({ llm, maxToolIterations: 3 }) // Default 3
+      await agent({ llm, maxToolIterations: 3 , hideProgress: true }) // Default 3
         .then({ prompt: 'Step 1', mcps: [astro] }) // Uses default 3
         .then({ 
           prompt: 'Step 2', 
@@ -231,14 +231,14 @@ describe('maxToolIterations Configuration', () => {
       
       // Run with maxIterations: 4
       const start4 = Date.now();
-      await agent({ llm: makeLLM(), maxToolIterations: 4 })
+      await agent({ llm: makeLLM(), maxToolIterations: 4 , hideProgress: true })
         .then({ prompt: 'Test', mcps: [astro] })
         .run();
       const duration4 = Date.now() - start4;
       
       // Run with maxIterations: 1  
       const start1 = Date.now();
-      await agent({ llm: makeLLM(), maxToolIterations: 1 })
+      await agent({ llm: makeLLM(), maxToolIterations: 1 , hideProgress: true })
         .then({ prompt: 'Test', mcps: [astro] })
         .run();
       const duration1 = Date.now() - start1;

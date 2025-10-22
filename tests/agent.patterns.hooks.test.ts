@@ -24,7 +24,7 @@ describe('Advanced Pattern Hooks', () => {
       const preCalled = vi.fn();
       const postCalled = vi.fn();
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .parallel(
           [{ prompt: 'Task 1' }, { prompt: 'Task 2' }],
           {
@@ -45,7 +45,7 @@ describe('Advanced Pattern Hooks', () => {
       const preCalled = vi.fn();
       const postCalled = vi.fn();
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Check' })
         .branch(
           (h) => h[0].llmOutput?.includes('YES') || false,
@@ -71,7 +71,7 @@ describe('Advanced Pattern Hooks', () => {
       const preCalled = vi.fn();
       const postCalled = vi.fn();
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Priority?' })
         .switch(
           (h) => h[0].llmOutput?.trim() || '',
@@ -99,7 +99,7 @@ describe('Advanced Pattern Hooks', () => {
       const postCalled = vi.fn();
       let iterations = 0;
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .while(
           (h) => {
             if (h.length === 0) return true;
@@ -126,7 +126,7 @@ describe('Advanced Pattern Hooks', () => {
       const preCalled = vi.fn();
       const postCalled = vi.fn();
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .forEach(
           ['a', 'b', 'c'],
           (item, a) => a.then({ prompt: `Process ${item}` }),
@@ -162,7 +162,7 @@ describe('Advanced Pattern Hooks', () => {
       const preCalled = vi.fn();
       const postCalled = vi.fn();
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .retryUntil(
           (a) => a.then({ prompt: 'Try' }),
           (r) => r.llmOutput?.includes('SUCCESS') || false,
@@ -185,10 +185,10 @@ describe('Advanced Pattern Hooks', () => {
       const preCalled = vi.fn();
       const postCalled = vi.fn();
       
-      const subAgent = agent({ llm: llm as any })
+      const subAgent = agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Sub task' });
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .runAgent(subAgent, {
           pre: preCalled,
           post: postCalled
@@ -205,7 +205,7 @@ describe('Advanced Pattern Hooks', () => {
       const llm = createMockLLM(['P1', 'P2', 'YES', 'Branch result']);
       const callLog: string[] = [];
       
-      await agent({ llm: llm as any })
+      await agent({ llm: llm as any , hideProgress: true })
         .parallel(
           [{ prompt: 'T1' }, { prompt: 'T2' }],
           {

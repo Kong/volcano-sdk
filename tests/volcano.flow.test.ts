@@ -47,8 +47,16 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
   }, 60000);
 
   afterAll(async () => {
-    astroProc?.kill();
-    favProc?.kill();
+    if (astroProc) {
+      astroProc.kill('SIGKILL');
+      astroProc = null;
+    }
+    if (favProc) {
+      favProc.kill('SIGKILL');
+      favProc = null;
+    }
+    // Give processes time to terminate
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
 
   const providerMatrix: Array<{ name: string; make: () => any; requireEnv?: string[] }> = [
@@ -79,7 +87,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
     {
       name: 'Llama',
       make: () => {
-        return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.2:3b' });
+        return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.1:8b' });
       },
     },
     {
@@ -143,8 +151,12 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
 
         let results;
         try {
+          // Llama is slower, needs longer timeout
+          const agentTimeout = p.name === 'Llama' ? 300 : 60;
           results = await agent({
             llm,
+            hideProgress: true,
+            timeout: agentTimeout,
             instructions: 'You are a tool-calling assistant. You MUST call the available tools. Never respond with text only. Always use function calls.',
             maxToolIterations: 3
           })
@@ -187,7 +199,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
           const step2Names = (step2.toolCalls || []).map(c => c.name);
           expect(step2Names.some(n => n.endsWith('.get_preferences'))).toBe(true);
         }
-      }, p.name === 'Llama' ? 120000 : 60000);
+      }, p.name === 'Llama' ? 300000 : 120000);
 
       it('runs a one-step automatic flow using both MCP servers (one-liner)', async () => {
         if (p.requireEnv) for (const k of p.requireEnv) { if (!process.env[k]) throw new Error(`${k} is required for this test`); }
@@ -207,7 +219,9 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
 
         let results;
         try {
-          results = await agent({ llm })
+          // Llama is slower, needs longer timeout
+          const agentTimeout = p.name === 'Llama' ? 300 : 60;
+          results = await agent({ llm, hideProgress: true, timeout: agentTimeout })
             .then({
               prompt,
               mcps
@@ -240,7 +254,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
           // Other providers can handle multiple tools or be more flexible
           expect(step.toolCalls.length).toBeGreaterThan(0);
         }
-      }, p.name === 'Llama' ? 180000 : 60000);
+      }, p.name === 'Llama' ? 240000 : 60000);
     });
   }
 });

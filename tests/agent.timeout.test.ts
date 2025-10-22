@@ -6,7 +6,7 @@ describe('agent timeouts', () => {
     const calls: string[] = [];
     const llm: any = { id: 'OpenAI-fake', model: 'fake', client: {}, gen: async (p: string) => { calls.push(p); return 'OK'; }, genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
     const start = Date.now();
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'hello' })
       .run();
     const elapsed = Date.now() - start;
@@ -18,7 +18,7 @@ describe('agent timeouts', () => {
 
     let err: any;
     try {
-      await agent({ llm, timeout: 1 }) // 1 second
+      await agent({ llm, timeout: 1 , hideProgress: true }) // 1 second
         .then({ prompt: 'slow', timeout: 0 }) // 0 seconds -> immediate timeout
         .run();
     } catch (e) {
@@ -31,7 +31,7 @@ describe('agent timeouts', () => {
   it('agent-level timeout applies when step has none (seconds)', async () => {
     const llm: any = { id: 'OpenAI-fake', model: 'fake', client: {}, gen: async () => { await new Promise(r => setTimeout(r, 30)); return 'OK'; }, genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
     const start = Date.now();
-    await agent({ llm, timeout: 1 })
+    await agent({ llm, timeout: 1 , hideProgress: true })
       .then({ prompt: 'no specific timeout' })
       .run();
     const elapsed = Date.now() - start;

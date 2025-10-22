@@ -19,7 +19,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ 
             prompt: "Use tools from unreachable server",
             mcps: [unreachableMcp]
@@ -41,7 +41,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ 
             prompt: "Step 1 - will fail",
             mcps: [unreachableMcp]
@@ -68,7 +68,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ 
             prompt: "Test",
             mcps: [unreachableMcp]
@@ -91,6 +91,7 @@ describe('MCP Connection Failure Handling', () => {
       try {
         await agent({ 
           llm: makeMockLLM(),
+          hideProgress: true,
           retry: { retries: 3, delay: 0 } // 3 attempts, immediate
         })
           .then({ 
@@ -116,7 +117,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ 
             mcp: unreachableMcp,
             tool: 'some_tool',
@@ -139,7 +140,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ prompt: "Step 1 - OK" })
           .then({ 
             mcp: unreachableMcp,
@@ -178,7 +179,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: failingLLM })
+        await agent({ llm: failingLLM , hideProgress: true })
           .then({ prompt: "This will fail" })
           .then({ 
             prompt: "This should not execute",
@@ -215,7 +216,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent()
+        await agent({ hideProgress: true })
           .then({ 
             llm: failingLLM,
             prompt: "Step 1 - will hit rate limit"
@@ -255,7 +256,7 @@ describe('MCP Connection Failure Handling', () => {
       
       let error: any;
       try {
-        await agent({ llm: failingLLM })
+        await agent({ llm: failingLLM , hideProgress: true })
           .then({ prompt: "Test" })
           .run();
       } catch (e) {

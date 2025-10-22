@@ -17,7 +17,7 @@ describe('agent history injection', () => {
     const calls: string[] = [];
     const llm = makeFakeLlm(calls);
 
-    const res = await agent({ llm })
+    const res = await agent({ llm, hideProgress: true })
       .then({ prompt: 'First question' })
       .then({ prompt: 'Second question' })
       .run();
@@ -37,7 +37,7 @@ describe('agent history injection', () => {
     const calls: string[] = [];
     const llm = makeFakeLlm(calls);
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'First' })
       .resetHistory()
       .then({ prompt: 'Second (fresh)' })

@@ -13,7 +13,7 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'First step' })
       .then({ prompt: 'Second step' })
       .then({ prompt: 'Third step' })
@@ -45,7 +45,7 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'Step 1' })
       .then({ prompt: 'Step 2' })
       .stream()) {
@@ -73,7 +73,7 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'Test with hooks',
         pre: () => { events.push('pre-executed'); },
@@ -99,7 +99,7 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'Analyze this data' }) // LLM-only step (no mcps)
       .stream()) {
       stepResults.push(stepResult);
@@ -125,7 +125,7 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'First' })
       .then({ prompt: 'Second' })
       .stream((step, stepIndex) => {
@@ -153,7 +153,7 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    const workflow = agent({ llm }).then({ prompt: 'test' });
+    const workflow = agent({ llm, hideProgress: true }).then({ prompt: 'test' });
     
     let concurrencyError: any;
     let stream1Results: any[] = [];

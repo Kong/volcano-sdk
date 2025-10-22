@@ -11,7 +11,7 @@ describe('agent streaming (live APIs)', () => {
     const stepResults: any[] = [];
     const timestamps: number[] = [];
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'Say "Step 1 complete"' })
       .then({ prompt: 'Say "Step 2 complete"' })
       .stream((step, stepIndex) => {
@@ -38,7 +38,7 @@ describe('agent streaming (live APIs)', () => {
     });
     const stepResults: any[] = [];
 
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'Reply with: VERTEX_STREAM_1' })
       .then({ prompt: 'Reply with: VERTEX_STREAM_2' })
       .stream()) {
@@ -59,14 +59,14 @@ describe('agent streaming (live APIs)', () => {
     const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-5-mini' });
     
     // Test with run()
-    const runResults = await agent({ llm })
+    const runResults = await agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 2' })
       .then({ prompt: 'Say done' })
       .run();
 
     // Test with stream()
     const streamResults: any[] = [];
-    for await (const stepResult of agent({ llm })
+    for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 2' })
       .then({ prompt: 'Say done' })
       .stream()) {

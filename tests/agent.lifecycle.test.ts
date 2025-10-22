@@ -11,7 +11,7 @@ function makeLLM() {
 describe('agent lifecycle and pooling', () => {
   it('prevents concurrent run() on same instance', async () => {
     const llm = makeLLM();
-    const a = agent({ llm });
+    const a = agent({ llm, hideProgress: true });
     const p1 = a.then({ prompt: 'one' }).run();
     let err: any;
     try {

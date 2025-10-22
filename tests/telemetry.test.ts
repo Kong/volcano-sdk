@@ -76,7 +76,7 @@ describe('Volcano SDK Observability', () => {
   describe('without telemetry (default)', () => {
     it('works normally without telemetry configured', async () => {
       // No telemetry option - should work fine
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ prompt: "Test without observability" })
         .run();
       
@@ -95,7 +95,7 @@ describe('Volcano SDK Observability', () => {
         serviceName: 'test-agent'
       });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Step 1" })
         .then({ prompt: "Step 2" })
         .run();
@@ -122,7 +122,7 @@ describe('Volcano SDK Observability', () => {
         serviceName: 'test-steps'
       });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "LLM step" })
         .run();
       
@@ -142,7 +142,7 @@ describe('Volcano SDK Observability', () => {
         serviceName: 'test-llm-spans'
       });
       
-      const results = await agent({ llm: makeMockLLM(), telemetry })
+      const results = await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Test LLM span" })
         .run();
       
@@ -167,7 +167,7 @@ describe('Volcano SDK Observability', () => {
       
       const astro = mcp('http://localhost:3801/mcp');
       
-      const results = await agent({ llm: makeMockLLM(), telemetry })
+      const results = await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
         .run();
       
@@ -189,7 +189,7 @@ describe('Volcano SDK Observability', () => {
         serviceName: 'test-metrics'
       });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Metric test" })
         .run();
       
@@ -215,7 +215,7 @@ describe('Volcano SDK Observability', () => {
       
       let error: any;
       try {
-        await agent({ llm: badLLM, telemetry })
+        await agent({ llm: badLLM, telemetry , hideProgress: true })
           .then({ prompt: "This will fail" })
           .run();
       } catch (e) {
@@ -242,7 +242,7 @@ describe('Volcano SDK Observability', () => {
       
       let error: any;
       try {
-        await agent({ llm: badLLM, telemetry })
+        await agent({ llm: badLLM, telemetry , hideProgress: true })
           .then({ prompt: "This will fail" })
           .run();
       } catch (e) {
@@ -261,7 +261,7 @@ describe('Volcano SDK Observability', () => {
       });
       
       const results: any[] = [];
-      for await (const step of agent({ llm: makeMockLLM(), telemetry })
+      for await (const step of agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Stream step 1" })
         .then({ prompt: "Stream step 2" })
         .stream()) {
@@ -276,7 +276,7 @@ describe('Volcano SDK Observability', () => {
   describe('telemetry disabled when not configured', () => {
     it('does not require @opentelemetry/api to be installed', async () => {
       // Even without OTEL installed, telemetry should be no-op
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ prompt: "No telemetry" })
         .run();
       

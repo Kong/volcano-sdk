@@ -51,7 +51,7 @@ describe('context configuration', () => {
       genStream: async function*(){}
     };
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'auto tools', mcps: [astro] })
       .then({ prompt: 'second step', contextMaxToolResults: 2 })
       .run();
@@ -72,7 +72,7 @@ describe('context configuration', () => {
     };
 
     captured = [];
-    await agent({ llm, contextMaxChars: 100 })
+    await agent({ llm, contextMaxChars: 100 , hideProgress: true })
       .then({ prompt: 'first' })
       .then({ prompt: 'second' })
       .run();

@@ -46,8 +46,16 @@ describe('MCP OAuth Comprehensive Tests', () => {
   }, 30000);
   
   afterAll(async () => {
-    astroProc?.kill();
-    authProc?.kill();
+    if (astroProc) {
+      astroProc.kill('SIGKILL');
+      astroProc = null;
+    }
+    if (authProc) {
+      authProc.kill('SIGKILL');
+      authProc = null;
+    }
+    // Give processes time to terminate
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
   
   beforeEach(() => {
@@ -65,7 +73,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'San Francisco' } })
         .run();
       
@@ -84,7 +92,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       });
       
       // First request - acquires token
-      await agent({ llm: makeMockLLM() })
+      await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'New York' } })
         .run();
       
@@ -93,7 +101,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       expect(cacheAfterFirst[0].token).toBe('test-oauth-token-12345');
       
       // Second request - uses cached token
-      await agent({ llm: makeMockLLM() })
+      await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'London' } })
         .run();
       
@@ -114,7 +122,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Paris' } })
           .run();
       } catch (e) {
@@ -135,7 +143,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Tokyo' } })
         .run();
       
@@ -153,7 +161,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Berlin' } })
           .run();
       } catch (e) {
@@ -177,7 +185,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Sydney' } })
         .run();
@@ -196,7 +204,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Rome' } })
         .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1985-03-20' } })
         .run();
@@ -223,7 +231,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp1, tool: 'get_weather', args: { city: 'Paris' } })
         .then({ mcp: authMcp2, tool: 'get_weather', args: { city: 'Madrid' } })
         .run();
@@ -268,7 +276,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         genStream: async function*(){}
       };
       
-      const results = await agent({ llm })
+      const results = await agent({ llm, hideProgress: true })
         .then({ prompt: 'Get weather for Barcelona', mcps: [authMcp] })
         .run();
       
@@ -317,7 +325,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         genStream: async function*(){}
       };
       
-      const results = await agent({ llm })
+      const results = await agent({ llm, hideProgress: true })
         .then({ prompt: 'Get sign and weather', mcps: [astro, authMcp] })
         .run();
       
@@ -338,7 +346,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       });
       
       // First agent run
-      await agent({ llm: makeMockLLM() })
+      await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Oslo' } })
         .run();
       
@@ -347,7 +355,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       expect(firstToken).toBeDefined();
       
       // Second agent run (different agent instance)
-      await agent({ llm: makeMockLLM() })
+      await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Helsinki' } })
         .run();
       
@@ -367,7 +375,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      await agent({ llm: makeMockLLM() })
+      await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Dublin' } })
         .run();
       
@@ -388,7 +396,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Vienna' } })
           .run();
       } catch (e) {
@@ -411,7 +419,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       
       let error: any;
       try {
-        await agent({ llm: makeMockLLM() })
+        await agent({ llm: makeMockLLM() , hideProgress: true })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Prague' } })
           .run();
       } catch (e) {
@@ -432,7 +440,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Lisbon' } })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Brussels' } })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Warsaw' } })
@@ -455,7 +463,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
         }
       });
       
-      const results = await agent({ llm: makeMockLLM() })
+      const results = await agent({ llm: makeMockLLM() , hideProgress: true })
         .parallel([
           { mcp: authMcp, tool: 'get_weather', args: { city: 'Copenhagen' } },
           { mcp: authMcp, tool: 'get_weather', args: { city: 'Stockholm' } },
@@ -482,7 +490,7 @@ describe('MCP OAuth Comprehensive Tests', () => {
       });
       
       const streamed: any[] = [];
-      for await (const step of agent({ llm: makeMockLLM() })
+      for await (const step of agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Athens' } })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Cairo' } })
         .stream()) {

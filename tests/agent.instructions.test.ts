@@ -17,7 +17,7 @@ describe('agent instructions', () => {
     const calls: string[] = [];
     const llm = makeFakeLlm(calls);
 
-    await agent({ llm, instructions: 'You are a helpful assistant.' })
+    await agent({ llm, instructions: 'You are a helpful assistant.' , hideProgress: true })
       .then({ prompt: 'First' })
       .then({ prompt: 'Second' })
       .run();
@@ -35,7 +35,7 @@ describe('agent instructions', () => {
     const calls: string[] = [];
     const llm = makeFakeLlm(calls);
 
-    await agent({ llm, instructions: 'GLOBAL INSTR' })
+    await agent({ llm, instructions: 'GLOBAL INSTR' , hideProgress: true })
       .then({ prompt: 'One' })
       .then({ prompt: 'Two', instructions: 'STEP INSTR' })
       .then({ prompt: 'Three' })
