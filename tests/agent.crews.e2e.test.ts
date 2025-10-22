@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { agent, llmOpenAI } from '../src/volcano-sdk.js';
 
 describe('Multi-agent crews e2e (live APIs)', () => {
-  it('validates autonomous agent selection with live OpenAI', async () => {
+  it('validates autonomous agent selection with live OpenAI', { timeout: 30000 }, async () => {
     if (!process.env.OPENAI_API_KEY) {
       console.log('Skipping: OPENAI_API_KEY not set');
       return;
@@ -49,7 +49,7 @@ describe('Multi-agent crews e2e (live APIs)', () => {
     }
   });
 
-  it('validates multi-step agent delegation with live OpenAI', async () => {
+  it('validates multi-step agent delegation with live OpenAI', { timeout: 30000 }, async () => {
     if (!process.env.OPENAI_API_KEY) {
       console.log('Skipping: OPENAI_API_KEY not set');
       return;
@@ -89,7 +89,7 @@ describe('Multi-agent crews e2e (live APIs)', () => {
     }
   });
 
-  it('validates agent crews work with stream()', async () => {
+  it('validates agent crews work with stream()', { timeout: 30000 }, async () => {
     if (!process.env.OPENAI_API_KEY) {
       console.log('Skipping: OPENAI_API_KEY not set');
       return;
