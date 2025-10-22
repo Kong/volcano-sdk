@@ -104,12 +104,12 @@ Trace: agent-run-abc123
 
 Each span includes rich attributes for debugging:
 
-| Span Type        | Attributes                                                  |
-| ---------------- | ----------------------------------------------------------- |
-| **agent.run**    | `agent.step_count`, `volcano.version`                       |
-| **step.execute** | `step.index`, `step.type` (llm \| mcp_auto \| mcp_explicit) |
-| **llm.generate** | `llm.provider`, `llm.model`, `llm.prompt_length`            |
-| **mcp.\***       | `mcp.endpoint`, `mcp.operation`, `mcp.has_auth`             |
+| Span Type        | Attributes                                                                |
+| ---------------- | ------------------------------------------------------------------------- |
+| **agent.run**    | `agent.step_count`, `volcano.version`                                     |
+| **step.execute** | `step.index`, `step.type` (llm \| mcp_auto \| mcp_explicit \| agent_crew) |
+| **llm.generate** | `llm.provider`, `llm.model`, `llm.prompt_length`                          |
+| **mcp.\***       | `mcp.endpoint`, `mcp.operation`, `mcp.has_auth`                           |
 
 ### Error Tracking
 
@@ -133,13 +133,15 @@ Volcano records metrics for dashboards and alerting.
 
 ### Available Metrics
 
-| Metric                    | Type      | Description                                               |
-| ------------------------- | --------- | --------------------------------------------------------- |
-| `volcano.agent.duration`  | Histogram | Total agent execution time (ms)                           |
-| `volcano.step.duration`   | Histogram | Individual step duration (ms), labeled by type            |
-| `volcano.llm.calls.total` | Counter   | Total LLM API calls, labeled by provider and error status |
-| `volcano.mcp.calls.total` | Counter   | Total MCP tool calls                                      |
-| `volcano.errors.total`    | Counter   | Total errors by type and provider                         |
+| Metric                            | Type      | Description                                               |
+| --------------------------------- | --------- | --------------------------------------------------------- |
+| `volcano.agent.duration`          | Histogram | Total agent execution time (ms)                           |
+| `volcano.step.duration`           | Histogram | Individual step duration (ms), labeled by type            |
+| `volcano.llm.calls.total`         | Counter   | Total LLM API calls, labeled by provider and error status |
+| `volcano.mcp.calls.total`         | Counter   | Total MCP tool calls                                      |
+| `volcano.agent.calls.total`       | Counter   | Total sub-agent delegations, labeled by agent name        |
+| `volcano.agent.delegation.count`  | Histogram | Number of agents delegated to per coordination step       |
+| `volcano.errors.total`            | Counter   | Total errors by type and provider                         |
 
 ### Metric Labels
 

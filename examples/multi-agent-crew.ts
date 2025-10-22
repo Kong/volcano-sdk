@@ -1,7 +1,7 @@
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
-// Run with: npx tsx examples/multi-agent-crew.ts
-// Multiple specialized agents working together
+// Run with: npx tsx examples/agent-crews.ts
+// Autonomous multi-agent crews that self-coordinate
 
 (async () => {
   const llm = llmOpenAI({ 
@@ -9,40 +9,47 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
     model: "gpt-5-mini" 
   });
 
-  // Define specialized agents with distinct roles
-  const researcher = agent({ 
+  // Define specialized agents with names and descriptions
+  const researcher = agent({
     llm,
-    instructions: "You are a researcher. Analyze topics and identify key facts."
+    name: "researcher",
+    description: "Analyzes topics and provides factual, well-researched information. Use when you need data, facts, or analysis."
   });
 
-  const writer = agent({ 
+  const writer = agent({
     llm,
-    instructions: "You are a writer. Transform research into engaging content."
+    name: "writer",
+    description: "Creates engaging, creative content with excellent storytelling. Use when you need articles, stories, or compelling copy."
   });
 
-  const editor = agent({ 
+  const editor = agent({
     llm,
-    instructions: "You are an editor. Review and improve content for clarity."
+    name: "editor",
+    description: "Reviews content for clarity, grammar, and style. Use to polish and improve existing content."
   });
 
-  console.log("=== MULTI-AGENT WORKFLOW ===");
+  console.log("=== AUTONOMOUS MULTI-AGENT CREW ===");
   console.log("Task: Create a blog post about quantum computing\n");
 
-  // Sequential collaboration: Research → Write → Edit
-  const research = await researcher
-    .then({ prompt: "Research quantum computing. List 3 key concepts." })
+  // The LLM automatically coordinates agents based on their descriptions
+  const results = await agent({ llm })
+    .then({
+      prompt: "Create a 2-paragraph blog post about quantum computing for beginners",
+      agents: [researcher, writer, editor],
+      maxAgentIterations: 10
+    })
     .run();
 
-  const draft = await writer
-    .then({ prompt: `Write a 100-word intro based on: ${research[0].llmOutput}` })
-    .run();
-
-  const final = await editor
-    .then({ prompt: `Improve this draft:\n${draft[0].llmOutput}` })
-    .run();
-
-  console.log("Research:", research[0].llmOutput?.substring(0, 80) + "...");
-  console.log("\nDraft:", draft[0].llmOutput?.substring(0, 80) + "...");
-  console.log("\nFinal:", final[0].llmOutput);
+  console.log("Final Output:\n");
+  console.log(results[0].llmOutput);
+  
+  // Show which agents were used
+  const agentCalls = (results[0] as any).agentCalls;
+  if (agentCalls) {
+    console.log("\n=== AGENTS UTILIZED ===");
+    agentCalls.forEach((call: any, i: number) => {
+      console.log(`${i + 1}. ${call.name}: "${call.task.substring(0, 60)}..."`);
+    });
+  }
 })();
 

@@ -177,6 +177,81 @@ for await (const step of agent({ llm })
 
 **💡 Precedence:** Step-level `onToken` takes precedence over stream-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and stream-level callback won't receive those tokens.
 
+## Autonomous Multi-Agent Crews
+
+Let specialized agents autonomously coordinate to accomplish complex tasks. Similar to automatic tool selection (`mcps`), but for agents.
+
+### Quick Example
+
+```typescript
+// Define specialized agents
+const researcher = agent({
+  llm,
+  name: "researcher",
+  description: "Analyzes topics and provides factual information",
+});
+
+const writer = agent({
+  llm,
+  name: "writer",
+  description: "Creates engaging content",
+});
+
+// LLM autonomously coordinates them
+await agent({ llm })
+  .then({
+    prompt: "Create a blog post about AI",
+    agents: [researcher, writer],
+  })
+  .run();
+
+// LLM decides which agents to use and when:
+// 1. "I need facts" → USE researcher: Research AI
+// 2. "Now create content" → USE writer: Write using [research]
+// 3. "DONE: Final blog post..."
+```
+
+### How It Works
+
+When you provide `agents: [...]`, the SDK automatically:
+
+1. Injects agent descriptions into the prompt
+2. LLM decides which agent to delegate to
+3. Executes the selected agent
+4. Feeds result back to coordinator
+5. Repeats until LLM says `DONE: [final answer]`
+
+### Requirements
+
+- Each agent must have `name` (unique identifier)
+- Each agent must have `description` (what it does and when to use it)
+- The coordinator LLM uses descriptions to select appropriate agents
+
+**💡 Pro Tip:** Write descriptions that explain WHEN to use each agent, not just WHAT it does.
+
+### Configuration
+
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Complex task",
+    agents: [agent1, agent2, agent3],
+    maxAgentIterations: 10, // Default: 4
+  })
+  .run();
+```
+
+### Observability
+
+Agent crews are fully observable via OpenTelemetry:
+
+- **Spans:** step.type = `agent_crew`
+- **Metrics:** `volcano.agent.calls.total` (by agent name)
+- **Metrics:** `volcano.agent.delegation.count` (agents per step)
+- **Metadata:** `agentCalls` in StepResult shows which agents were used
+
+**Full details:** [Observability documentation](/docs/observability)
+
 ## Retries & Timeouts
 
 ### Timeouts

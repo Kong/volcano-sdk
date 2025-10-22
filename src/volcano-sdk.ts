@@ -94,55 +94,17 @@ export type MCPAuthConfig = {
 };
 
 export type MCPHandle = { 
-  listTools: () => Promise<{ tools: Array<{ name: string; description?: string; inputSchema?: any }> }>;
-  callTool: (name: string, args: Record<string, any>) => Promise<any>;
   id: string; 
   url: string; 
   auth?: MCPAuthConfig;
 };
 
-/**
- * Connect to an MCP (Model Context Protocol) server via HTTP.
- * Supports connection pooling, OAuth/Bearer authentication, and automatic reconnection.
- * 
- * @param url - HTTP endpoint URL for the MCP server (e.g., "http://localhost:3000/mcp")
- * @param options - Optional authentication configuration (OAuth 2.1 or Bearer token)
- * @returns MCPHandle for listing and calling tools
- * 
- * @example
- * // Basic usage
- * const weather = mcp("http://localhost:3000/mcp");
- * const tools = await weather.listTools();
- * const forecast = await weather.callTool("get_forecast", { city: "San Francisco" });
- * 
- * @example
- * // With OAuth authentication
- * const github = mcp("https://api.github.com/mcp", {
- *   auth: {
- *     type: 'oauth',
- *     clientId: process.env.GITHUB_CLIENT_ID!,
- *     clientSecret: process.env.GITHUB_SECRET!,
- *     tokenUrl: 'https://github.com/login/oauth/access_token'
- *   }
- * });
- */
 export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle {
   // Use hash-based ID to keep tool names under OpenAI's 64-char limit
   // Tool names are: ${id}.${toolName}, so short ID = more room for tool names
   const hash = createHash('md5').update(url).digest('hex').substring(0, 8);
   const id = `mcp_${hash}`; // e.g., "mcp_f3c8a9b1" (12 chars, deterministic)
-  
-  return { 
-    id, 
-    url, 
-    auth: options?.auth,
-    listTools: async () => {
-      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.listTools());
-    },
-    callTool: async (name, args) => {
-      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.callTool({ name, arguments: args }));
-    }
-  };
+  return { id, url, auth: options?.auth };
 }
 
 // Ajv validator instance
@@ -422,19 +384,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label = 'Step'): Promis
 const TOOL_CACHE = new Map<string, { tools: ToolDefinition[]; ts: number }>();
 let TOOL_CACHE_TTL_MS = 60_000;
 
-/**
- * Discover all available tools from one or more MCP servers.
- * Results are cached for 60 seconds to improve performance.
- * 
- * @param handles - Array of MCP handles to query for tools
- * @returns Combined array of all available tools from all servers
- * 
- * @example
- * const weather = mcp("http://localhost:3000/mcp");
- * const calendar = mcp("http://localhost:4000/mcp");
- * const tools = await discoverTools([weather, calendar]);
- * console.log(tools.map(t => t.name)); // ["get_forecast", "create_event", ...]
- */
 export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinition[]> {
   const allTools: ToolDefinition[] = [];
   
@@ -517,70 +466,12 @@ export type RetryConfig = {
   retries?: number;    // total attempts including the first one; default 3
 };
 
-/**
- * Metadata provided to stream-level onToken callback.
- * Allows conditional processing based on whether step-level handler already processed the token.
- * 
- * @property stepIndex - Index of the current step (0-based)
- * @property handledByStep - True if step-level onToken handled this token. Use this to avoid double-processing.
- * @property stepPrompt - The prompt for this step (useful for conditional formatting)
- * @property llmProvider - The LLM provider ID (e.g., "OpenAI-gpt-4o-mini", "Anthropic-claude-3")
- * 
- * @example
- * .stream({
- *   onToken: (token, meta) => {
- *     if (!meta.handledByStep) {
- *       // Only process if step didn't handle it
- *       res.write(`data: ${token}\n\n`);
- *     }
- *     // Always log analytics
- *     analytics.track(token, meta.stepIndex);
- *   }
- * })
- */
-export type TokenMetadata = {
-  stepIndex: number;
-  handledByStep: boolean;
-  stepPrompt?: string;
-  llmProvider?: string;
-};
-
-/**
- * Options for the stream() method.
- * Supports both token-level and step-level callbacks for maximum flexibility.
- * 
- * @property onToken - Called for each token as it arrives (with metadata). 
- *                     Step-level onToken takes precedence - when a step has its own onToken,
- *                     this callback won't receive tokens from that step (meta.handledByStep will be true).
- * @property onStep - Called when each step completes. Equivalent to the callback in stream(callback).
- * 
- * @example
- * // Both token and step callbacks
- * .stream({
- *   onToken: (token, meta) => {
- *     console.log(`Token from step ${meta.stepIndex}: ${token}`);
- *   },
- *   onStep: (step, index) => {
- *     console.log(`Step ${index} complete: ${step.durationMs}ms`);
- *   }
- * })
- * 
- * @example
- * // Backward compatible: just a callback
- * .stream((step, index) => {
- *   console.log(`Step ${index} done`);
- * })
- */
-export type StreamOptions = {
-  onToken?: (token: string, meta: TokenMetadata) => void;
-  onStep?: (step: StepResult, stepIndex: number) => void;
-};
-
 export type Step =
   | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
   | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
   | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void };
+  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
+  | { prompt: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
   prompt?: string;
@@ -604,6 +495,8 @@ type StepFactory = (history: StepResult[]) => Step;
 
 // Agent builder interface for type safety
 export interface AgentBuilder {
+  name?: string;
+  description?: string;
   resetHistory(): AgentBuilder;
   then(s: Step | StepFactory): AgentBuilder;
   parallel(stepsOrDict: Step[] | Record<string, Step>, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
@@ -614,7 +507,7 @@ export interface AgentBuilder {
   retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number; pre?: () => void; post?: () => void }): AgentBuilder;
   runAgent(subAgent: AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]>;
-  stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown>;
+  stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown>;
 }
 
 function buildHistoryContextChunked(history: StepResult[], maxToolResults: number, maxChars: number): string {
@@ -653,49 +546,63 @@ function buildHistoryContextChunked(history: StepResult[], maxToolResults: numbe
 }
 
 /**
- * Helper function to execute LLM generation with optional token streaming.
- * Handles both step-level and stream-level onToken callbacks with proper precedence.
+ * Build agent context string for multi-agent coordination.
  */
-async function executeLLMWithStreaming(
-  llm: LLMHandle,
-  prompt: string,
-  stepOnToken: ((token: string) => void) | undefined,
-  streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined,
-  meta: { stepIndex: number; stepPrompt?: string }
-): Promise<string> {
-  const hasStepOnToken = !!stepOnToken;
-  const effectiveOnToken = stepOnToken || streamOnToken;
+function buildAgentContext(agents: AgentBuilder[]): string {
+  const agentList = agents
+    .filter(a => a.name && a.description)
+    .map(a => `- ${a.name}: ${a.description}`)
+    .join('\n');
   
-  if (effectiveOnToken && typeof llm.genStream === 'function') {
-    const tokens: string[] = [];
-    const tokenMeta: TokenMetadata = {
-      stepIndex: meta.stepIndex,
-      handledByStep: hasStepOnToken,
-      stepPrompt: meta.stepPrompt,
-      llmProvider: (llm as any).id || llm.model
+  return `
+
+Available agents to help you:
+${agentList}
+
+To delegate to an agent, respond with: USE [agent_name]: [specific task for that agent]
+When you have the final answer, respond with: DONE: [your final answer]
+`;
+}
+
+/**
+ * Parse coordinator LLM response for agent delegation.
+ */
+function parseAgentDecision(response: string): 
+  | { type: 'use_agent'; agentName: string; task: string }
+  | { type: 'done'; answer: string }
+  | { type: 'continue'; raw: string }
+{
+  // Check for USE directive
+  const useMatch = response.match(/USE\s+(\w+):\s*(.+?)(?=\n(?:USE|DONE:)|$)/s);
+  if (useMatch) {
+    return {
+      type: 'use_agent',
+      agentName: useMatch[1].trim(),
+      task: useMatch[2].trim()
     };
-    
-    for await (const token of llm.genStream(prompt)) {
-      tokens.push(token);
-      try {
-        if (hasStepOnToken) {
-          stepOnToken!(token);
-        } else {
-          streamOnToken!(token, tokenMeta);
-        }
-      } catch (e) {
-        console.warn('onToken callback failed:', e);
-      }
-    }
-    return tokens.join('');
-  } else {
-    return await llm.gen(prompt);
   }
+  
+  // Check for DONE directive
+  const doneMatch = response.match(/DONE:\s*(.+)/s);
+  if (doneMatch) {
+    return {
+      type: 'done',
+      answer: doneMatch[1].trim()
+    };
+  }
+  
+  // If no directive found, ask LLM to continue (or treat as done after max iterations)
+  return {
+    type: 'continue',
+    raw: response
+  };
 }
 
 type AgentOptions = {
   llm?: LLMHandle;
   instructions?: string;
+  name?: string;                       // Agent name for multi-agent coordination
+  description?: string;                // Agent description for automatic selection
   timeout?: number;
   retry?: RetryConfig;
   // Context compaction options
@@ -709,33 +616,13 @@ type AgentOptions = {
   maxToolIterations?: number;
 };
 
-/**
- * Create an AI agent that chains LLM reasoning with MCP tool calls.
- * 
- * @param opts - Optional configuration including LLM provider, instructions, timeout, retry policy, and observability
- * @returns AgentBuilder for chaining steps with .then(), run(), and stream()
- * 
- * @example
- * // Simple agent
- * const results = await agent({ llm: llmOpenAI({...}) })
- *   .then({ prompt: "Analyze data" })
- *   .then({ prompt: "Generate insights" })
- *   .run();
- * 
- * @example
- * // With automatic tool selection
- * await agent({ llm })
- *   .then({ 
- *     prompt: "Book a meeting and send confirmation", 
- *     mcps: [calendar, email] 
- *   })
- *   .run();
- */
 export function agent(opts?: AgentOptions): AgentBuilder {
   const steps: Array<Step | StepFactory | { __reset: true }> = [];
   const defaultLlm = opts?.llm;
   let contextHistory: StepResult[] = [];
   const globalInstructions = opts?.instructions;
+  const agentName = opts?.name;
+  const agentDescription = opts?.description;
   const defaultTimeoutMs = ((typeof opts?.timeout === 'number' ? opts!.timeout! : 60)) * 1000; // seconds -> ms
   const defaultRetry: RetryConfig = opts?.retry ?? { delay: 0, retries: 3 };
   const contextMaxChars = typeof opts?.contextMaxChars === 'number' ? opts!.contextMaxChars! : 20480;
@@ -756,6 +643,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   }
   
   const builder: AgentBuilder = {
+    name: agentName,
+    description: agentDescription,
     resetHistory() { steps.push({ __reset: true }); return builder; },
     then(s: Step | StepFactory) { steps.push(s); return builder; },
     
@@ -999,7 +888,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             
             // Determine step type for telemetry
             let stepType = 'unknown';
-            if ("mcps" in s) stepType = 'mcp_auto';
+            if ("agents" in s) stepType = 'agent_crew';
+            else if ("mcps" in s) stepType = 'mcp_auto';
             else if ("mcp" in s) stepType = 'mcp_explicit';
             else if ("prompt" in s) stepType = 'llm';
             
@@ -1076,8 +966,88 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 if (!r.toolCalls) r.toolCalls = [];
               }
             }
+            // Automatic agent selection with iterative delegation
+            else if ("agents" in s && "prompt" in s) {
+              const usedLlm = (s as any).llm ?? defaultLlm;
+              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+              const stepInstructions = (s as any).instructions ?? globalInstructions;
+              const cmr = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+              const cmc = (s as any).contextMaxChars ?? contextMaxChars;
+              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
+              r.prompt = (s as any).prompt;
+              
+              const availableAgents = (s as any).agents as AgentBuilder[];
+              if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
+                r.llmOutput = "No agents available or agents missing name/description.";
+              } else {
+                const agentContext = buildAgentContext(availableAgents);
+                const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
+                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
+                const agentCalls: Array<{ name: string; task: string; result: string }> = [];
+                
+                for (let i = 0; i < maxIterations; i++) {
+                  const llmStart = Date.now();
+                  let coordinatorResponse: string;
+                  try {
+                    coordinatorResponse = await usedLlm.gen(workingPrompt);
+                  } catch (e) {
+                    const provider = classifyProviderFromLlm(usedLlm);
+                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
+                  }
+                  llmTotalMs += Date.now() - llmStart;
+                  
+                  const decision = parseAgentDecision(coordinatorResponse);
+                  
+                  if (decision.type === 'done') {
+                    r.llmOutput = decision.answer;
+                    break;
+                  } else if (decision.type === 'use_agent') {
+                    const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
+                    if (!selectedAgent) {
+                      workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
+                      continue;
+                    }
+                    
+                    const agentStart = Date.now();
+                    let agentResult: StepResult[];
+                    try {
+                      agentResult = await selectedAgent.then({ prompt: decision.task }).run();
+                    } catch (e) {
+                      workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
+                      continue;
+                    }
+                    const agentMs = Date.now() - agentStart;
+                    
+                    const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
+                    agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
+                    
+                    workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
+                  } else {
+                    if (i === maxIterations - 1) {
+                      r.llmOutput = decision.raw;
+                    } else {
+                      workingPrompt += `\n\nPlease use the USE or DONE directive.`;
+                    }
+                  }
+                }
+                
+                // Fallback: if no DONE was received, use last agent's result
+                if (!r.llmOutput && agentCalls.length > 0) {
+                  r.llmOutput = agentCalls[agentCalls.length - 1].result;
+                }
+                
+                if (agentCalls.length > 0) {
+                  (r as any).agentCalls = agentCalls;
+                  // Record metrics for agent delegation
+                  telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
+                  for (const agentCall of agentCalls) {
+                    telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
+                  }
+                }
+              }
+            }
             // LLM-only steps
-            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s)) {
+            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
               const usedLlm = (s as any).llm ?? defaultLlm;
               if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
               const stepInstructions = (s as any).instructions ?? globalInstructions;
@@ -1089,13 +1059,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
-                r.llmOutput = await executeLLMWithStreaming(
-                  usedLlm,
-                  finalPrompt,
-                  (s as any).onToken,
-                  undefined, // No stream-level onToken in run()
-                  { stepIndex: out.length, stepPrompt: (s as any).prompt }
-                );
+                r.llmOutput = await usedLlm.gen(finalPrompt);
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {
@@ -1230,30 +1194,14 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         isRunning = false;
       }
     },
-    async *stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown> {
+    async *stream(log?: (s: StepResult, stepIndex: number) => void): AsyncGenerator<StepResult, void, unknown> {
       if (isRunning) {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
       isRunning = true;
       
-      // Parse options for backward compatibility
-      let streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined;
-      let log: ((s: StepResult, stepIndex: number) => void) | undefined;
-      
-      if (typeof optionsOrLog === 'function') {
-        // Old API: stream(callback)
-        log = optionsOrLog;
-      } else if (optionsOrLog) {
-        // New API: stream({ onToken, onStep })
-        streamOnToken = optionsOrLog.onToken;
-        log = optionsOrLog.onStep;
-      }
-      
       // Start agent span
       const agentSpan = telemetry?.startAgentSpan(steps.length) || null;
-      
-      // Capture streamOnToken from stream() context for use in doStep
-      const capturedStreamOnToken = streamOnToken;
       
       try {
         const out: StepResult[] = [];
@@ -1404,7 +1352,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             
             // Determine step type for telemetry
             let stepType = 'unknown';
-            if ("mcps" in s) stepType = 'mcp_auto';
+            if ("agents" in s) stepType = 'agent_crew';
+            else if ("mcps" in s) stepType = 'mcp_auto';
             else if ("mcp" in s) stepType = 'mcp_explicit';
             else if ("prompt" in s) stepType = 'llm';
             
@@ -1481,8 +1430,88 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 if (!r.toolCalls) r.toolCalls = [];
               }
             }
+            // Automatic agent selection with iterative delegation
+            else if ("agents" in s && "prompt" in s) {
+              const usedLlm = (s as any).llm ?? defaultLlm;
+              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+              const stepInstructions = (s as any).instructions ?? globalInstructions;
+              const cmr = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+              const cmc = (s as any).contextMaxChars ?? contextMaxChars;
+              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, cmr, cmc);
+              r.prompt = (s as any).prompt;
+              
+              const availableAgents = (s as any).agents as AgentBuilder[];
+              if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
+                r.llmOutput = "No agents available or agents missing name/description.";
+              } else {
+                const agentContext = buildAgentContext(availableAgents);
+                const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
+                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
+                const agentCalls: Array<{ name: string; task: string; result: string }> = [];
+                
+                for (let i = 0; i < maxIterations; i++) {
+                  const llmStart = Date.now();
+                  let coordinatorResponse: string;
+                  try {
+                    coordinatorResponse = await usedLlm.gen(workingPrompt);
+                  } catch (e) {
+                    const provider = classifyProviderFromLlm(usedLlm);
+                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
+                  }
+                  llmTotalMs += Date.now() - llmStart;
+                  
+                  const decision = parseAgentDecision(coordinatorResponse);
+                  
+                  if (decision.type === 'done') {
+                    r.llmOutput = decision.answer;
+                    break;
+                  } else if (decision.type === 'use_agent') {
+                    const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
+                    if (!selectedAgent) {
+                      workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
+                      continue;
+                    }
+                    
+                    const agentStart = Date.now();
+                    let agentResult: StepResult[];
+                    try {
+                      agentResult = await selectedAgent.then({ prompt: decision.task }).run();
+                    } catch (e) {
+                      workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
+                      continue;
+                    }
+                    const agentMs = Date.now() - agentStart;
+                    
+                    const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
+                    agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
+                    
+                    workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
+                  } else {
+                    if (i === maxIterations - 1) {
+                      r.llmOutput = decision.raw;
+                    } else {
+                      workingPrompt += `\n\nPlease use the USE or DONE directive.`;
+                    }
+                  }
+                }
+                
+                // Fallback: if no DONE was received, use last agent's result
+                if (!r.llmOutput && agentCalls.length > 0) {
+                  r.llmOutput = agentCalls[agentCalls.length - 1].result;
+                }
+                
+                if (agentCalls.length > 0) {
+                  (r as any).agentCalls = agentCalls;
+                  // Record metrics for agent delegation
+                  telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
+                  for (const agentCall of agentCalls) {
+                    telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
+                  }
+                }
+              }
+            }
             // LLM-only steps
-            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s)) {
+            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
               const usedLlm = (s as any).llm ?? defaultLlm;
               if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
               const stepInstructions = (s as any).instructions ?? globalInstructions;
@@ -1494,13 +1523,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
               const llmStart = Date.now();
               try {
-                r.llmOutput = await executeLLMWithStreaming(
-                  usedLlm,
-                  finalPrompt,
-                  (s as any).onToken,
-                  capturedStreamOnToken,
-                  { stepIndex: out.length, stepPrompt: (s as any).prompt }
-                );
+                r.llmOutput = await usedLlm.gen(finalPrompt);
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
               } catch (e) {

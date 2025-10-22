@@ -70,8 +70,8 @@ Native Model Context Protocol support with connection pooling, tool discovery, a
 </td>
 <td width="33%">
 
-### 🧩 Sub-Agent Composition
-Build reusable agent components and compose them into larger workflows. Modular and testable.
+### 🧩 Multi-Agent Crews
+Define specialized agents that autonomously coordinate based on descriptions. LLM automatically selects the right agent for each task - like automatic tool selection, but for agents.
 
 </td>
 </tr>
@@ -152,6 +152,41 @@ await agent()
   .then({ llm: gpt, prompt: "Extract data from report" })
   .then({ llm: claude, prompt: "Analyze for patterns" })
   .then({ llm: mistral, prompt: "Write creative summary" })
+  .run();
+```
+
+### Autonomous Multi-Agent Crews
+
+```ts
+import { agent, llmOpenAI } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: "gpt-4o-mini" });
+
+// Define specialized agents
+const researcher = agent({
+  llm,
+  name: "researcher",
+  description: "Analyzes topics and provides factual, well-researched information"
+});
+
+const writer = agent({
+  llm,
+  name: "writer",
+  description: "Creates engaging, creative content with excellent storytelling"
+});
+
+const editor = agent({
+  llm,
+  name: "editor",
+  description: "Reviews content for clarity, grammar, and style"
+});
+
+// LLM autonomously coordinates agents to accomplish the task!
+const result = await agent({ llm })
+  .then({
+    prompt: "Create a blog post about quantum computing for beginners",
+    agents: [researcher, writer, editor]
+  })
   .run();
 ```
 

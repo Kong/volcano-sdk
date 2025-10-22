@@ -294,6 +294,93 @@ await agent({ llm })
 - Self-correcting content generation
 - Iterative refinement
 
+## Autonomous Multi-Agent Crews
+
+Define specialized agents that autonomously coordinate based on their descriptions. Like automatic tool selection (`mcps`), but for agents.
+
+### How It Works
+
+When you provide `agents: [...]` in a step, the LLM automatically selects which agents to use and coordinates them to accomplish the task.
+
+```typescript
+// Define specialized agents
+const researcher = agent({
+  llm,
+  name: "researcher",
+  description: "Analyzes topics and provides factual information",
+});
+
+const writer = agent({
+  llm,
+  name: "writer",
+  description: "Creates engaging content",
+});
+
+const editor = agent({
+  llm,
+  name: "editor",
+  description: "Reviews and improves content for clarity",
+});
+
+// LLM autonomously coordinates them
+await agent({ llm })
+  .then({
+    prompt: "Create a blog post about AI",
+    agents: [researcher, writer, editor],
+  })
+  .run();
+
+// The LLM decides:
+// 1. "I need facts" → USE researcher: Research AI
+// 2. "Now create content" → USE writer: Write using [research]
+// 3. "DONE: Final blog post..."
+```
+
+### Requirements
+
+- Each agent must have `name` (unique identifier)
+- Each agent must have `description` (what it does and when to use it)
+- Good descriptions help the LLM make better choices
+
+**💡 Pro Tip:** Write descriptions that explain WHEN to use each agent, not just WHAT it does. Example: "Use for complex analysis requiring data validation" is better than "Analyzes data".
+
+### Configuration
+
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Complex task",
+    agents: [agent1, agent2, agent3],
+    maxAgentIterations: 10, // Default: 4
+  })
+  .run();
+```
+
+### When to Use Agent Crews vs Manual Workflows
+
+**Use Agent Crews for:**
+
+- Tasks with variable complexity
+- Dynamic agent selection based on context
+- Exploratory or creative tasks
+- When optimal sequence is unclear
+
+**Use Manual Workflows for:**
+
+- Fixed, predictable sequences
+- Performance-critical paths
+- When you know the exact steps
+- Simpler, more deterministic tasks
+
+### Observability
+
+Agent crews are fully observable:
+
+- **Spans:** step.type = `agent_crew`
+- **Metrics:** `volcano.agent.calls.total` (by agent name)
+- **Metrics:** `volcano.agent.delegation.count` (agents per step)
+- **Metadata:** `agentCalls` in StepResult shows which agents were used
+
 ## Sub-Agent Composition
 
 Build reusable agent components and compose them into larger workflows.
