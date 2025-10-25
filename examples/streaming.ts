@@ -33,6 +33,7 @@ import { agent, llmOpenAI, llmVertexStudio, mcp } from "../dist/volcano-sdk.js";
     // Stream a multi-step workflow in real-time
     for await (const stepResult of agent({ 
       llm,
+      showProgress: true,
       instructions: "You are a helpful assistant. Be concise but friendly."
     })
       .then({ 

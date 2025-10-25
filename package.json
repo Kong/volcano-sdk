@@ -60,7 +60,11 @@
     }
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.895.0",
+    "@aws-sdk/credential-providers": "^3.895.0",
+    "@azure/identity": "^4.0.0",
     "@eslint/js": "^9.36.0",
+    "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-otlp-http": "^0.26.0",
     "@opentelemetry/sdk-metrics": "^2.1.0",
     "@opentelemetry/sdk-node": "^0.205.0",

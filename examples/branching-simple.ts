@@ -11,7 +11,7 @@ const llm = llmOpenAI({
 console.log("=== Binary Branch (If/Else) ===");
 const number = 17;
 
-const binaryResult = await agent({ llm })
+const binaryResult = await agent({ llm, showProgress: true })
   .then({ prompt: `Is ${number} prime? Reply YES or NO only.` })
   .branch(
     (history) => history[0].llmOutput?.toUpperCase().includes("YES") || false,
@@ -28,7 +28,7 @@ console.log(binaryResult[1].llmOutput);
 console.log("\n=== Multi-Way Switch ===");
 const userMessage = "I need help resetting my password";
 
-const switchResult = await agent({ llm })
+const switchResult = await agent({ llm, showProgress: true })
   .then({ prompt: `Classify intent: "${userMessage}". Reply: BILLING, TECHNICAL, ACCOUNT, or GENERAL` })
   .switch(
     (history) => history[0].llmOutput?.toUpperCase().trim() || '',
@@ -49,7 +49,7 @@ console.log("Action:", switchResult[1].llmOutput);
 console.log("\n=== Branch After Parallel Analysis ===");
 const text = "This product is amazing but the price is too high";
 
-const parallelBranchResult = await agent({ llm })
+const parallelBranchResult = await agent({ llm, showProgress: true })
   .parallel({
     sentiment: { prompt: `Sentiment of "${text}"? Positive, Negative, or Neutral` },
     topic: { prompt: `Main topic of "${text}"? Product, Price, or Service` }

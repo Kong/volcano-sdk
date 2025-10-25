@@ -9,7 +9,7 @@ const llm = llmOpenAI({
 
 // Example 1: Array mode - simple parallel tasks
 console.log("=== Parallel Array Mode ===");
-const arrayResults = await agent({ llm })
+const arrayResults = await agent({ llm, showProgress: true })
   .parallel([
     { prompt: "What's 15 + 27?" },
     { prompt: "What's 8 × 12?" },
@@ -21,7 +21,7 @@ console.log("Results:", arrayResults[0].parallelResults?.map(r => r.llmOutput));
 
 // Example 2: Named mode - access results by key
 console.log("\n=== Parallel Named Mode ===");
-const namedResults = await agent({ llm })
+const namedResults = await agent({ llm, showProgress: true })
   .parallel({
     addition: { prompt: "What's 25 + 75?" },
     multiplication: { prompt: "What's 6 × 8?" },

@@ -12,7 +12,7 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
   console.log("=== PER-STEP TOKEN STREAMING ===\n");
   
   let tokenCount = 0;
-  await agent({ llm })
+  await agent({ llm, showProgress: true })
     .then({ 
       prompt: "Explain quantum computing in 2 sentences.",
       onToken: (token: string) => {
@@ -26,7 +26,7 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
   console.log("=== STREAM-LEVEL TOKEN STREAMING ===\n");
 
-  for await (const step of agent({ llm })
+  for await (const step of agent({ llm, showProgress: true })
     .then({ prompt: "Name 3 programming languages" })
     .then({ prompt: "Pick one and explain why it's popular" })
     .stream({

@@ -8,18 +8,18 @@ const llm = llmOpenAI({
 });
 
 // Define specialized sub-agents
-const summarizer = agent({ llm })
+const summarizer = agent({ llm, showProgress: true })
   .then({ prompt: "Summarize the previous text in one sentence" });
 
-const translator = agent({ llm })
+const translator = agent({ llm, showProgress: true })
   .then({ prompt: "Translate to Spanish" });
 
-const formalizer = agent({ llm })
+const formalizer = agent({ llm, showProgress: true })
   .then({ prompt: "Make the text more formal and professional" });
 
 // Example 1: Linear composition
 console.log("=== Linear Composition ===");
-const linearResult = await agent({ llm })
+const linearResult = await agent({ llm, showProgress: true })
   .then({ prompt: "Text: 'Hey! Our new AI tool is super cool and really fast!'" })
   .runAgent(summarizer)
   .runAgent(formalizer)
@@ -35,20 +35,20 @@ console.log("\n=== Agent Library ===");
 
 // Content pipeline agents
 const contentPipeline = {
-  analyzer: agent({ llm })
+  analyzer: agent({ llm, showProgress: true })
     .then({ prompt: "Identify key points" })
     .then({ prompt: "Determine target audience" }),
   
-  writer: agent({ llm })
+  writer: agent({ llm, showProgress: true })
     .then({ prompt: "Write engaging introduction" })
     .then({ prompt: "Add supporting details" }),
   
-  editor: agent({ llm })
+  editor: agent({ llm, showProgress: true })
     .then({ prompt: "Check grammar and clarity" })
     .then({ prompt: "Optimize for SEO" })
 };
 
-const pipelineResult = await agent({ llm })
+const pipelineResult = await agent({ llm, showProgress: true })
   .then({ prompt: "Topic: How AI agents work" })
   .runAgent(contentPipeline.analyzer)
   .runAgent(contentPipeline.writer)
@@ -61,15 +61,15 @@ console.log("Content pipeline completed with", pipelineResult.length, "steps");
 // Example 3: Conditional sub-agent selection
 console.log("\n=== Dynamic Sub-Agent Selection ===");
 
-const technicalWriter = agent({ llm })
+const technicalWriter = agent({ llm, showProgress: true })
   .then({ prompt: "Use technical terminology" })
   .then({ prompt: "Include code examples" });
 
-const casualWriter = agent({ llm })
+const casualWriter = agent({ llm, showProgress: true })
   .then({ prompt: "Use simple language" })
   .then({ prompt: "Add relatable examples" });
 
-const dynamicResult = await agent({ llm })
+const dynamicResult = await agent({ llm, showProgress: true })
   .then({ prompt: "Is the audience technical? Reply YES or NO" })
   .branch(
     (h) => h[0].llmOutput?.includes("YES") || false,
@@ -92,13 +92,13 @@ console.log("\n=== Sub-Agent Factory ===");
 
 // Factory function for creating specialized agents
 function createAnalyzer(topic: string) {
-  return agent({ llm })
+  return agent({ llm, showProgress: true })
     .then({ prompt: `Analyze ${topic} trends` })
     .then({ prompt: `Identify ${topic} opportunities` })
     .then({ prompt: `Summarize ${topic} insights` });
 }
 
-const factoryResult = await agent({ llm })
+const factoryResult = await agent({ llm, showProgress: true })
   .runAgent(createAnalyzer("AI"))
   .runAgent(createAnalyzer("Cloud"))
   .then({ prompt: "Combine AI and Cloud insights into one paragraph" })
