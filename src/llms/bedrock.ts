@@ -25,6 +25,7 @@ export type BedrockConfig = {
   // AWS credential chain options
   profile?: string; // AWS profile name
   roleArn?: string; // Role ARN for assume role
+  defaultHeaders?: Record<string, string>; // Custom headers (note: AWS SDK manages most headers internally)
   options?: BedrockOptions;
 };
 
@@ -76,7 +77,19 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
               updateHttpClientConfig: (httpClientConfig: any) => {
                 httpClientConfig.headers = {
                   ...httpClientConfig.headers,
+                  ...(cfg.defaultHeaders || {}),
                   'Authorization': `Bearer ${cfg.bearerToken}`
+                };
+              }
+            };
+          }
+          // Handle defaultHeaders without bearer token
+          else if (cfg.defaultHeaders) {
+            clientConfig.requestHandler = {
+              updateHttpClientConfig: (httpClientConfig: any) => {
+                httpClientConfig.headers = {
+                  ...httpClientConfig.headers,
+                  ...cfg.defaultHeaders
                 };
               }
             };
