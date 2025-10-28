@@ -63,17 +63,19 @@ describe('MCP OAuth - Direct Client Validation', () => {
   }, 20000);
   
   it('obtains OAuth token from token endpoint', async () => {
-    // Test the OAuth token endpoint
+    // Test the OAuth token endpoint with form-encoded request (RFC 6749)
+    const params = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: 'test-client',
+      client_secret: 'test-secret'
+    });
+    
     const response = await fetch('http://localhost:3501/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({
-        grant_type: 'client_credentials',
-        client_id: 'test-client',
-        client_secret: 'test-secret'
-      })
+      body: params.toString()
     });
     
     expect(response.status).toBe(200);
@@ -85,16 +87,18 @@ describe('MCP OAuth - Direct Client Validation', () => {
   }, 20000);
   
   it('rejects invalid OAuth credentials', async () => {
+    const params = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: 'wrong-client',
+      client_secret: 'wrong-secret'
+    });
+    
     const response = await fetch('http://localhost:3501/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({
-        grant_type: 'client_credentials',
-        client_id: 'wrong-client',
-        client_secret: 'wrong-secret'
-      })
+      body: params.toString()
     });
     
     expect(response.status).toBe(401);

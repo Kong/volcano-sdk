@@ -7,6 +7,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Support form-encoded OAuth token requests (RFC 6749)
 
 const transports = new Map();
 
