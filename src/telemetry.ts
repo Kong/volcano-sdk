@@ -1,6 +1,7 @@
 // OpenTelemetry integration for Volcano SDK
 // Opt-in observability with traces and metrics
 
+import { createRequire } from 'node:module';
 import type { StepResult, LLMHandle, MCPHandle } from './volcano-sdk.js';
 
 // Type-only imports - actual OTEL imports are dynamic
@@ -47,7 +48,8 @@ function tryLoadOtel() {
   
   try {
     // Dynamic import to avoid hard dependency
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // Use createRequire for ES module compatibility
+    const require = createRequire(import.meta.url);
     otelApi = require('@opentelemetry/api');
     return otelApi;
   } catch {
