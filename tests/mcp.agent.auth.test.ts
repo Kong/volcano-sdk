@@ -46,8 +46,16 @@ describe('Agent-Level MCP Authentication', () => {
   }, 30000);
   
   afterAll(async () => {
-    astroProc?.kill();
-    authProc?.kill();
+    if (astroProc) {
+      astroProc.kill('SIGKILL');
+      astroProc = null;
+    }
+    if (authProc) {
+      authProc.kill('SIGKILL');
+      authProc = null;
+    }
+    // Give processes time to terminate
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
   
   beforeEach(() => {
@@ -62,6 +70,7 @@ describe('Agent-Level MCP Authentication', () => {
       // Auth configured at agent level
       const results = await agent({ 
         llm: makeMockLLM(),
+        hideProgress: true,
         mcpAuth: {
           'http://localhost:3702/mcp': {
             type: 'oauth',
@@ -90,6 +99,7 @@ describe('Agent-Level MCP Authentication', () => {
       // Agent has invalid auth (should be ignored)
       const results = await agent({ 
         llm: makeMockLLM(),
+        hideProgress: true,
         mcpAuth: {
           'http://localhost:3702/mcp': {
             type: 'bearer',
@@ -110,6 +120,7 @@ describe('Agent-Level MCP Authentication', () => {
       
       const results = await agent({ 
         llm: makeMockLLM(),
+        hideProgress: true,
         mcpAuth: {
           'http://localhost:3702/mcp': {
             type: 'oauth',
@@ -156,6 +167,7 @@ describe('Agent-Level MCP Authentication', () => {
       
       const results = await agent({ 
         llm,
+        hideProgress: true,
         mcpAuth: {
           'http://localhost:3702/mcp': {
             type: 'bearer',
@@ -179,6 +191,7 @@ describe('Agent-Level MCP Authentication', () => {
       try {
         await agent({ 
           llm: makeMockLLM(),
+          hideProgress: true,
           mcpAuth: {
             'http://localhost:3702/mcp': {
               type: 'oauth',
@@ -205,6 +218,7 @@ describe('Agent-Level MCP Authentication', () => {
       try {
         await agent({ 
           llm: makeMockLLM(),
+          hideProgress: true,
           mcpAuth: {
             'http://localhost:3702/mcp': {
               type: 'oauth',
@@ -229,7 +243,8 @@ describe('Agent-Level MCP Authentication', () => {
       let error: any;
       try {
         await agent({ 
-          llm: makeMockLLM()
+          llm: makeMockLLM(),
+          hideProgress: true
           // No mcpAuth configured
         })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Rome' } })
@@ -249,6 +264,7 @@ describe('Agent-Level MCP Authentication', () => {
       
       const results = await agent({ 
         llm: makeMockLLM(),
+        hideProgress: true,
         mcpAuth: {
           'http://localhost:3702/mcp': {
             type: 'bearer',
@@ -278,6 +294,7 @@ describe('Agent-Level MCP Authentication', () => {
       const streamed: any[] = [];
       for await (const step of agent({ 
         llm: makeMockLLM(),
+        hideProgress: true,
         mcpAuth: {
           'http://localhost:3702/mcp': {
             type: 'oauth',

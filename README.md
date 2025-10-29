@@ -37,8 +37,8 @@ OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-
 <tr>
 <td width="33%">
 
-### 🛡️ TypeScript-First
-Full TypeScript support with type inference and IntelliSense for all APIs.
+### 🧩 Multi-Agent Crews
+Define specialized agents that autonomously coordinate based on descriptions. LLM automatically selects the right agent for each task - like automatic tool selection, but for agents.
 
 </td>
 <td width="33%">
@@ -70,8 +70,8 @@ Native Model Context Protocol support with connection pooling, tool discovery, a
 </td>
 <td width="33%">
 
-### 🧩 Sub-Agent Composition
-Build reusable agent components and compose them into larger workflows. Modular and testable.
+### 🛡️ TypeScript-First
+Full TypeScript support with type inference and IntelliSense for all APIs.
 
 </td>
 </tr>

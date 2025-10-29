@@ -33,6 +33,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate TOC and search indices
+        run: |
+          npm run generate-toc
+          npm run generate-search
+          npm run generate-suggestions
+
       - name: Run linter
         run: npm run lint
 

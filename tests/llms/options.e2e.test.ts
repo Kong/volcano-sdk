@@ -3,11 +3,6 @@ import { llmOpenAI, llmAnthropic, llmAzure, llmBedrock, llmLlama, llmMistral, ll
 
 describe('LLM Provider Options (E2E)', () => {
   it('OpenAI: uses optional parameters correctly', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping OpenAI options test - no API key');
-      return;
-    }
-    
     // Note: gpt-5-mini has reliability issues, use gpt-4o-mini for options testing
     const testModel = 'gpt-4o-mini';
     
@@ -34,11 +29,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Anthropic: uses optional parameters correctly', async () => {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.log('Skipping Anthropic options test - no API key');
-      return;
-    }
-    
     // Test max_tokens limits output
     const llmShort = llmAnthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -71,11 +61,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Azure: optional parameters (limited support)', async () => {
-    if (!process.env.AZURE_AI_API_KEY) {
-      console.log('Skipping Azure options test - no API key');
-      return;
-    }
-    
     // Azure Responses API does not support standard OpenAI parameters
     // This test verifies that the provider works, but Azure has no configurable options
     // See: https://learn.microsoft.com/en-us/azure/ai-services/openai/reference
@@ -94,17 +79,9 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Bedrock: uses optional parameters correctly', async () => {
-    const hasCredentials = process.env.AWS_ACCESS_KEY_ID || process.env.AWS_BEARER_TOKEN_BEDROCK;
-    const hasModel = process.env.BEDROCK_MODEL;
-    
-    if (!hasCredentials || !hasModel) {
-      console.log('Skipping Bedrock options test - no credentials or model');
-      return;
-    }
-    
     // Test temperature affects output diversity
     const llmLowTemp = llmBedrock({
-      model: process.env.BEDROCK_MODEL!,
+      model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0',
       region: process.env.AWS_REGION || 'us-east-1',
       ...(process.env.AWS_ACCESS_KEY_ID && {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -121,7 +98,7 @@ describe('LLM Provider Options (E2E)', () => {
     });
     
     const llmHighTemp = llmBedrock({
-      model: process.env.BEDROCK_MODEL!,
+      model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0',
       region: process.env.AWS_REGION || 'us-east-1',
       ...(process.env.AWS_ACCESS_KEY_ID && {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -148,14 +125,9 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Llama: uses optional parameters correctly', async () => {
-    if (!process.env.LLAMA_BASE_URL && !process.env.LLAMA_API_KEY) {
-      console.log('Skipping Llama options test - no endpoint configured');
-      return;
-    }
-    
     const llm = llmLlama({
       baseURL: process.env.LLAMA_BASE_URL || 'http://localhost:11434',
-      model: process.env.LLAMA_MODEL || 'llama3.2:3b',
+      model: process.env.LLAMA_MODEL || 'llama3.1:8b',
       ...(process.env.LLAMA_API_KEY && { apiKey: process.env.LLAMA_API_KEY }),
       options: {
         temperature: 0.7,
@@ -174,11 +146,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Mistral: uses optional parameters correctly', async () => {
-    if (!process.env.MISTRAL_API_KEY) {
-      console.log('Skipping Mistral options test - no API key');
-      return;
-    }
-    
     // Test max_tokens limits output length
     const llmShort = llmMistral({
       apiKey: process.env.MISTRAL_API_KEY!,
@@ -211,14 +178,9 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Vertex Studio: uses optional parameters correctly', async () => {
-    if (!process.env.GCP_VERTEX_API_KEY) {
-      console.log('Skipping Vertex Studio options test - no API key');
-      return;
-    }
-    
     // Test max_output_tokens limits response length
     const llmShort = llmVertexStudio({
-      model: process.env.VERTEX_MODEL || 'gemini-2.0-flash-lite',
+      model: process.env.VERTEX_MODEL || 'gemini-2.5-flash-lite',
       apiKey: process.env.GCP_VERTEX_API_KEY!,
       options: {
         temperature: 0.9,
@@ -229,7 +191,7 @@ describe('LLM Provider Options (E2E)', () => {
     });
     
     const llmLong = llmVertexStudio({
-      model: process.env.VERTEX_MODEL || 'gemini-2.0-flash-lite',
+      model: process.env.VERTEX_MODEL || 'gemini-2.5-flash-lite',
       apiKey: process.env.GCP_VERTEX_API_KEY!,
       options: {
         max_output_tokens: 200,

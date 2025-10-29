@@ -76,7 +76,7 @@ describe('OpenTelemetry E2E - Dist Package in ES Module Context', () => {
       });
 
       // Run an agent workflow with telemetry
-      const results = await agent({ llm: makeMockLLM(), telemetry })
+      const results = await agent({ llm: makeMockLLM(), telemetry, hideProgress: true })
         .then({ prompt: "Test step 1" })
         .then({ prompt: "Test step 2" })
         .run();

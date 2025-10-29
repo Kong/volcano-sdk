@@ -27,7 +27,7 @@ async function demonstrateProviders() {
   try {
     console.log("\nRunning multi-provider workflow...");
     
-    const results = await agent()
+    const results = await agent({})
       // Step 1: Use OpenAI for structured tool calling
       .then({ 
         llm: openai,

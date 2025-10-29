@@ -38,8 +38,16 @@ describe('MCP OAuth Authentication', () => {
   }, 30000);
   
   afterAll(async () => {
-    astroProc?.kill();
-    authProc?.kill();
+    if (astroProc) {
+      astroProc.kill('SIGKILL');
+      astroProc = null;
+    }
+    if (authProc) {
+      authProc.kill('SIGKILL');
+      authProc = null;
+    }
+    // Give processes time to terminate
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
   
   describe('without authentication', () => {
@@ -54,7 +62,7 @@ describe('MCP OAuth Authentication', () => {
         genStream: async function*(){}
       };
       
-      const results = await agent({ llm })
+      const results = await agent({ llm, hideProgress: true })
         .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
         .run();
       
@@ -78,7 +86,7 @@ describe('MCP OAuth Authentication', () => {
       // This should fail with 401 Unauthorized
       let error: any;
       try {
-        await agent({ llm })
+        await agent({ llm, hideProgress: true })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'San Francisco' } })
           .run();
       } catch (e) {
@@ -103,7 +111,7 @@ describe('MCP OAuth Authentication', () => {
       // Discovery should now throw instead of silently failing
       let error: any;
       try {
-        await agent({ llm })
+        await agent({ llm, hideProgress: true })
           .then({ prompt: 'Get weather for London', mcps: [authMcp] })
           .run();
       } catch (e) {
@@ -131,7 +139,7 @@ describe('MCP OAuth Authentication', () => {
       
       let error: any;
       try {
-        await agent({ llm })
+        await agent({ llm, hideProgress: true })
           .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
           .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'New York' } })
           .run();

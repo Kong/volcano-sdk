@@ -71,7 +71,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
     it('records start and end times for all spans', async () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'timing-test' });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Test timing" })
         .run();
       
@@ -94,7 +94,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
     it('records duration_ms attribute on step spans', async () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'duration-attr-test' });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Test duration attribute" })
         .run();
       
@@ -113,7 +113,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
     it('records llm.duration_ms attribute on step spans', async () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'llm-duration-test' });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Test LLM duration" })
         .run();
       
@@ -134,7 +134,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'mcp-timing-test' });
       const astro = mcp('http://localhost:3901/mcp');
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
         .run();
       
@@ -156,7 +156,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
     it('LLM spans have measurable duration', async () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'llm-span-timing' });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Test" })
         .run();
       
@@ -178,7 +178,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
     it('aggregates total duration on agent span', async () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'agent-total-duration' });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Step 1" })
         .then({ prompt: "Step 2" })
         .then({ prompt: "Step 3" })
@@ -200,7 +200,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
     it('span hierarchy shows parent-child timing relationships', async () => {
       const telemetry = createVolcanoTelemetry({ serviceName: 'hierarchy-test' });
       
-      await agent({ llm: makeMockLLM(), telemetry })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Parent step" })
         .run();
       

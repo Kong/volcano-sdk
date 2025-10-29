@@ -22,7 +22,7 @@ describe('agent retries', () => {
   it('immediate retry by default (delay 0)', async () => {
     vi.useFakeTimers();
     const llm = makeFlakyLlm(1);
-    const p = agent({ llm })
+    const p = agent({ llm, hideProgress: true })
       .then({ prompt: 'hello' })
       .run();
     await vi.runAllTimersAsync();
@@ -34,7 +34,7 @@ describe('agent retries', () => {
   it('delayed retry waits configured seconds between attempts', async () => {
     vi.useFakeTimers();
     const llm = makeFlakyLlm(1);
-    const p = agent({ llm, retry: { delay: 20, retries: 2 } })
+    const p = agent({ llm, hideProgress: true, retry: { delay: 20, retries: 2 } })
       .then({ prompt: 'hello' })
       .run();
     await vi.advanceTimersByTimeAsync(20_000);
@@ -46,7 +46,7 @@ describe('agent retries', () => {
   it('backoff retry increases wait time exponentially (seconds base)', async () => {
     vi.useFakeTimers();
     const llm = makeFlakyLlm(3);
-    const p = agent({ llm, retry: { backoff: 2, retries: 4 } })
+    const p = agent({ llm, hideProgress: true, retry: { backoff: 2, retries: 4 } })
       .then({ prompt: 'hello' })
       .run();
     await vi.advanceTimersByTimeAsync(1_000 + 2_000 + 4_000);
@@ -58,7 +58,7 @@ describe('agent retries', () => {
   it('per-step retry overrides agent retry', async () => {
     vi.useFakeTimers();
     const llm = makeFlakyLlm(1);
-    const p = agent({ llm, retry: { delay: 20, retries: 2 } })
+    const p = agent({ llm, hideProgress: true, retry: { delay: 20, retries: 2 } })
       .then({ prompt: 'A', retry: { delay: 0, retries: 2 } })
       .run();
     await vi.runAllTimersAsync();
@@ -70,7 +70,7 @@ describe('agent retries', () => {
   it('throws if both delay and backoff are set at agent level', async () => {
     const llm = makeFlakyLlm(0);
     await expect(async () => {
-      await agent({ llm, retry: { delay: 1, backoff: 2 } })
+      await agent({ llm, hideProgress: true, retry: { delay: 1, backoff: 2 } })
         .then({ prompt: 'x' })
         .run();
     }).rejects.toThrow();
@@ -79,7 +79,7 @@ describe('agent retries', () => {
   it('throws if both delay and backoff are set at step level', async () => {
     const llm = makeFlakyLlm(0);
     await expect(async () => {
-      await agent({ llm })
+      await agent({ llm, hideProgress: true })
         .then({ prompt: 'x', retry: { delay: 1, backoff: 2 } })
         .run();
     }).rejects.toThrow();

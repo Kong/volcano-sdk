@@ -1,13 +1,13 @@
 {
   "name": "volcano-sdk",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Build AI agents that seamlessly combine LLM reasoning with real-world actions via MCP tools — in just a few lines of TypeScript.",
   "author": "Kong <office@konghq.com>",
   "type": "module",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Kong/volcano-sdk.git"
+    "url": "git+https://github.com/Kong/volcano-sdk.git"
   },
   "homepage": "https://github.com/Kong/volcano-sdk",
   "bugs": {
@@ -36,8 +36,10 @@
     "prepublishOnly": "npm run clean && npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "pretest": "./scripts/kill-test-servers.sh",
+    "test": "NODE_OPTIONS='--no-deprecation' vitest run",
+    "test:watch": "NODE_OPTIONS='--no-deprecation' vitest",
+    "test:kill-servers": "./scripts/kill-test-servers.sh"
   },
   "peerDependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.895.0",
@@ -60,22 +62,29 @@
     }
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.895.0",
+    "@aws-sdk/credential-providers": "^3.895.0",
+    "@azure/identity": "^4.0.0",
     "@eslint/js": "^9.36.0",
+    "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-otlp-http": "^0.26.0",
     "@opentelemetry/sdk-metrics": "^2.1.0",
-    "@opentelemetry/sdk-node": "^0.205.0",
+    "@opentelemetry/sdk-node": "^0.207.0",
     "@opentelemetry/sdk-trace-base": "^2.1.0",
     "@opentelemetry/sdk-trace-node": "^2.1.0",
     "@types/node": "^24.5.2",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
+    "cors": "^2.8.5",
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
+    "express": "^5.1.0",
     "rimraf": "^6.0.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.1",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.4",
+    "zod": "^3.23.8"
   },
   "keywords": [
     "mcp",
@@ -91,8 +100,8 @@
     "volcano"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.1",
+    "@modelcontextprotocol/sdk": "^1.20.2",
     "ajv": "^8.17.1",
-    "openai": "^5.22.0"
+    "openai": "^6.7.0"
   }
 }

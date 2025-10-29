@@ -26,7 +26,7 @@ describe('latency metrics', () => {
       genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){}
     };
 
-    const res = await agent({ llm })
+    const res = await agent({ llm, hideProgress: true })
       .then({ prompt: 'hello' })
       .run();
 
@@ -53,7 +53,7 @@ describe('latency metrics', () => {
     it('captures mcp.ms for explicit tool call', async () => {
       const astro = mcp(`http://localhost:${PORT}/mcp`);
       const llm: any = { id: 'OpenAI-mock', model: 'mock', client: {}, gen: async () => 'OK', genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
-      const out = await agent({ llm })
+      const out = await agent({ llm, hideProgress: true })
         .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
         .run();
       const step = out[0];
@@ -73,7 +73,7 @@ describe('latency metrics', () => {
         },
         genStream: async function*(){}
       };
-      const out = await agent({ llm })
+      const out = await agent({ llm, hideProgress: true })
         .then({ prompt: 'auto', mcps: [astro] })
         .run();
       const step = out[0];

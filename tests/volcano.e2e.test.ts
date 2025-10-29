@@ -48,8 +48,16 @@ describe('volcano-sdk e2e with mock MCP servers', () => {
   }, 20000);
 
   afterAll(async () => {
-    astroProc?.kill();
-    favProc?.kill();
+    if (astroProc) {
+      astroProc.kill('SIGKILL');
+      astroProc = null;
+    }
+    if (favProc) {
+      favProc.kill('SIGKILL');
+      favProc = null;
+    }
+    // Give processes time to terminate
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
 
   it('chains sign lookup to favorites', async () => {
@@ -90,7 +98,7 @@ d2("agent default LLM", () => {
       genStream: async function* () {}
     };
 
-    const res = await agent({ llm: fake })
+    const res = await agent({ llm: fake , hideProgress: true })
       .then({ prompt: "hello" })
       .run();
 
@@ -104,7 +112,7 @@ d2("agent default LLM", () => {
     const A: any = { id: "OpenAI-A", model: "A", client: {}, gen: async (p: string) => { callsA.push(p); return "A"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
     const B: any = { id: "OpenAI-B", model: "B", client: {}, gen: async (p: string) => { callsB.push(p); return "B"; }, genWithTools: async () => ({ content: "", toolCalls: [] }), genStream: async function*(){} };
 
-    const res = await agent({ llm: A })
+    const res = await agent({ llm: A , hideProgress: true })
       .then({ prompt: "one" })
       .then({ prompt: "two", llm: B })
       .run();

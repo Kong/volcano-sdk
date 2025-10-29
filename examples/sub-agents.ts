@@ -57,7 +57,7 @@ if (process.env.ANTHROPIC_API_KEY) {
     .then({ prompt: "Rewrite with improvements applied" });
 
   console.log("\n=== Multi-LLM Sub-Agents ===");
-  const multiResult = await agent()
+  const multiResult = await agent({})
     .then({ llm: openai, prompt: "Text: 'The API is down and users are complaining.'" })
     .runAgent(claudeAnalyzer)
     .runAgent(gptWriter)

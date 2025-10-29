@@ -13,7 +13,7 @@ describe('agent pre/post hooks', () => {
       genStream: async function*(){} 
     };
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'hello',
         pre: () => { events.push('pre-1'); },
@@ -35,7 +35,7 @@ describe('agent pre/post hooks', () => {
       genStream: async function*(){} 
     };
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'step1',
         pre: () => { events.push('pre-1'); },
@@ -72,7 +72,7 @@ describe('agent pre/post hooks', () => {
     };
 
     try {
-      const results = await agent({ llm })
+      const results = await agent({ llm, hideProgress: true })
         .then({ 
           prompt: 'hello',
           pre: () => { 
@@ -122,7 +122,7 @@ describe('agent pre/post hooks', () => {
     };
 
     try {
-      await agent({ llm })
+      await agent({ llm, hideProgress: true })
         // LLM-only step with hooks
         .then({ 
           prompt: 'llm step',
@@ -153,7 +153,7 @@ describe('agent pre/post hooks', () => {
       genStream: async function*(){} 
     };
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'step1',
         pre: () => { /* no-op */ },
@@ -183,7 +183,7 @@ describe('agent pre/post hooks', () => {
       genStream: async function*(){} 
     };
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'increment test',
         pre: () => { sharedCounter += 10; },
@@ -210,7 +210,7 @@ describe('agent pre/post hooks', () => {
       genStream: async function*(){} 
     };
 
-    await agent({ llm, retry: { delay: 0, retries: 2 } })
+    await agent({ llm, hideProgress: true, retry: { delay: 0, retries: 2 } })
       .then({ 
         prompt: 'retry test',
         pre: () => { events.push('pre'); },

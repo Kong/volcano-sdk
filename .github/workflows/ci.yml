@@ -22,10 +22,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf package-lock.json node_modules
+          npm install
 
       - name: Lint
         run: npm run lint
@@ -38,9 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.cache/ollama-models
-          key: ollama-models-${{ runner.os }}-llama3.2-3b-v3
+          key: ollama-models-${{ runner.os }}-llama3.1-8b-v1
           restore-keys: |
-            ollama-models-${{ runner.os }}-llama3.2-3b-
+            ollama-models-${{ runner.os }}-llama3.1-8b-
             ollama-models-${{ runner.os }}-
 
       - name: Install Ollama
@@ -48,13 +49,20 @@ jobs:
           curl -fsSL https://ollama.com/install.sh | sh
 
       - name: Setup Ollama with cached models
+        env:
+          OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
         run: |
           mkdir -p "$OLLAMA_MODELS"
           echo "Cache hit: ${{ steps.cache-ollama.outputs.cache-hit }}"
+          echo "OLLAMA_MODELS path: $OLLAMA_MODELS"
+          ls -la "$OLLAMA_MODELS" || echo "Cache directory empty"
+          
+          # Export for all ollama commands in this step
+          export OLLAMA_MODELS="$OLLAMA_MODELS"
           
           # Start Ollama with custom model directory
           echo "Starting Ollama server..."
-          nohup env OLLAMA_MODELS="$OLLAMA_MODELS" ollama serve > ollama.log 2>&1 &
+          nohup ollama serve > ollama.log 2>&1 &
           
           # Wait for Ollama to start
           echo "Waiting for Ollama to start..."
@@ -76,27 +84,27 @@ jobs:
           
           # List available models for debugging
           echo "Available models in Ollama:"
-          env OLLAMA_MODELS="$OLLAMA_MODELS" ollama list || echo "No models found"
+          ollama list || echo "No models found"
           
           # Check if model exists or download it
-          echo "Checking for llama3.2:3b model..."
-          if env OLLAMA_MODELS="$OLLAMA_MODELS" ollama show llama3.2:3b >/dev/null 2>&1; then
-            echo "✅ Model llama3.2:3b found!"
+          echo "Checking for llama3.1:8b model..."
+          if ollama show llama3.1:8b >/dev/null 2>&1; then
+            echo "✅ Model llama3.1:8b found in cache!"
           else
-            echo "📥 Model not found, downloading llama3.2:3b..."
-            echo "This will take 2-3 minutes on first run, but will be cached for future runs."
-            env OLLAMA_MODELS="$OLLAMA_MODELS" ollama pull llama3.2:3b
+            echo "📥 Model not found, downloading llama3.1:8b..."
+            echo "This will take 3-5 minutes on first run, but will be cached for future runs."
+            ollama pull llama3.1:8b
             echo "✅ Model download complete!"
           fi
           
           # Verify model is available
           echo "Final model verification:"
-          env OLLAMA_MODELS="$OLLAMA_MODELS" ollama list
+          ollama list
           
           # Verify model is working
           echo "Testing Ollama functionality..."
           test_response=$(curl -s http://127.0.0.1:11434/api/generate -d '{
-            "model": "llama3.2:3b",
+            "model": "llama3.1:8b",
             "prompt": "Say OK",
             "stream": false
           }' -H "Content-Type: application/json")
@@ -109,22 +117,28 @@ jobs:
             echo "Response: $test_response"
             exit 1
           fi
+          
+          # Verify models are in cache directory for next run
+          echo "Verifying cache will be saved..."
+          echo "Contents of OLLAMA_MODELS directory:"
+          find "$OLLAMA_MODELS" -type f -exec ls -lh {} \; 2>/dev/null || echo "No files found"
+          echo "Total cache size:"
+          du -sh "$OLLAMA_MODELS" 2>/dev/null || echo "Cannot measure"
+          
+          # Also check default Ollama location to see if models went there instead
+          echo "Checking default Ollama location (~/.ollama):"
+          du -sh ~/.ollama 2>/dev/null || echo "Default location empty or doesn't exist"
 
       - name: Run tests (unit/e2e)
         run: npm test
         env:
+          OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL: https://api.openai.com/v1
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           LLAMA_BASE_URL: http://127.0.0.1:11434
           LLAMA_MODEL: llama3.2:3b
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
-          AWS_REGION: us-east-1
-          BEDROCK_MODEL: amazon.nova-micro-v1:0
           GCP_VERTEX_API_KEY: ${{ secrets.GCP_VERTEX_API_KEY }}
-          VERTEX_MODEL: gemini-2.5-flash-lite
           AZURE_AI_API_KEY: ${{ secrets.AZURE_AI_API_KEY }}
-          AZURE_AI_ENDPOINT: https://volcano-sdk.openai.azure.com/openai/responses
-          AZURE_AI_MODEL: gpt-5-mini

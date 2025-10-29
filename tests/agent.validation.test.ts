@@ -17,7 +17,7 @@ describe('tool argument validation', () => {
     ]);
     let err: any;
     try {
-      await agent({ llm })
+      await agent({ llm, hideProgress: true })
         .then({ mcp: svc, tool: 'do_thing', args: { x: 'not-a-number' } as any })
         .run();
     } catch (e) { err = e; }
@@ -42,7 +42,7 @@ describe('tool argument validation', () => {
     } as any;
     let err: any;
     try {
-      await agent({ llm })
+      await agent({ llm, hideProgress: true })
         .then({ prompt: 'auto', mcps: [svc] })
         .run();
     } catch (e) { err = e; }

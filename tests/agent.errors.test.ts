@@ -4,7 +4,7 @@ import { agent, mcp, ValidationError, AgentConcurrencyError, TimeoutError, Retry
 describe('typed errors', () => {
   it('concurrency guard throws AgentConcurrencyError', async () => {
     const llm: any = { id: 'mock', model: 'm', client: {}, gen: async () => 'OK', genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
-    const a = agent({ llm });
+    const a = agent({ llm, hideProgress: true });
     const p = a.then({ prompt: 'one' }).run();
     let err: any;
     try { await a.run(); } catch (e) { err = e; }
@@ -16,7 +16,7 @@ describe('typed errors', () => {
     const llm: any = { id: 'mock', model: 'm', client: {}, gen: async () => { await new Promise(r => setTimeout(r, 50)); return 'OK'; }, genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
     let err: any;
     try {
-      await agent({ llm, timeout: 1 })
+      await agent({ llm, timeout: 1 , hideProgress: true })
         .then({ prompt: 'slow', timeout: 0 })
         .run();
     } catch (e) { err = e; }
@@ -29,7 +29,7 @@ describe('typed errors', () => {
     const llm: any = { id: 'mock', model: 'm', client: {}, gen: async () => { const e: any = new Error('transient'); e.status = 500; throw e; }, genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
     let err: any;
     try {
-      await agent({ llm, retry: { delay: 0, retries: 2 } })
+      await agent({ llm, hideProgress: true, retry: { delay: 0, retries: 2 } })
         .then({ prompt: 'llm-only failing' })
         .run();
     } catch (e) { err = e; }
@@ -42,7 +42,7 @@ describe('typed errors', () => {
     const llm: any = { id: 'openai-mock', model: 'm', client: {}, gen: async () => { const err: any = new Error('429'); err.status = 429; throw err; }, genWithTools: async () => ({ content: '', toolCalls: [] }), genStream: async function*(){} };
     let err: any;
     try {
-      await agent({ llm }).then({ prompt: 'simple' }).run();
+      await agent({ llm, hideProgress: true }).then({ prompt: 'simple' }).run();
     } catch (e) { err = e; }
     expect(err).toBeInstanceOf(LLMError);
     expect(err.meta?.provider).toMatch(/^llm:/);
@@ -54,7 +54,7 @@ describe('typed errors', () => {
     const svc = mcp('http://localhost:3993/mcp'); // likely not running
     let err: any;
     try {
-      await agent({ llm })
+      await agent({ llm, hideProgress: true })
         .then({ mcp: svc, tool: 'any' })
         .run();
     } catch (e) { err = e; }
