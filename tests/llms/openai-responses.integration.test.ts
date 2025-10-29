@@ -66,7 +66,7 @@ describe('OpenAI Structured Outputs (Responses API)', () => {
       }
     });
 
-    const results = await agent({ llm })
+    const results = await agent({ llm , hideProgress: true })
       .then({ prompt: 'Analyze this text: "The weather is great today". Return a summary and confidence (0-1).' })
       .run();
 

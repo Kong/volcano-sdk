@@ -49,7 +49,7 @@ describe('agent iterative tool loop (unit - mocked LLM)', () => {
     // mock MCP handle and stub withMCP by calling the tool directly via discovery schema
     const astro = mcp(`http://localhost:${PORT}/mcp`);
 
-    const out = await agent({ llm: fakeLlm })
+    const out = await agent({ llm: fakeLlm , hideProgress: true })
       .then({ prompt: 'Find sign', mcps: [astro] })
       .run();
 

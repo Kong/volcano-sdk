@@ -131,8 +131,16 @@ export async function executeRetryUntil(
 }
 
 export async function executeRunAgent(
-  subAgent: AgentBuilder
+  subAgent: AgentBuilder,
+  parentStepIndex?: number,
+  parentTotalSteps?: number
 ): Promise<StepResult[]> {
+  // Mark this as a sub-agent run to suppress progress headers/footers
+  // but keep step progress for explicit composition
+  (subAgent as any).__isSubAgent = true;
+  (subAgent as any).__isExplicitSubAgent = true; // For .runAgent() - shows steps
+  (subAgent as any).__parentStepIndex = parentStepIndex;
+  (subAgent as any).__parentTotalSteps = parentTotalSteps;
   // Run the sub-agent and return its results
   return await subAgent.run();
 }

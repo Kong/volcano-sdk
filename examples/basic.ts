@@ -13,7 +13,6 @@ import { agent, llmOpenAI, mcp } from "../dist/volcano-sdk.js";
 
   const user = { name: "Ava Rossi", from: "Naples, Italy", birthdate: "1993-07-11" };
 
-  console.log("=== EXPLICIT APPROACH (Original) ===");
   const explicitResults = await agent({ llm })
     .then({ prompt: `Best coffee for ${user.name} (${user.from}, born ${user.birthdate})` })
     .then({ mcp: cafe, tool: "order_item", args: { item_id: "espresso" } })

@@ -34,7 +34,12 @@ describe('MCP OAuth - Direct Client Validation', () => {
   }, 30000);
   
   afterAll(async () => {
-    authProc?.kill();
+    if (authProc) {
+      authProc.kill('SIGKILL');
+      authProc = null;
+    }
+    // Give processes time to terminate
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
   
   it('MCP client fails to connect without OAuth token', async () => {

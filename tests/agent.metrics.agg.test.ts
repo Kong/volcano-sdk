@@ -37,7 +37,7 @@ describe('aggregated latency metrics', () => {
     };
     llm.calls = 0;
 
-    const out = await agent({ llm })
+    const out = await agent({ llm, hideProgress: true })
       .then({ prompt: 'first-llm' })
       .then({ mcp: astro, tool: 'get_sign', args: { birthdate: '1993-07-11' } })
       .then({ prompt: 'second-llm' })

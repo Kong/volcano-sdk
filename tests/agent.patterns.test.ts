@@ -23,7 +23,7 @@ describe('Advanced Workflow Patterns', () => {
     it('executes multiple steps in parallel (array mode)', async () => {
       const llm = createMockLLM(['Step 1 output', 'Step 2 output', 'Step 3 output']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .parallel([
           { prompt: 'Task 1' },
           { prompt: 'Task 2' },
@@ -42,7 +42,7 @@ describe('Advanced Workflow Patterns', () => {
     it('executes multiple steps in parallel (named dictionary mode)', async () => {
       const llm = createMockLLM(['Sentiment: positive', 'Entities: AI,ML', 'Summary: tech']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .parallel({
           sentiment: { prompt: 'Analyze sentiment' },
           entities: { prompt: 'Extract entities' },
@@ -62,7 +62,7 @@ describe('Advanced Workflow Patterns', () => {
     it('branches based on condition (true branch)', async () => {
       const llm = createMockLLM(['YES', 'Spam detected']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Is this spam? Reply YES or NO' })
         .branch(
           (history) => history[0].llmOutput?.includes('YES') || false,
@@ -81,7 +81,7 @@ describe('Advanced Workflow Patterns', () => {
     it('branches based on condition (false branch)', async () => {
       const llm = createMockLLM(['NO', 'Normal email processed']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Is this spam? Reply YES or NO' })
         .branch(
           (history) => history[0].llmOutput?.includes('YES') || false,
@@ -100,7 +100,7 @@ describe('Advanced Workflow Patterns', () => {
     it('switches based on value', async () => {
       const llm = createMockLLM(['HIGH', 'Escalated to manager']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Classify priority: HIGH, MEDIUM, or LOW' })
         .switch(
           (history) => history[0].llmOutput?.trim() || '',
@@ -121,7 +121,7 @@ describe('Advanced Workflow Patterns', () => {
     it('uses default case when no match', async () => {
       const llm = createMockLLM(['UNKNOWN', 'Handled by default']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Classify' })
         .switch(
           (history) => history[0].llmOutput?.trim() || '',
@@ -142,7 +142,7 @@ describe('Advanced Workflow Patterns', () => {
       const responses = ['CONTINUE', 'CONTINUE', 'COMPLETE'];
       const llm = createMockLLM(responses);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .while(
           (history) => {
             if (history.length === 0) return true;
@@ -163,7 +163,7 @@ describe('Advanced Workflow Patterns', () => {
     it('while loop respects maxIterations', async () => {
       const llm = createMockLLM(['CONTINUE']); // Always CONTINUE
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .while(
           () => true, // Always true
           (a) => a.then({ prompt: 'Process' }),
@@ -178,7 +178,7 @@ describe('Advanced Workflow Patterns', () => {
       const llm = createMockLLM(['Email 1 sent', 'Email 2 sent', 'Email 3 sent']);
       const emails = ['alice@test.com', 'bob@test.com', 'charlie@test.com'];
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .forEach(emails, (email, a) => 
           a.then({ prompt: `Send email to ${email}` })
         )
@@ -193,7 +193,7 @@ describe('Advanced Workflow Patterns', () => {
     it('retryUntil succeeds on first try', async () => {
       const llm = createMockLLM(['VALID haiku']);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .retryUntil(
           (a) => a.then({ prompt: 'Generate haiku' }),
           (result) => result.llmOutput?.includes('VALID') || false,
@@ -223,7 +223,7 @@ describe('Advanced Workflow Patterns', () => {
         genStream: async function* () { yield 'test'; }
       };
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .retryUntil(
           (a) => a.then({ prompt: 'Generate haiku' }),
           (result) => result.llmOutput?.includes('SUCCESS') || false,
@@ -247,7 +247,7 @@ describe('Advanced Workflow Patterns', () => {
       };
       
       await expect(
-        agent({ llm: llm as any })
+        agent({ llm: llm as any , hideProgress: true })
           .retryUntil(
             (a) => a.then({ prompt: 'Generate haiku' }),
             (result) => result.llmOutput?.includes('SUCCESS') || false,
@@ -263,11 +263,11 @@ describe('Advanced Workflow Patterns', () => {
       const llm = createMockLLM(['Intent extracted', 'Level determined', 'Response drafted']);
       
       // Define a reusable sub-agent
-      const emailAnalyzer = agent({ llm: llm as any })
+      const emailAnalyzer = agent({ llm: llm as any , hideProgress: true })
         .then({ prompt: 'Extract intent' })
         .then({ prompt: 'Classify urgency' });
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .runAgent(emailAnalyzer)
         .then({ prompt: 'Draft response' })
         .run();
@@ -281,10 +281,10 @@ describe('Advanced Workflow Patterns', () => {
     it('composes multiple sub-agents', async () => {
       const llm = createMockLLM(['R1', 'R2', 'R3', 'R4']);
       
-      const agent1 = agent({ llm: llm as any }).then({ prompt: 'Step A' });
-      const agent2 = agent({ llm: llm as any }).then({ prompt: 'Step B' });
+      const agent1 = agent({ llm: llm as any , hideProgress: true }).then({ prompt: 'Step A' });
+      const agent2 = agent({ llm: llm as any , hideProgress: true }).then({ prompt: 'Step B' });
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .runAgent(agent1)
         .runAgent(agent2)
         .run();
@@ -303,7 +303,7 @@ describe('Advanced Workflow Patterns', () => {
         'Item 1 processed', 'Item 2 processed' // forEach
       ]);
       
-      const results = await agent({ llm: llm as any })
+      const results = await agent({ llm: llm as any , hideProgress: true })
         .parallel({
           sentiment: { prompt: 'Analyze sentiment' },
           intent: { prompt: 'Extract intent' },

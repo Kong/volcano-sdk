@@ -21,7 +21,7 @@ const results = await agent({ llm })
 console.log(results); // Array of all StepResult objects
 console.log(results[0].llmOutput); // First step output
 console.log(results[1].llmOutput); // Second step output
-console.log(results[results.length - 1].totalDurationMs); // Total time
+console.log(results.at(-1).totalDurationMs); // Total time
 ```
 
 ### With Logging Callback
@@ -176,6 +176,262 @@ for await (const step of agent({ llm })
 ```
 
 **💡 Precedence:** Step-level `onToken` takes precedence over stream-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and stream-level callback won't receive those tokens.
+
+## Autonomous Multi-Agent Crews ⭐
+
+Build crews of specialized agents that automatically coordinate with each other—like automatic tool selection, but for agents!
+
+Define agents with names and descriptions, then let the LLM coordinator intelligently route tasks to the right agent. No manual orchestration, no complex state machines—just describe what each agent does.
+
+### How It Works
+
+```typescript
+import { agent, llmOpenAI } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+// 1. Define specialized agents with clear roles
+const researcher = agent({
+  llm,
+  name: 'researcher',
+  description: 'Analyzes topics, gathers data, and provides factual information. Use when you need research or analysis.'
+});
+
+const writer = agent({
+  llm,
+  name: 'writer',
+  description: 'Creates engaging, well-structured articles and content. Use when you need creative writing.'
+});
+
+// 2. Create a coordinator that autonomously delegates tasks
+const results = await agent({ llm })
+  .then({
+    prompt: 'Create a comprehensive blog post about AI safety',
+    agents: [researcher, writer],
+    maxAgentIterations: 5  // Allow multiple agent calls
+  })
+  .run();
+
+// The coordinator automatically:
+// - Decides which agent to use based on descriptions
+// - Delegates "research AI safety" to researcher
+// - Delegates "write blog post" to writer
+// - Coordinates between them until task complete
+```
+
+### Why This Matters
+
+🎯 **No Manual Routing** - The LLM coordinator reads agent descriptions and decides which one to use  
+🔄 **Automatic Coordination** - Agents can call each other iteratively until the task is complete  
+🧩 **Composable** - Each agent can be a complex multi-step workflow itself  
+⚡ **Flexible** - Add/remove agents without changing coordinator logic  
+🎨 **Natural** - Just describe what each agent does—no complex orchestration code
+
+### Real-World Example
+
+```typescript
+const dataAnalyst = agent({
+  llm,
+  name: 'dataAnalyst',
+  description: 'Analyzes data, creates reports, extracts insights from numbers'
+}).then({ prompt: 'Load dataset' })
+  .then({ prompt: 'Run statistical analysis' })
+  .then({ prompt: 'Identify trends' });
+
+const codeReviewer = agent({
+  llm,
+  name: 'codeReviewer',  
+  description: 'Reviews code, finds bugs, suggests improvements'
+});
+
+const documentor = agent({
+  llm,
+  name: 'documentor',
+  description: 'Writes clear documentation and technical guides'
+});
+
+// Coordinator handles complex task automatically
+await agent({ llm })
+  .then({
+    prompt: 'Analyze our user data from Q4 and create a comprehensive report with recommendations',
+    agents: [dataAnalyst, codeReviewer, documentor],
+    maxAgentIterations: 10
+  })
+  .run();
+
+// Coordinator autonomously:
+// 1. Uses dataAnalyst to crunch numbers
+// 2. Might use codeReviewer if code issues found
+// 3. Uses documentor to write the final report
+```
+
+**[See Multi-Agent Crews in Advanced Patterns →](https://volcano.dev/docs/patterns#sub-agent-composition)**
+
+## Events & Progress Tracking
+
+Volcano provides rich event hooks and beautiful built-in progress output for real-time visibility into workflow execution.
+
+### Built-In Progress Output
+
+Gorgeous TTY progress is **enabled by default** for all workflows:
+
+```typescript
+agent({ llm })
+  .then({ prompt: "Analyze data" })
+  .then({ prompt: "Generate insights", agents: [researcher, writer] })
+  .run();
+```
+
+To disable progress output:
+
+```typescript
+agent({ llm, hideProgress: true })
+  .then({ prompt: "Silent execution" })
+  .run();
+```
+
+**Output:**
+```
+🌋 Volcano SDK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔷 Step 1/2: Analyze data
+   💭 GPT-4o | 127 tokens | 2.3s | ⚡ 55 tok/s
+✅ Complete (2.3s)
+
+🔷 Step 2/2: Generate insights
+   ⚡ researcher → Researching...
+      💭 234 tokens | 2.4s | ⚡ 98 tok/s
+   ✅ researcher complete (612 chars, 2.4s)
+   
+   ⚡ writer → Creating content...
+      💭 412 tokens | 3.8s | ⚡ 108 tok/s
+   ✅ writer complete (934 chars, 3.8s)
+✅ Complete (6.2s)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Workflow complete! 2 steps in 8.5s
+```
+
+**Features:**
+- ✨ Animated live updates
+- 📊 Token counts and throughput
+- ⏱️ Real-time timing
+- 🎨 TTY-aware (safe for CI logs)
+- 🔄 Works for all step types
+
+### Custom Event Handlers
+
+#### Agent Lifecycle Events
+
+Track autonomous agent coordination:
+
+```typescript
+.then({
+  agents: [researcher, writer, editor],
+  
+  onAgentEvent: (event) => {
+    if (event.type === 'start') {
+      console.log(`Starting ${event.agentName}: ${event.task}`);
+      startTimer(event.agentName);
+    } else if (event.type === 'complete') {
+      console.log(`${event.agentName} done: ${event.result.length} chars in ${event.durationMs}ms`);
+      logMetrics(event);
+    } else if (event.type === 'error') {
+      console.error(`${event.agentName} failed: ${event.error}`);
+      sendAlert(event);
+    }
+  }
+})
+```
+
+**Event Types:**
+- `start` - Agent begins execution
+- `complete` - Agent finishes successfully
+- `error` - Agent encounters error
+
+#### Token-Level Events with Agent Context
+
+When using agent coordination, `onToken` receives enhanced metadata:
+
+```typescript
+.then({
+  agents: [researcher, writer],
+  
+  onToken: (token, meta) => {
+    if (meta.agentName) {
+      // Inside agent execution
+      console.log(`${meta.agentName}: token #${meta.tokenCount}`);
+      sendToSSE({ agent: meta.agentName, token, count: meta.tokenCount });
+    } else {
+      // Regular step
+      console.log(`${meta.llmProvider}: token`);
+    }
+  }
+})
+```
+
+**Enhanced TokenMetadata fields:**
+- `agentName` - Which agent is executing (when in agent coordination)
+- `agentTask` - Task delegated to the agent
+- `tokenCount` - Total tokens processed by this agent
+
+#### Combining Progress + Custom Events
+
+Built-in progress + custom handlers:
+
+```typescript
+agent({ llm })  // Progress enabled by default
+  .then({
+    agents: [researcher, writer],
+    
+    // Add custom logic without losing default progress
+    onAgentEvent: (event) => {
+      // This OVERRIDES default - but you can call both:
+      if (event.type === 'complete') {
+        sendToAnalytics(event);  // Your custom logic
+      }
+    }
+  })
+  .run();
+```
+
+**💡 Tip:** If you provide custom `onAgentEvent` or `onToken`, the default progress for that callback is disabled. Progress is enabled by default; use `hideProgress: true` to disable it entirely.
+
+### SSE Integration Example
+
+Perfect for real-time web UIs:
+
+```typescript
+app.post('/api/create-content', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  
+  await agent({ llm })
+    .then({
+      prompt: req.body.prompt,
+      agents: [researcher, writer, editor],
+      
+      onAgentEvent: (event) => {
+        res.write(`data: ${JSON.stringify({ type: 'agent', ...event })}\n\n`);
+      },
+      
+      onToken: (token, meta) => {
+        if (meta.agentName) {
+          res.write(`data: ${JSON.stringify({ 
+            type: 'token',
+            agent: meta.agentName,
+            token,
+            count: meta.tokenCount
+          })}\n\n`);
+        }
+      }
+    })
+    .run();
+  
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+```
 
 ## Retries & Timeouts
 

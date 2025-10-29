@@ -25,14 +25,20 @@ const myAgent = agent({
 
 ### Options
 
-| Option                  | Type        | Default          | Description                              |
-| ----------------------- | ----------- | ---------------- | ---------------------------------------- |
-| `llm`                   | LLMHandle   | -                | Default LLM provider for all steps       |
-| `instructions`          | string      | -                | Global system instructions               |
-| `timeout`               | number      | 60               | Default timeout per step (seconds)       |
-| `retry`                 | RetryConfig | `{ retries: 3 }` | Retry configuration                      |
-| `contextMaxChars`       | number      | 20480            | Soft cap for injected context size       |
-| `contextMaxToolResults` | number      | 8                | Number of recent tool results to include |
+| Option                  | Type        | Default                      | Description                              |
+| ----------------------- | ----------- | ---------------------------- | ---------------------------------------- |
+| `llm`                   | LLMHandle   | -                            | Default LLM provider for all steps       |
+| `instructions`          | string      | -                            | Global system instructions               |
+| `timeout`               | number      | 60                           | Default timeout per step (seconds)       |
+| `retry`                 | RetryConfig | `{ retries: 3, delay: 0 }`   | Retry configuration                      |
+| `contextMaxChars`       | number      | 20480                        | Soft cap for injected context size       |
+| `contextMaxToolResults` | number      | 8                            | Number of recent tool results to include |
+| `maxToolIterations`     | number      | 4                            | Max tool calls per automatic step        |
+| `hideProgress`          | boolean     | false                        | Suppress progress output                 |
+| `telemetry`             | object      | -                            | OpenTelemetry configuration              |
+| `mcpAuth`               | object      | -                            | Agent-level MCP authentication           |
+| `name`                  | string      | -                            | Agent name (for crews/composition)       |
+| `description`           | string      | -                            | Agent description (for crews)            |
 
 ### Methods
 
@@ -187,7 +193,7 @@ console.log(results[0].durationMs); // Step duration
 console.log(results[0].llmMs); // LLM time
 
 // Access aggregated metrics (on last step)
-const last = results[results.length - 1];
+const last = results.at(-1);
 console.log(last.totalDurationMs); // Total workflow time
 console.log(last.totalLlmMs); // Total LLM time
 console.log(last.totalMcpMs); // Total MCP time
@@ -199,7 +205,7 @@ Configuration for retry behavior:
 
 ```typescript
 type RetryConfig = {
-  delay?: number; // Seconds to wait between retries (mutually exclusive with backoff)
+  delay?: number; // Seconds to wait between retries (default: 0, mutually exclusive with backoff)
   backoff?: number; // Exponential factor (waits 1s, factor^n each retry)
   retries?: number; // Total attempts including first (default: 3)
 };
@@ -208,8 +214,8 @@ type RetryConfig = {
 ### Examples
 
 ```typescript
-// Immediate retry
-{ retries: 3 }
+// Immediate retry (default)
+{ retries: 3, delay: 0 }
 
 // Delayed retry (wait 20s between attempts)
 { delay: 20, retries: 3 }

@@ -21,7 +21,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results = await agent({ llm: mockLLM })
+      const results = await agent({ llm: mockLLM , hideProgress: true })
         .then({
           prompt: 'Say hello',
           onToken: (token: string) => {
@@ -51,7 +51,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results = await agent({ llm: mockLLM })
+      const results = await agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'Test' })
         .run();
 
@@ -80,7 +80,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results = await agent({ llm: mockLLM })
+      const results = await agent({ llm: mockLLM , hideProgress: true })
         .then({
           prompt: 'This is step 1',
           onToken: (token) => step1Tokens.push(token),
@@ -119,7 +119,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results = await agent({ llm: mockLLM })
+      const results = await agent({ llm: mockLLM , hideProgress: true })
         .then({
           prompt: 'Test with mcps',
           mcps: [], // Triggers automatic tool selection path
@@ -157,7 +157,7 @@ describe('Token-level streaming', () => {
       };
 
       const results: any[] = [];
-      for await (const step of agent({ llm: mockLLM })
+      for await (const step of agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'Test prompt' })
         .stream({
           onToken: (token, meta) => {
@@ -196,7 +196,7 @@ describe('Token-level streaming', () => {
       };
 
       const results: any[] = [];
-      for await (const step of agent({ llm: mockLLM })
+      for await (const step of agent({ llm: mockLLM , hideProgress: true })
         .then({
           prompt: 'Test',
           onToken: (token) => {
@@ -282,7 +282,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      for await (const step of agent({ llm: mockLLM })
+      for await (const step of agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'No step handler' })
         .then({ prompt: 'Has step handler', onToken: () => {} })
         .then({ prompt: 'No step handler again' })
@@ -316,7 +316,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      for await (const step of agent({ llm: mockLLM })
+      for await (const step of agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'First' })
         .then({ prompt: 'Second' })
         .stream({
@@ -347,7 +347,7 @@ describe('Token-level streaming', () => {
         },
       };
 
-      for await (const step of agent({ llm: mockLLM })
+      for await (const step of agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'Test' })
         .stream((step, stepIndex) => {
           completedSteps.push({ stepIndex, output: step.llmOutput });

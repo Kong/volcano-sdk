@@ -3,11 +3,6 @@ import { agent, llmOpenAI, llmBedrock, type TokenMetadata } from '../src/volcano
 
 describe('Token streaming e2e (live APIs)', () => {
   it('validates per-step onToken with live OpenAI', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping: OPENAI_API_KEY not set');
-      return;
-    }
-
     const tokens: string[] = [];
     let tokenCount = 0;
 
@@ -16,7 +11,7 @@ describe('Token streaming e2e (live APIs)', () => {
       model: 'gpt-4o-mini'
     });
 
-    const results = await agent({ llm })
+    const results = await agent({ llm, hideProgress: true })
       .then({
         prompt: 'Say "Hello World" exactly.',
         onToken: (token: string) => {
@@ -40,11 +35,6 @@ describe('Token streaming e2e (live APIs)', () => {
   });
 
   it('validates stream-level onToken with metadata using live OpenAI', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping: OPENAI_API_KEY not set');
-      return;
-    }
-
     const tokens: string[] = [];
     const metadata: TokenMetadata[] = [];
 
@@ -54,7 +44,7 @@ describe('Token streaming e2e (live APIs)', () => {
     });
 
     const results: any[] = [];
-    for await (const step of agent({ llm })
+    for await (const step of agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 3.' })
       .stream({
         onToken: (token, meta) => {
@@ -82,15 +72,6 @@ describe('Token streaming e2e (live APIs)', () => {
   });
 
   it('validates multi-step with OpenAI and Bedrock with mixed onToken callbacks', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping: OPENAI_API_KEY not set');
-      return;
-    }
-    if (!process.env.AWS_BEARER_TOKEN_BEDROCK) {
-      console.log('Skipping: AWS_BEARER_TOKEN_BEDROCK not set');
-      return;
-    }
-
     const step1Tokens: string[] = [];
     const streamTokens: string[] = [];
     const streamMetadata: TokenMetadata[] = [];
@@ -154,12 +135,7 @@ describe('Token streaming e2e (live APIs)', () => {
     expect(results[1].llmOutput).toContain('Bedrock');
   });
 
-  it('validates handledByStep flag accurately in mixed scenarios', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping: OPENAI_API_KEY not set');
-      return;
-    }
-
+  it('validates handledByStep flag accurately in mixed scenarios', { timeout: 30000 }, async () => {
     const allMetadata: TokenMetadata[] = [];
     const step2Tokens: string[] = [];
 
@@ -169,7 +145,7 @@ describe('Token streaming e2e (live APIs)', () => {
     });
 
     const results: any[] = [];
-    for await (const step of agent({ llm })
+    for await (const step of agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'Say "Step1".',
         // No step-level onToken - uses stream-level
@@ -217,17 +193,13 @@ describe('Token streaming e2e (live APIs)', () => {
 
     // Verify all steps completed
     expect(results).toHaveLength(3);
-    expect(results[0].llmOutput).toContain('Step1');
-    expect(results[1].llmOutput).toContain('Step2');
-    expect(results[2].llmOutput).toContain('Step3');
+    // Allow for minor formatting variations (Step1, Step 1, Step 1., etc)
+    expect(results[0].llmOutput.replace(/\s+/g, '')).toMatch(/Step1/i);
+    expect(results[1].llmOutput.replace(/\s+/g, '')).toMatch(/Step2/i);
+    expect(results[2].llmOutput.replace(/\s+/g, '')).toMatch(/Step3/i);
   });
 
   it('validates onStep callback works alongside onToken', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping: OPENAI_API_KEY not set');
-      return;
-    }
-
     const tokens: string[] = [];
     const completedSteps: Array<{ index: number; duration: number | undefined }> = [];
 
@@ -237,7 +209,7 @@ describe('Token streaming e2e (live APIs)', () => {
     });
 
     const results: any[] = [];
-    for await (const step of agent({ llm })
+    for await (const step of agent({ llm, hideProgress: true })
       .then({ prompt: 'Say "One".' })
       .then({ prompt: 'Say "Two".' })
       .stream({
@@ -268,11 +240,6 @@ describe('Token streaming e2e (live APIs)', () => {
   });
 
   it('validates backward compatibility with old stream(callback) API', async () => {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('Skipping: OPENAI_API_KEY not set');
-      return;
-    }
-
     const completedSteps: any[] = [];
 
     const llm = llmOpenAI({
@@ -282,7 +249,7 @@ describe('Token streaming e2e (live APIs)', () => {
 
     const results: any[] = [];
     // Old API: pass callback directly (no object)
-    for await (const step of agent({ llm })
+    for await (const step of agent({ llm, hideProgress: true })
       .then({ prompt: 'Say "Test".' })
       .stream((step, stepIndex) => {
         completedSteps.push({ stepIndex, output: step.llmOutput });
