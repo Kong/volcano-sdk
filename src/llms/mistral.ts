@@ -33,6 +33,7 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
   }
   const model = cfg.model;
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
   let client = cfg.client;
 
   if (!client && (cfg.apiKey || cfg.baseURL)) {
@@ -88,6 +89,16 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
         messages: [{ role: "user", content: prompt }],
         ...options,
       });
+      
+      // Capture token usage
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens,
+          outputTokens: resp.usage.completion_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+      
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
     },
@@ -102,8 +113,19 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
         ...options,
       } as any);
       
+      // Capture token usage
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens,
+          outputTokens: resp.usage.completion_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+      
       const message = resp?.choices?.[0]?.message;
-      return parseOpenAICompatibleResponse(message, nameMap);
+      const result = parseOpenAICompatibleResponse(message, nameMap);
+      result.usage = lastUsage || undefined;
+      return result;
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       const streamResponse: any = await client!.chat.completions.create({
@@ -155,6 +177,7 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
       // If no response body, something went wrong
       throw new Error('No response body received from Mistral streaming endpoint');
     },
+    getUsage: () => lastUsage
   };
 }
 

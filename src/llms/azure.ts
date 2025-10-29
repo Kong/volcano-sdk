@@ -48,6 +48,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
   const endpoint = cfg.endpoint.replace(/\/$/, "");
   const apiVersion = cfg.apiVersion || "2025-04-01-preview";
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
   let client = cfg.client;
 
   if (!client) {
@@ -130,6 +131,16 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
       };
 
       const resp = await client!.createResponse(params);
+      
+      // Capture token usage (Azure format)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens || resp.usage.input_tokens,
+          outputTokens: resp.usage.completion_tokens || resp.usage.output_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+      
       const output = resp?.output || [];
       const messageOutput = output.find((item: any) => item?.type === 'message');
       const content = messageOutput?.content || [];
@@ -166,6 +177,16 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
       };
 
       const resp = await client!.createResponse(params);
+      
+      // Capture token usage (Azure format)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens || resp.usage.input_tokens,
+          outputTokens: resp.usage.completion_tokens || resp.usage.output_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+      
       const output = resp?.output || [];
       
       const toolCalls: any[] = [];
@@ -202,6 +223,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
       return {
         content: finalContent,
         toolCalls,
+        usage: lastUsage || undefined
       };
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
@@ -299,5 +321,6 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
       
       throw new Error('No response body received from Azure AI streaming endpoint');
     },
+    getUsage: () => lastUsage
   };
 }

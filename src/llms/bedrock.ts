@@ -38,6 +38,7 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
   }
   const model = cfg.model;
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
   let client = cfg.client;
 
   // If no client provided, we'll create one with the specified configuration
@@ -139,6 +140,16 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       });
       
       const resp = await client!.send(command);
+      
+      // Capture token usage (Bedrock format)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.inputTokens,
+          outputTokens: resp.usage.outputTokens,
+          totalTokens: resp.usage.totalTokens
+        };
+      }
+      
       const content = resp?.output?.message?.content || [];
       const text = content.find((c: any) => c?.text)?.text || "";
       return typeof text === "string" ? text : JSON.stringify(text);
@@ -180,6 +191,16 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       });
 
       const resp = await client!.send(command);
+      
+      // Capture token usage (Bedrock format)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.inputTokens,
+          outputTokens: resp.usage.outputTokens,
+          totalTokens: resp.usage.totalTokens
+        };
+      }
+      
       const content = resp?.output?.message?.content || [];
       
       const toolCalls: any[] = [];
@@ -203,6 +224,7 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       return {
         content: textContent || undefined,
         toolCalls,
+        usage: lastUsage || undefined
       };
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
@@ -248,5 +270,6 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       const full = await this.gen(prompt);
       if (full) yield full;
     },
+    getUsage: () => lastUsage
   };
 }

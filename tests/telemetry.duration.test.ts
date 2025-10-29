@@ -99,7 +99,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
         .run();
       
       const spans = spanExporter.getFinishedSpans();
-      const stepSpans = spans.filter(s => s.name === 'step.execute');
+      const stepSpans = spans.filter(s => s.name.startsWith('Step '));
       
       expect(stepSpans.length).toBeGreaterThan(0);
       
@@ -118,7 +118,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
         .run();
       
       const spans = spanExporter.getFinishedSpans();
-      const stepSpans = spans.filter(s => s.name === 'step.execute');
+      const stepSpans = spans.filter(s => s.name.startsWith('Step '));
       
       stepSpans.forEach(span => {
         // Should have llm.duration_ms attribute
@@ -139,7 +139,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
         .run();
       
       const spans = spanExporter.getFinishedSpans();
-      const stepSpans = spans.filter(s => s.name === 'step.execute');
+      const stepSpans = spans.filter(s => s.name.startsWith('Step '));
       
       expect(stepSpans.length).toBeGreaterThan(0);
       
@@ -206,7 +206,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
       
       const spans = spanExporter.getFinishedSpans();
       const agentSpan = spans.find(s => s.name === 'agent.run');
-      const stepSpan = spans.find(s => s.name === 'step.execute');
+      const stepSpan = spans.find(s => s.name.startsWith('Step '));
       const llmSpan = spans.find(s => s.name === 'llm.generate');
       
       // All should exist
@@ -217,7 +217,7 @@ describe('OpenTelemetry Span Duration & Timing', () => {
       // Verify span hierarchy exists
       // We have agent, step, and LLM spans
       expect(agentSpan!.name).toBe('agent.run');
-      expect(stepSpan!.name).toBe('step.execute');
+      expect(stepSpan!.name).toMatch(/^Step \d+$/);
       expect(llmSpan!.name).toBe('llm.generate');
       
       // All spans completed with timing

@@ -13,31 +13,26 @@ type Histogram = any;
 
 export type VolcanoTelemetryConfig = {
   serviceName?: string;
+  // Optional: OTLP endpoint (e.g., 'http://localhost:4318')
+  // If provided, auto-configures OpenTelemetry exporters
+  // If not provided, uses environment variables or global SDK configuration
+  endpoint?: string;
   // Users can provide their own tracer/meter or we'll use global
   tracer?: Tracer;
   meter?: Meter;
   // Feature flags
   traces?: boolean;
   metrics?: boolean;
-  // Note: For exporters, users should configure the global OTEL SDK
-  // See: https://opentelemetry.io/docs/languages/js/getting-started/nodejs/
-  // Example:
-  //   import { NodeSDK } from '@opentelemetry/sdk-node';
-  //   import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http';
-  //   const sdk = new NodeSDK({
-  //     serviceName: 'my-service',
-  //     traceExporter: new OTLPTraceExporter({ url: 'http://localhost:4318/v1/traces' })
-  //   });
-  //   sdk.start();
 };
 
 export type VolcanoTelemetry = {
-  startAgentSpan: (stepCount: number) => Span | null;
-  startStepSpan: (parent: Span | null, stepIndex: number, stepType: string) => Span | null;
+  startAgentSpan: (stepCount: number, agentName?: string) => Span | null;
+  startStepSpan: (parent: Span | null, stepIndex: number, stepType: string, stepPrompt?: string, stepName?: string, llm?: any) => Span | null;
   startLLMSpan: (parent: Span | null, llm: LLMHandle, prompt: string) => Span | null;
   startMCPSpan: (parent: Span | null, mcp: MCPHandle, operation: string) => Span | null;
   endSpan: (span: Span | null, result?: StepResult, error?: any) => void;
   recordMetric: (name: string, value: number, attributes?: Record<string, any>) => void;
+  flush: () => Promise<void>;
 };
 
 let otelApi: any = null;
@@ -71,13 +66,52 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       startLLMSpan: () => null,
       startMCPSpan: () => null,
       endSpan: () => {},
-      recordMetric: () => {}
+      recordMetric: () => {},
+      flush: async () => {}
     };
   }
   
   const serviceName = config.serviceName || 'volcano-sdk';
   const enableTraces = config.traces !== false; // enabled by default
   const enableMetrics = config.metrics !== false;
+  
+  // Store SDK reference for flushing
+  let sdk: any = null;
+  
+  // Auto-configure SDK if endpoint provided
+  if (config.endpoint) {
+    try {
+      const require = createRequire(import.meta.url);
+      const { NodeSDK } = require('@opentelemetry/sdk-node');
+      const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+      const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
+      const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
+      
+      sdk = new NodeSDK({
+        serviceName,
+        traceExporter: enableTraces ? new OTLPTraceExporter({ 
+          url: `${config.endpoint}/v1/traces`,
+          timeoutMillis: 5000
+        }) : undefined,
+        metricReader: enableMetrics ? new PeriodicExportingMetricReader({
+          exporter: new OTLPMetricExporter({ 
+            url: `${config.endpoint}/v1/metrics`,
+            timeoutMillis: 5000
+          }),
+          exportIntervalMillis: 5000,
+          exportTimeoutMillis: 5000
+        }) : undefined
+      });
+      
+      sdk.start();
+      console.log(`[Volcano] ✅ OpenTelemetry SDK started`);
+      console.log(`[Volcano]    Traces → ${config.endpoint}/v1/traces`);
+      console.log(`[Volcano]    Metrics → ${config.endpoint}/v1/metrics (every 5s)`);
+    } catch (e) {
+      console.warn('[Volcano] Failed to auto-configure OpenTelemetry SDK:', e);
+      console.warn('[Volcano] Install dependencies: npm install @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http');
+    }
+  }
   
   // Get or create tracer
   const tracer = config.tracer || (enableTraces ? otel.trace.getTracer(serviceName, '0.1.0') : null);
@@ -94,8 +128,29 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
   let agentDelegationHistogram: Histogram | null = null;
   let errorsCounter: Counter | null = null;
   
+  // Token metrics
+  let llmTokensInputCounter: Counter | null = null;
+  let llmTokensOutputCounter: Counter | null = null;
+  let llmTokensTotalCounter: Counter | null = null;
+  
+  // Performance metrics
+  let llmDurationHistogram: Histogram | null = null;
+  let mcpToolDurationHistogram: Histogram | null = null;
+  let timeToFirstTokenHistogram: Histogram | null = null;
+  
+  // Agent-specific metrics
+  let agentTokensCounter: Counter | null = null;
+  let agentExecutionCounter: Counter | null = null;
+  let subAgentCallsCounter: Counter | null = null;
+  
+  // Workflow metrics
+  let workflowStepCounter: Histogram | null = null;
+  let retryCounter: Counter | null = null;
+  let timeoutCounter: Counter | null = null;
+  
   if (meter) {
     try {
+      // Existing metrics
       agentDurationHistogram = meter.createHistogram('volcano.agent.duration', {
         description: 'Agent workflow duration',
         unit: 'ms'
@@ -124,19 +179,76 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
         description: 'Total errors by type',
         unit: 'errors'
       });
+      
+      // Token metrics
+      llmTokensInputCounter = meter.createCounter('volcano.llm.tokens.input', {
+        description: 'Input tokens sent to LLM',
+        unit: 'tokens'
+      });
+      llmTokensOutputCounter = meter.createCounter('volcano.llm.tokens.output', {
+        description: 'Output tokens generated by LLM',
+        unit: 'tokens'
+      });
+      llmTokensTotalCounter = meter.createCounter('volcano.llm.tokens.total', {
+        description: 'Total tokens (input + output)',
+        unit: 'tokens'
+      });
+      
+      // Performance metrics
+      llmDurationHistogram = meter.createHistogram('volcano.llm.duration', {
+        description: 'LLM API call duration',
+        unit: 'ms'
+      });
+      mcpToolDurationHistogram = meter.createHistogram('volcano.mcp.tool.duration', {
+        description: 'Individual MCP tool call duration',
+        unit: 'ms'
+      });
+      timeToFirstTokenHistogram = meter.createHistogram('volcano.llm.time_to_first_token', {
+        description: 'Time until first token from LLM',
+        unit: 'ms'
+      });
+      
+      // Agent-specific metrics
+      agentTokensCounter = meter.createCounter('volcano.agent.tokens', {
+        description: 'Tokens consumed by named agents',
+        unit: 'tokens'
+      });
+      agentExecutionCounter = meter.createCounter('volcano.agent.executions', {
+        description: 'Agent execution count by name',
+        unit: 'executions'
+      });
+      subAgentCallsCounter = meter.createCounter('volcano.agent.subagent_calls', {
+        description: 'Sub-agent calls with parent-child relationship',
+        unit: 'calls'
+      });
+      
+      // Workflow metrics
+      workflowStepCounter = meter.createHistogram('volcano.workflow.steps', {
+        description: 'Number of steps per workflow',
+        unit: 'steps'
+      });
+      retryCounter = meter.createCounter('volcano.workflow.retries', {
+        description: 'Retry attempts',
+        unit: 'retries'
+      });
+      timeoutCounter = meter.createCounter('volcano.workflow.timeouts', {
+        description: 'Timeout occurrences',
+        unit: 'timeouts'
+      });
     } catch (e) {
       console.warn('[Volcano] Failed to create metrics:', e);
     }
   }
   
   return {
-    startAgentSpan(stepCount: number): Span | null {
+    startAgentSpan(stepCount: number, agentName?: string): Span | null {
       if (!tracer) return null;
       
       try {
         return tracer.startSpan('agent.run', {
           attributes: {
             'agent.step_count': stepCount,
+            'agent.name': agentName || 'anonymous',
             'volcano.version': '0.1.0'
           }
         });
@@ -146,17 +258,41 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       }
     },
     
-    startStepSpan(parent: Span | null, stepIndex: number, stepType: string): Span | null {
+    startStepSpan(parent: Span | null, stepIndex: number, stepType: string, stepPrompt?: string, stepName?: string, llm?: any): Span | null {
       if (!tracer) return null;
       
       try {
         const ctx = parent ? otel.trace.setSpan(otel.context.active(), parent) : undefined;
-        return tracer.startSpan('step.execute', {
-          attributes: {
-            'step.index': stepIndex,
-            'step.type': stepType
-          }
-        }, ctx);
+        const attrs: Record<string, any> = {
+          'step.index': stepIndex,
+          'step.type': stepType
+        };
+        
+        // Add optional step name for better debugging
+        if (stepName) {
+          attrs['step.name'] = stepName;
+        }
+        
+        // Add step prompt preview (first 100 chars)
+        if (stepPrompt) {
+          attrs['step.prompt'] = stepPrompt.substring(0, 100);
+        }
+        
+        // Add LLM information to step span
+        if (llm) {
+          attrs['llm.provider'] = (llm as any).id || 'unknown';
+          attrs['llm.model'] = llm.model || 'unknown';
+        }
+        
+        // Create descriptive span name: "Step 1: data-analysis" or "Step 1" or "step.execute"
+        let spanName = 'step.execute';
+        if (stepName) {
+          spanName = `Step ${stepIndex + 1}: ${stepName}`;
+        } else if (stepIndex >= 0) {
+          spanName = `Step ${stepIndex + 1}`;
+        }
+        
+        return tracer.startSpan(spanName, { attributes: attrs }, ctx);
       } catch (e) {
         console.warn('[Volcano] Failed to start step span:', e);
         return null;
@@ -227,7 +363,11 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
     },
     
     recordMetric(name: string, value: number, attributes: Record<string, any> = {}): void {
+      if (process.env.VOLCANO_DEBUG_TELEMETRY) {
+        console.log(`[Volcano Telemetry] Recording: ${name} = ${value}`, attributes);
+      }
       try {
+        // Core metrics
         if (name === 'agent.duration' && agentDurationHistogram) {
           agentDurationHistogram.record(value, attributes);
         } else if (name === 'step.duration' && stepDurationHistogram) {
@@ -243,8 +383,61 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
         } else if (name === 'error' && errorsCounter) {
           errorsCounter.add(1, attributes);
         }
+        // Token metrics
+        else if (name === 'llm.tokens.input' && llmTokensInputCounter) {
+          llmTokensInputCounter.add(value, attributes);
+        } else if (name === 'llm.tokens.output' && llmTokensOutputCounter) {
+          llmTokensOutputCounter.add(value, attributes);
+        } else if (name === 'llm.tokens.total' && llmTokensTotalCounter) {
+          llmTokensTotalCounter.add(value, attributes);
+        }
+        // Performance metrics
+        else if (name === 'llm.duration' && llmDurationHistogram) {
+          llmDurationHistogram.record(value, attributes);
+        } else if (name === 'mcp.tool.duration' && mcpToolDurationHistogram) {
+          mcpToolDurationHistogram.record(value, attributes);
+        } else if (name === 'llm.time_to_first_token' && timeToFirstTokenHistogram) {
+          timeToFirstTokenHistogram.record(value, attributes);
+        }
+        // Agent-specific metrics
+        else if (name === 'agent.tokens' && agentTokensCounter) {
+          agentTokensCounter.add(value, attributes);
+        } else if (name === 'agent.execution' && agentExecutionCounter) {
+          agentExecutionCounter.add(1, attributes);
+        } else if (name === 'agent.subagent_call' && subAgentCallsCounter) {
+          subAgentCallsCounter.add(1, attributes);
+        }
+        // Workflow metrics
+        else if (name === 'workflow.steps' && workflowStepCounter) {
+          workflowStepCounter.record(value, attributes);
+        } else if (name === 'workflow.retry' && retryCounter) {
+          retryCounter.add(1, attributes);
+        } else if (name === 'workflow.timeout' && timeoutCounter) {
+          timeoutCounter.add(1, attributes);
+        }
       } catch (e) {
         console.warn('[Volcano] Failed to record metric:', e);
+      }
+    },
+
+    async flush() {
+      // Flush both traces and metrics to backend
+      try {
+        // Flush SDK if it was auto-configured
+        if (sdk && typeof sdk.shutdown === 'function') {
+          // Use forceFlush instead of shutdown to keep SDK active
+          if (typeof (sdk as any).forceFlush === 'function') {
+            await (sdk as any).forceFlush();
+          }
+        }
+        
+        if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
+          console.log('[Volcano] Telemetry flushed');
+        }
+      } catch (e) {
+        if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
+          console.warn('[Volcano] Failed to flush telemetry:', e);
+        }
       }
     }
   };
@@ -257,5 +450,6 @@ export const noopTelemetry: VolcanoTelemetry = {
   startLLMSpan: () => null,
   startMCPSpan: () => null,
   endSpan: () => {},
-  recordMetric: () => {}
+  recordMetric: () => {},
+  flush: async () => {}
 };

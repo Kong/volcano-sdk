@@ -34,6 +34,7 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
   }
   const model = cfg.model;
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
   let client = cfg.client;
 
   if (!client && (cfg.apiKey || cfg.baseURL)) {
@@ -89,6 +90,16 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
         messages: [{ role: "user", content: prompt }],
         ...options,
       });
+      
+      // Capture token usage (OpenAI-compatible)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens,
+          outputTokens: resp.usage.completion_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+      
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
     },
@@ -103,8 +114,19 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
         ...options,
       } as any);
       
+      // Capture token usage (OpenAI-compatible)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens,
+          outputTokens: resp.usage.completion_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+      
       const message = resp?.choices?.[0]?.message;
-      return parseOpenAICompatibleResponse(message, nameMap);
+      const result = parseOpenAICompatibleResponse(message, nameMap);
+      result.usage = lastUsage || undefined;
+      return result;
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       const streamResponse: any = await client!.chat.completions.create({
@@ -153,9 +175,10 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
         return;
       }
       
-      // If no response body, something went wrong
+      // If no response body, something went wrong  
       throw new Error('No response body received from Llama streaming endpoint');
     },
+    getUsage: () => lastUsage
   };
 }
 

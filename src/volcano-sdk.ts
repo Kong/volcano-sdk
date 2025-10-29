@@ -586,11 +586,11 @@ export type StreamOptions = {
 };
 
 export type Step =
-  | { prompt: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
-  | { mcp: MCPHandle; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
-  | { prompt: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
+  | { prompt: string; name?: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
+  | { mcp: MCPHandle; name?: string; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
   prompt?: string;
@@ -634,11 +634,26 @@ function buildHistoryContextChunked(history: StepResult[], maxToolResults: numbe
   
   const chunks: string[] = [];
   
-  // Include LLM output from last step
-  const last = history[history.length - 1];
-  if (last.llmOutput) {
-    chunks.push('Previous LLM answer:\n');
-    chunks.push(last.llmOutput);
+  // Include LLM outputs from all steps (not just last one)
+  // This is important for subagents to see parent conversation history
+  // contextMaxChars will truncate if this gets too long
+  const llmOutputs: string[] = [];
+  for (const step of history) {
+    if (step.llmOutput) {
+      llmOutputs.push(step.llmOutput);
+    }
+  }
+  
+  if (llmOutputs.length > 0) {
+    if (llmOutputs.length === 1) {
+      chunks.push('Previous LLM answer:\n');
+      chunks.push(llmOutputs[0]);
+    } else {
+      chunks.push('Previous LLM answers:\n');
+      llmOutputs.forEach((output, idx) => {
+        chunks.push(`${idx + 1}. ${output}\n`);
+      });
+    }
     chunks.push('\n');
   }
   
@@ -973,6 +988,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const steps: Array<Step | StepFactory | { __reset: true }> = [];
   const defaultLlm = opts?.llm;
   let contextHistory: StepResult[] = [];
+  let inheritedParentContext = false; // Track if we've inherited parent context
   const globalInstructions = opts?.instructions;
   const agentName = opts?.name;
   const agentDescription = opts?.description;
@@ -1051,11 +1067,27 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       const isExplicitSubAgent = (builder as any).__isExplicitSubAgent || false;
       const parentStepIndex = (builder as any).__parentStepIndex;
       const parentTotalSteps = (builder as any).__parentTotalSteps;
+      const parentAgentName = (builder as any).__parentAgentName;
       const progress = showProgress ? createProgressHandler(steps.length, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
       
+      // Record agent execution
+      if (telemetry && agentName) {
+        telemetry.recordMetric('agent.execution', 1, {
+          agent_name: agentName,
+          parent_agent: parentAgentName || 'none',
+          is_subagent: isSubAgent.toString()
+        });
+      }
+      
       // Start agent span
-      const agentSpan = telemetry?.startAgentSpan(steps.length) || null;
+      const agentSpan = telemetry?.startAgentSpan(steps.length, agentName) || null;
       const out: StepResult[] = [];
+      
+      // Inherit parent context if this is a subagent
+      if (!inheritedParentContext && (builder as any).__parentContext) {
+        contextHistory = [...(builder as any).__parentContext];
+        inheritedParentContext = true;
+      }
       
       try {
         // snapshot steps array to make run isolated from later .then() calls
@@ -1215,7 +1247,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               console.warn('Pre-hook failed for runAgent:', e);
             }
             
-            const subResults = await executeRunAgent(subAgent, out.length, planned.length);
+            // Pass parent's context to subagent
+            const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
             out.push(...subResults);
             contextHistory.push(...subResults);
             subResults.forEach((r, i) => log?.(r, out.length - subResults.length + i));
@@ -1254,7 +1287,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             else if ("prompt" in s) stepType = 'llm';
             
             // Start step span
-            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType) || null;
+            const stepPrompt = (s as any).prompt;
+            const stepName = (s as any).name;
+            const stepLlm = (s as any).llm || defaultLlm;
+            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType, stepPrompt, stepName, stepLlm) || null;
             
             const r: StepResult = {};
             const stepStart = Date.now();
@@ -1443,6 +1479,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                       // Mark delegated agent as sub-agent to suppress its progress banner
                       const delegatedAgent = selectedAgent.then(agentStep);
                       (delegatedAgent as any).__isSubAgent = true;
+                      (delegatedAgent as any).__parentAgentName = agentName || 'coordinator';
+                      
+                      // Record sub-agent relationship
+                      if (telemetry) {
+                        telemetry.recordMetric('agent.subagent_call', 1, {
+                          parent_agent_name: agentName || 'coordinator',
+                          agent_name: decision.agentName
+                        });
+                      }
+                      
                       agentResult = await delegatedAgent.run();
                     } catch (e) {
                       workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
@@ -1513,8 +1559,32 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                 );
                 (r as any).__tokenCount = tokenCount;
                 (r as any).__provider = (usedLlm as any).id || usedLlm.model;
+                const llmCallDuration = Date.now() - llmStart;
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
+                telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: (usedLlm as any).id || usedLlm.model, model: usedLlm.model });
+                
+                // Record token usage if available
+                const usage = (usedLlm as any).getUsage?.();
+                if (usage && telemetry) {
+                  const tokenAttrs = { 
+                    provider: (usedLlm as any).id,
+                    model: usedLlm.model,
+                    agent_name: agentName || 'anonymous'
+                  };
+                  if (usage.inputTokens) {
+                    telemetry.recordMetric('llm.tokens.input', usage.inputTokens, tokenAttrs);
+                  }
+                  if (usage.outputTokens) {
+                    telemetry.recordMetric('llm.tokens.output', usage.outputTokens, tokenAttrs);
+                  }
+                  if (usage.totalTokens) {
+                    telemetry.recordMetric('llm.tokens.total', usage.totalTokens, tokenAttrs);
+                    if (agentName) {
+                      telemetry.recordMetric('agent.tokens', usage.totalTokens, { agent_name: agentName });
+                    }
+                  }
+                }
               } catch (e) {
                 telemetry?.endSpan(llmSpan, undefined, e);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: true });
@@ -1563,6 +1633,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             // End step span
             telemetry?.endSpan(stepSpan, r);
             telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
+            
+            // Flush telemetry after each step for real-time visibility
+            await telemetry?.flush();
             
             // Execute post-step hook
             if ((s as any).post) {
@@ -1641,6 +1714,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           // End agent span and record metrics
           telemetry?.endSpan(agentSpan, last);
           telemetry?.recordMetric('agent.duration', totalDuration, { steps: out.length });
+          telemetry?.recordMetric('workflow.steps', out.length, { agent_name: agentName || 'anonymous' });
         }
         return out;
       } catch (error) {
@@ -1694,8 +1768,14 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       }
       
       // Start agent span
-      const agentSpan = telemetry?.startAgentSpan(steps.length) || null;
+      const agentSpan = telemetry?.startAgentSpan(steps.length, agentName) || null;
       const out: StepResult[] = [];
+      
+      // Inherit parent context if this is a subagent
+      if (!inheritedParentContext && (builder as any).__parentContext) {
+        contextHistory = [...(builder as any).__parentContext];
+        inheritedParentContext = true;
+      }
       
       // Capture streamOnToken from stream() context for use in doStep
       const capturedStreamOnToken = streamOnToken;
@@ -1816,7 +1896,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             const hooks = (raw as any).__hooks;
             try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for runAgent:', e); }
             
-            const subResults = await executeRunAgent(subAgent, out.length, planned.length);
+            // Pass parent's context to subagent
+            const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
             out.push(...subResults);
             contextHistory.push(...subResults);
             for (const r of subResults) {
@@ -1854,7 +1935,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             else if ("prompt" in s) stepType = 'llm';
             
             // Start step span
-            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType) || null;
+            const stepPrompt = (s as any).prompt;
+            const stepName = (s as any).name;
+            const stepLlm = (s as any).llm || defaultLlm;
+            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType, stepPrompt, stepName, stepLlm) || null;
             
             const r: StepResult = {};
             const stepStart = Date.now();
@@ -2042,6 +2126,16 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                       // Mark delegated agent as sub-agent to suppress its progress banner
                       const delegatedAgent = selectedAgent.then(agentStep);
                       (delegatedAgent as any).__isSubAgent = true;
+                      (delegatedAgent as any).__parentAgentName = agentName || 'coordinator';
+                      
+                      // Record sub-agent relationship
+                      if (telemetry) {
+                        telemetry.recordMetric('agent.subagent_call', 1, {
+                          parent_agent_name: agentName || 'coordinator',
+                          agent_name: decision.agentName
+                        });
+                      }
+                      
                       agentResult = await delegatedAgent.run();
                     } catch (e) {
                       workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
@@ -2102,8 +2196,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                   capturedStreamOnToken,
                   { stepIndex: out.length, stepPrompt: (s as any).prompt }
                 );
+                const llmCallDuration = Date.now() - llmStart;
                 telemetry?.endSpan(llmSpan);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
+                telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: (usedLlm as any).id || usedLlm.model, model: usedLlm.model });
               } catch (e) {
                 telemetry?.endSpan(llmSpan, undefined, e);
                 telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: true });
@@ -2152,6 +2248,9 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             // End step span
             telemetry?.endSpan(stepSpan, r);
             telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
+            
+            // Flush telemetry after each step for real-time visibility
+            await telemetry?.flush();
             
             // Execute post-step hook
             if ((s as any).post) {

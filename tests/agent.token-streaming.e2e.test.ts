@@ -199,7 +199,7 @@ describe('Token streaming e2e (live APIs)', () => {
     expect(results[2].llmOutput.replace(/\s+/g, '')).toMatch(/Step3/i);
   });
 
-  it('validates onStep callback works alongside onToken', async () => {
+  it('validates onStep callback works alongside onToken', { timeout: 15000 }, async () => {
     const tokens: string[] = [];
     const completedSteps: Array<{ index: number; duration: number | undefined }> = [];
 

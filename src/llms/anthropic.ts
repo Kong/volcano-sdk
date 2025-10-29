@@ -41,6 +41,7 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
   const baseURL = (cfg.baseURL || "https://api.anthropic.com").replace(/\/$/, "");
   const version = cfg.version || "2023-06-01";
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
 
   let client: AnthropicLikeClient | undefined = cfg.client;
 
@@ -192,6 +193,16 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
         ...(options.stop_sequences && { stop_sequences: options.stop_sequences }),
         ...(options.thinking && { thinking: options.thinking }),
       });
+      
+      // Capture token usage
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.input_tokens,
+          outputTokens: resp.usage.output_tokens,
+          totalTokens: (resp.usage.input_tokens || 0) + (resp.usage.output_tokens || 0)
+        };
+      }
+      
       const text = resp?.content?.[0]?.text ?? resp?.content ?? "";
       return typeof text === "string" ? text : JSON.stringify(text);
     },
@@ -206,8 +217,19 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
         tool_choice: "auto",
       });
 
+      // Capture token usage (from OpenAI-compatible shim)
+      if (resp.usage) {
+        lastUsage = {
+          inputTokens: resp.usage.prompt_tokens || resp.usage.input_tokens,
+          outputTokens: resp.usage.completion_tokens || resp.usage.output_tokens,
+          totalTokens: resp.usage.total_tokens
+        };
+      }
+
       const message = resp.choices?.[0]?.message;
-      return parseOpenAICompatibleResponse(message, nameMap);
+      const result = parseOpenAICompatibleResponse(message, nameMap);
+      result.usage = lastUsage || undefined;
+      return result;
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
       // Native streaming using messages.create with stream: true
@@ -234,6 +256,7 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
       // If no async iterator, the streaming is not properly configured
       throw new Error('Anthropic streaming not available - check client configuration');
     },
+    getUsage: () => lastUsage
   };
 }
 

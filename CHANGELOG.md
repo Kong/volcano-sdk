@@ -5,6 +5,24 @@ All notable changes to Volcano SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-10-30
+
+### Added
+
+- **Comprehensive Token Tracking**: All LLM providers (OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex Studio, Azure) now track input/output token usage. Metrics include `volcano.llm.tokens.input`, `volcano.llm.tokens.output`, `volcano.llm.tokens.total` with provider, model, and agent_name labels. Enables answering "Which agent consumes most tokens?" and "Which provider is most cost-effective?"
+
+- **Agent Relationship Metrics**: Track parent-child agent relationships with `volcano.agent.subagent_calls` and `volcano.agent.executions`. Enables answering "What agent is used most?" and "What's the parent-child usage pattern?"
+
+- **Comprehensive Grafana Dashboard**: 23-panel dashboard (`grafana-volcano-comprehensive.json`) with agent analytics, token economics, performance metrics, and error tracking. Answers questions like "Which agent uses most tokens?", "What are the parent-child relationships?", and "Which provider is fastest?"
+
+### Changed
+
+- **Improved Context History**: `buildHistoryContextChunked()` now includes all steps' LLM outputs (instead of just the last one), showing them as a numbered list when there are multiple outputs. The existing `contextMaxChars` limit ensures context doesn't grow unbounded. This provides full conversation history for multi-step workflows and sub-agents.
+
+### Fixed
+
+- **Sub-Agents Now Receive Parent Context**: Fixed bug where sub-agents invoked via `.runAgent()` did not receive the parent agent's context (conversation history, LLM outputs, tool results). Sub-agents previously started with a blank slate, lacking critical information like issue numbers, repo names, and previous decisions. Now sub-agents automatically inherit parent context, enabling proper composition workflows. For example, a labeler agent can now see which issue was retrieved and analyzed by the parent agent.
+
 ## [1.0.2] - 2025-10-29
 
 ### Added
@@ -24,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 - **Live Waiting Timer**: "⏳ Waiting for LLM" now shows elapsed time (`⏳ Waiting for LLM | 2.1s`) updating every 100ms. Makes long waits feel responsive instead of frozen. Applies to both regular steps and agent crew coordination.
+
+- **Simplified Observability Setup**: `createVolcanoTelemetry()` now accepts an `endpoint` parameter for auto-configuration. No need to manually set up OpenTelemetry SDK - just pass `endpoint: 'http://localhost:4318'` and Volcano auto-configures trace and metric exporters.
+  ```typescript
+  const telemetry = createVolcanoTelemetry({
+    serviceName: 'my-app',
+    endpoint: 'http://localhost:4318'  // Auto-configures everything!
+  });
+  ```
+
+- **Local Observability Stack**: Added complete Docker Compose setup with Prometheus, Grafana, Jaeger, and OpenTelemetry Collector. Includes basic Grafana dashboard for agent performance monitoring. See `OBSERVABILITY_TESTING.md` for local testing guide.
 
 - **Context Persistence Test Suite**: New comprehensive tests for GitHub issue handler workflows verify that context (issue numbers, IDs, parameters) persists correctly across multi-step MCP tool calls.
 
