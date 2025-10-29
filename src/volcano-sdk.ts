@@ -600,7 +600,7 @@ export type StepResult = {
   // Total LLM time spent during this step (sum across iterations) in milliseconds
   llmMs?: number;
   mcp?: { endpoint: string; tool: string; result: any; ms?: number };
-  toolCalls?: Array<{ name: string; endpoint: string; result: any } & { ms?: number }>;
+  toolCalls?: Array<{ name: string; arguments?: Record<string, any>; endpoint: string; result: any } & { ms?: number }>;
   // Parallel execution results (for parallel steps)
   parallel?: Record<string, StepResult>;
   parallelResults?: StepResult[];
@@ -631,19 +631,42 @@ export interface AgentBuilder {
 
 function buildHistoryContextChunked(history: StepResult[], maxToolResults: number, maxChars: number): string {
   if (history.length === 0) return '';
-  const last = history[history.length - 1];
+  
   const chunks: string[] = [];
+  
+  // Include LLM output from last step
+  const last = history[history.length - 1];
   if (last.llmOutput) {
     chunks.push('Previous LLM answer:\n');
     chunks.push(last.llmOutput);
     chunks.push('\n');
   }
-  if (last.toolCalls && last.toolCalls.length > 0) {
+  
+  // Collect tool calls from ALL recent steps (not just last step)
+  const allToolCalls: Array<{ name: string; arguments?: Record<string, any>; result: any }> = [];
+  for (const step of history) {
+    if (step.toolCalls && step.toolCalls.length > 0) {
+      allToolCalls.push(...step.toolCalls);
+    }
+  }
+  
+  if (allToolCalls.length > 0) {
     chunks.push('Previous tool results:\n');
-    const recent = last.toolCalls.slice(-maxToolResults);
+    // Take the most recent maxToolResults across ALL steps
+    const recent = allToolCalls.slice(-maxToolResults);
     for (const t of recent) {
       chunks.push('- ');
       chunks.push(t.name);
+      // Include arguments to preserve context like issue numbers, IDs, etc
+      if (t.arguments) {
+        try {
+          chunks.push('(');
+          chunks.push(JSON.stringify(t.arguments));
+          chunks.push(')');
+        } catch {
+          // Skip if arguments can't be serialized
+        }
+      }
       chunks.push(' -> ');
       if (typeof t.result === 'string') {
         chunks.push(t.result);
@@ -653,6 +676,7 @@ function buildHistoryContextChunked(history: StepResult[], maxToolResults: numbe
       chunks.push('\n');
     }
   }
+  
   // prefix header
   chunks.unshift('\n\n[Context from previous steps]\n');
   // assemble with maxChars cap
@@ -1291,7 +1315,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
                     }
                     const mcpMs = Date.now() - mcpStart;
-                    aggregated.push({ name: mapped.name, endpoint: handle.url, result, ms: mcpMs });
+                    const toolCall: any = { name: mapped.name, arguments: mapped.arguments, endpoint: handle.url, result, ms: mcpMs };
+                    aggregated.push(toolCall);
                     toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
                   }
                   if (aggregated.length) r.toolCalls = aggregated;
@@ -1889,7 +1914,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                       throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
                     }
                     const mcpMs = Date.now() - mcpStart;
-                    aggregated.push({ name: mapped.name, endpoint: handle.url, result, ms: mcpMs });
+                    const toolCall: any = { name: mapped.name, arguments: mapped.arguments, endpoint: handle.url, result, ms: mcpMs };
+                    aggregated.push(toolCall);
                     toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
                   }
                   if (aggregated.length) r.toolCalls = aggregated;
