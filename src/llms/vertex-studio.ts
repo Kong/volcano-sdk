@@ -42,6 +42,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
   const model = cfg.model;
   const baseURL = (cfg.baseURL || "https://aiplatform.googleapis.com/v1").replace(/\/$/, "");
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
   let client = cfg.client;
 
   if (!client) {
@@ -96,6 +97,16 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
       };
 
       const resp = await client!.generateContent(params);
+      
+      // Capture token usage (Vertex format)
+      if (resp.usageMetadata) {
+        lastUsage = {
+          inputTokens: resp.usageMetadata.promptTokenCount,
+          outputTokens: resp.usageMetadata.candidatesTokenCount,
+          totalTokens: resp.usageMetadata.totalTokenCount
+        };
+      }
+      
       const candidates = resp?.candidates || [];
       const content = candidates[0]?.content?.parts || [];
       const text = content.find((part: any) => part?.text)?.text || "";
@@ -145,6 +156,16 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
       };
 
       const resp = await client!.generateContent(params);
+      
+      // Capture token usage (Vertex format)
+      if (resp.usageMetadata) {
+        lastUsage = {
+          inputTokens: resp.usageMetadata.promptTokenCount,
+          outputTokens: resp.usageMetadata.candidatesTokenCount,
+          totalTokens: resp.usageMetadata.totalTokenCount
+        };
+      }
+      
       const candidates = resp?.candidates || [];
       const content = candidates[0]?.content?.parts || [];
       
@@ -169,6 +190,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
       return {
         content: textContent || undefined,
         toolCalls,
+        usage: lastUsage || undefined
       };
     },
     async *genStream(prompt: string): AsyncGenerator<string, void, unknown> {
@@ -285,5 +307,6 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
       // If no body, something went wrong
       throw new Error('No response body received from Vertex Studio streaming endpoint');
     },
+    getUsage: () => lastUsage
   };
 }

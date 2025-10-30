@@ -298,6 +298,8 @@ await agent({ llm })
 
 Build reusable agent components and compose them into larger workflows.
 
+**Context Propagation:** Sub-agents automatically receive the parent agent's context (conversation history, LLM outputs, and tool results). This ensures sub-agents have all the information they need from previous steps.
+
 ### Defining Reusable Sub-Agents
 
 ```typescript
@@ -356,11 +358,36 @@ await agent({ llm })
   .run();
 ```
 
+### Context Propagation Example
+
+Sub-agents automatically inherit context from their parent:
+
+```typescript
+// Parent establishes context
+const results = await agent({ llm })
+  .then({ 
+    prompt: 'Get issue #123 from repo acme/project',
+    mcps: [githubMcp]
+  })
+  .then({ 
+    prompt: 'Analyze the issue and determine it needs security review'
+  })
+  .runAgent(securityReviewAgent)  // ← Receives all parent context!
+  .run();
+
+// securityReviewAgent knows:
+// - Issue number (#123)
+// - Repository (acme/project)  
+// - Issue details from the tool call
+// - The analysis from previous step
+```
+
 ### Benefits
 
 - **Reusability:** Define once, use many times
 - **Modularity:** Each sub-agent has a clear responsibility
 - **Testing:** Test sub-agents in isolation
+- **Context Awareness:** Sub-agents inherit parent's conversation history and tool results
 - **Maintainability:** Changes in one place affect all uses
 - **Clarity:** High-level workflows read like documentation
 

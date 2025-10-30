@@ -90,7 +90,7 @@ describe('OpenTelemetry E2E - Dist Package in ES Module Context', () => {
       // Should have agent, step, and llm spans
       const spanNames = spans.map(s => s.name);
       expect(spanNames).toContain('agent.run');
-      expect(spanNames.filter(n => n === 'step.execute').length).toBe(2);
+      expect(spanNames.filter(n => n.startsWith('Step ')).length).toBe(2);
       expect(spanNames.filter(n => n === 'llm.generate').length).toBe(2);
 
     } finally {

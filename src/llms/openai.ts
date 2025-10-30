@@ -61,6 +61,7 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
   const id = `OpenAI-${model}`;
   const client = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
   const options = cfg.options || {};
+  let lastUsage: import('./types').TokenUsage | null = null;
 
   return {
     id,
@@ -72,10 +73,20 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
         messages: [{ role: "user", content: prompt }],
         ...options,
       });
+      
+      // Capture token usage
+      if (r.usage) {
+        lastUsage = {
+          inputTokens: r.usage.prompt_tokens,
+          outputTokens: r.usage.completion_tokens,
+          totalTokens: r.usage.total_tokens
+        };
+      }
+      
       return r.choices?.[0]?.message?.content ?? "";
     },
     genWithTools: async (prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> => {
-      const { nameMap, formattedTools } = createOpenAICompatibleTools(tools);
+      const { nameMap, formattedTools} = createOpenAICompatibleTools(tools);
 
       const r = await client.chat.completions.create({
         model,
@@ -85,23 +96,44 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
         ...options,
       });
 
+      // Capture token usage
+      if (r.usage) {
+        lastUsage = {
+          inputTokens: r.usage.prompt_tokens,
+          outputTokens: r.usage.completion_tokens,
+          totalTokens: r.usage.total_tokens
+        };
+      }
+
       const message = r.choices?.[0]?.message;
-      return parseOpenAICompatibleResponse(message, nameMap);
+      const result = parseOpenAICompatibleResponse(message, nameMap);
+      result.usage = lastUsage || undefined;
+      return result;
     },
     genStream: async function* (prompt: string) {
       const stream = await client.chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
         stream: true,
+        stream_options: { include_usage: true }, // Request usage in stream
         ...options,
       });
       for await (const chunk of stream as any) {
+        // Capture usage if provided (last chunk for OpenAI)
+        if (chunk.usage) {
+          lastUsage = {
+            inputTokens: chunk.usage.prompt_tokens,
+            outputTokens: chunk.usage.completion_tokens,
+            totalTokens: chunk.usage.total_tokens
+          };
+        }
         const delta = chunk?.choices?.[0]?.delta?.content;
         if (typeof delta === "string" && delta.length > 0) {
           yield delta;
         }
       }
-    }
+    },
+    getUsage: () => lastUsage
   };
 }
 

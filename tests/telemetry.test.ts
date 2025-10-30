@@ -46,6 +46,24 @@ async function resetCollector() {
 }
 
 describe('Volcano SDK Observability', () => {
+  it('accepts endpoint parameter for auto-configuration', () => {
+    const telemetry = createVolcanoTelemetry({
+      serviceName: 'test-endpoint',
+      endpoint: 'http://localhost:4318'
+    });
+    
+    // Should return valid telemetry object
+    expect(telemetry).toBeDefined();
+    expect(typeof telemetry.startAgentSpan).toBe('function');
+    expect(typeof telemetry.recordMetric).toBe('function');
+    
+    // Should work even if OTLP packages not installed (graceful fallback)
+    const span = telemetry.startAgentSpan(1);
+    // May be null if OTLP exporters not installed, but shouldn't throw
+    expect(span === null || typeof span === 'object').toBe(true);
+  });
+
+
   let astroProc: any;
   let provider: NodeTracerProvider;
   let spanExporter: InMemorySpanExporter;
@@ -110,7 +128,7 @@ describe('Volcano SDK Observability', () => {
       
       // Should have agent.run, step.execute, and llm.generate spans
       const agentSpans = spans.filter((s: any) => s.name === 'agent.run');
-      const stepSpans = spans.filter((s: any) => s.name === 'step.execute');
+      const stepSpans = spans.filter((s: any) => s.name.startsWith('Step '));
       const llmSpans = spans.filter((s: any) => s.name === 'llm.generate');
       
       expect(stepSpans.length).toBe(2); // 2 steps
@@ -128,7 +146,7 @@ describe('Volcano SDK Observability', () => {
       
       // Get recorded spans
       const spans = spanExporter.getFinishedSpans();
-      const stepSpans = spans.filter((s: any) => s.name === 'step.execute');
+      const stepSpans = spans.filter((s: any) => s.name.startsWith('Step '));
       expect(stepSpans.length).toBeGreaterThan(0);
       
       // Check step attributes
