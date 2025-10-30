@@ -646,7 +646,7 @@ function buildHistoryContextChunked(history: StepResult[], maxToolResults: numbe
   
   if (llmOutputs.length > 0) {
     if (llmOutputs.length === 1) {
-      chunks.push('Previous LLM answer:\n');
+    chunks.push('Previous LLM answer:\n');
       chunks.push(llmOutputs[0]);
     } else {
       chunks.push('Previous LLM answers:\n');
@@ -1070,10 +1070,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       const parentAgentName = (builder as any).__parentAgentName;
       const progress = showProgress ? createProgressHandler(steps.length, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
       
-      // Record agent execution
-      if (telemetry && agentName) {
+      // Record agent execution (always, even for anonymous agents)
+      if (telemetry) {
         telemetry.recordMetric('agent.execution', 1, {
-          agent_name: agentName,
+          agent_name: agentName || 'anonymous',
           parent_agent: parentAgentName || 'none',
           is_subagent: isSubAgent.toString()
         });
@@ -1324,7 +1324,34 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                     const provider = classifyProviderFromLlm(usedLlm);
                     throw normalizeError(e, 'llm', { stepId: out.length, provider });
                   }
-                  llmTotalMs += Date.now() - llmStart;
+                  const llmCallDuration = Date.now() - llmStart;
+                  llmTotalMs += llmCallDuration;
+                  
+                  // Record LLM metrics for this iteration
+                  telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
+                  telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: (usedLlm as any).id || usedLlm.model, model: usedLlm.model });
+                  
+                  // Record token usage for this LLM call
+                  const usage = (usedLlm as any).getUsage?.();
+                  if (usage && telemetry) {
+                    const tokenAttrs = { 
+                      provider: (usedLlm as any).id,
+                      model: usedLlm.model,
+                      agent_name: agentName || 'anonymous'
+                    };
+                    if (usage.inputTokens) {
+                      telemetry.recordMetric('llm.tokens.input', usage.inputTokens, tokenAttrs);
+                    }
+                    if (usage.outputTokens) {
+                      telemetry.recordMetric('llm.tokens.output', usage.outputTokens, tokenAttrs);
+                    }
+                    if (usage.totalTokens) {
+                      telemetry.recordMetric('llm.tokens.total', usage.totalTokens, tokenAttrs);
+                      // Always record agent tokens (even for anonymous agents)
+                      telemetry.recordMetric('agent.tokens', usage.totalTokens, { agent_name: agentName || 'anonymous' });
+                    }
+                  }
+                  
                   if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
                     // finish with final content
                     r.llmOutput = toolPlan?.content || r.llmOutput;
@@ -1419,7 +1446,30 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                     const provider = classifyProviderFromLlm(usedLlm);
                     throw normalizeError(e, 'llm', { stepId: out.length, provider });
                   }
-                  llmTotalMs += Date.now() - llmStart;
+                  const coordDuration = Date.now() - llmStart;
+                  llmTotalMs += coordDuration;
+                  
+                  // Record token usage for coordinator LLM call
+                  const coordUsage = (usedLlm as any).getUsage?.();
+                  if (coordUsage && telemetry) {
+                    const tokenAttrs = { 
+                      provider: (usedLlm as any).id,
+                      model: usedLlm.model,
+                      agent_name: agentName || 'coordinator'
+                    };
+                    if (coordUsage.inputTokens) {
+                      telemetry.recordMetric('llm.tokens.input', coordUsage.inputTokens, tokenAttrs);
+                    }
+                    if (coordUsage.outputTokens) {
+                      telemetry.recordMetric('llm.tokens.output', coordUsage.outputTokens, tokenAttrs);
+                    }
+                    if (coordUsage.totalTokens) {
+                      telemetry.recordMetric('llm.tokens.total', coordUsage.totalTokens, tokenAttrs);
+                      if (agentName) {
+                        telemetry.recordMetric('agent.tokens', coordUsage.totalTokens, { agent_name: agentName });
+                      }
+                    }
+                  }
                   
                   const decision = parseAgentDecision(coordinatorResponse);
                   
@@ -1580,9 +1630,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                   }
                   if (usage.totalTokens) {
                     telemetry.recordMetric('llm.tokens.total', usage.totalTokens, tokenAttrs);
-                    if (agentName) {
-                      telemetry.recordMetric('agent.tokens', usage.totalTokens, { agent_name: agentName });
-                    }
+                    // Always record agent tokens (even for anonymous agents)
+                    telemetry.recordMetric('agent.tokens', usage.totalTokens, { agent_name: agentName || 'anonymous' });
                   }
                 }
               } catch (e) {
@@ -1971,7 +2020,34 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                     const provider = classifyProviderFromLlm(usedLlm);
                     throw normalizeError(e, 'llm', { stepId: out.length, provider });
                   }
-                  llmTotalMs += Date.now() - llmStart;
+                  const llmCallDuration = Date.now() - llmStart;
+                  llmTotalMs += llmCallDuration;
+                  
+                  // Record LLM metrics for this iteration
+                  telemetry?.recordMetric('llm.call', 1, { provider: (usedLlm as any).id || usedLlm.model, error: false });
+                  telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: (usedLlm as any).id || usedLlm.model, model: usedLlm.model });
+                  
+                  // Record token usage for this LLM call
+                  const usage = (usedLlm as any).getUsage?.();
+                  if (usage && telemetry) {
+                    const tokenAttrs = { 
+                      provider: (usedLlm as any).id,
+                      model: usedLlm.model,
+                      agent_name: agentName || 'anonymous'
+                    };
+                    if (usage.inputTokens) {
+                      telemetry.recordMetric('llm.tokens.input', usage.inputTokens, tokenAttrs);
+                    }
+                    if (usage.outputTokens) {
+                      telemetry.recordMetric('llm.tokens.output', usage.outputTokens, tokenAttrs);
+                    }
+                    if (usage.totalTokens) {
+                      telemetry.recordMetric('llm.tokens.total', usage.totalTokens, tokenAttrs);
+                      // Always record agent tokens (even for anonymous agents)
+                      telemetry.recordMetric('agent.tokens', usage.totalTokens, { agent_name: agentName || 'anonymous' });
+                    }
+                  }
+                  
                   if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
                     // finish with final content
                     r.llmOutput = toolPlan?.content || r.llmOutput;
@@ -2066,7 +2142,30 @@ export function agent(opts?: AgentOptions): AgentBuilder {
                     const provider = classifyProviderFromLlm(usedLlm);
                     throw normalizeError(e, 'llm', { stepId: out.length, provider });
                   }
-                  llmTotalMs += Date.now() - llmStart;
+                  const coordDuration = Date.now() - llmStart;
+                  llmTotalMs += coordDuration;
+                  
+                  // Record token usage for coordinator LLM call
+                  const coordUsage = (usedLlm as any).getUsage?.();
+                  if (coordUsage && telemetry) {
+                    const tokenAttrs = { 
+                      provider: (usedLlm as any).id,
+                      model: usedLlm.model,
+                      agent_name: agentName || 'coordinator'
+                    };
+                    if (coordUsage.inputTokens) {
+                      telemetry.recordMetric('llm.tokens.input', coordUsage.inputTokens, tokenAttrs);
+                    }
+                    if (coordUsage.outputTokens) {
+                      telemetry.recordMetric('llm.tokens.output', coordUsage.outputTokens, tokenAttrs);
+                    }
+                    if (coordUsage.totalTokens) {
+                      telemetry.recordMetric('llm.tokens.total', coordUsage.totalTokens, tokenAttrs);
+                      if (agentName) {
+                        telemetry.recordMetric('agent.tokens', coordUsage.totalTokens, { agent_name: agentName });
+                      }
+                    }
+                  }
                   
                   const decision = parseAgentDecision(coordinatorResponse);
                   

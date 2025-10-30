@@ -22,6 +22,7 @@ export type LlamaConfig = {
   apiKey?: string;           // optional; if provided, we use fetch with Authorization: Bearer
   baseURL?: string;          // optional; default http://localhost:11434 or provider endpoint
   options?: LlamaOptions;
+  timeout?: number;          // optional; request timeout in milliseconds (default: 60000ms / 60s)
 };
 
 export function llmLlama(cfg: LlamaConfig): LLMHandle {
@@ -34,6 +35,7 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
   }
   const model = cfg.model;
   const options = cfg.options || {};
+  const timeout = cfg.timeout ?? 60000; // Default 60 second timeout
   let lastUsage: import('./types').TokenUsage | null = null;
   let client = cfg.client;
 
@@ -44,28 +46,51 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
       chat: {
         completions: {
           create: async (params) => {
-            const res = await fetch(`${base}/v1/chat/completions`, {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-              },
-              body: JSON.stringify(params),
-            });
-            if (!res.ok) {
-              const text = await res.text();
-              const err: any = new Error(`Llama HTTP ${res.status}`);
-              err.status = res.status;
-              err.body = text;
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+              const res = await fetch(`${base}/v1/chat/completions`, {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+                },
+                body: JSON.stringify(params),
+                signal: controller.signal,
+              });
+              
+              clearTimeout(timeoutId);
+              
+              if (!res.ok) {
+                const text = await res.text();
+                const err: any = new Error(`Llama HTTP ${res.status}`);
+                err.status = res.status;
+                err.body = text;
+                throw err;
+              }
+              
+              // Handle streaming responses
+              if (params.stream) {
+                return res; // Return the response object for streaming
+              }
+              
+              return await res.json();
+            } catch (err: any) {
+              clearTimeout(timeoutId);
+              
+              // Provide helpful error message for timeout
+              if (err.name === 'AbortError') {
+                throw new Error(
+                  `Llama request timed out after ${timeout}ms. ` +
+                  `The model may be slow to respond or the server may be unresponsive. ` +
+                  `Consider increasing the timeout: llmLlama({ ..., timeout: 120000 })`
+                );
+              }
+              
               throw err;
             }
-            
-            // Handle streaming responses
-            if (params.stream) {
-              return res; // Return the response object for streaming
-            }
-            
-            return await res.json();
           },
         },
       },
