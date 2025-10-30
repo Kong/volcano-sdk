@@ -322,6 +322,61 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 2,
+        "text": "Autonomous Multi-Agent Crews ⭐",
+        "id": "autonomous-multi-agent-crews"
+      },
+      {
+        "level": 3,
+        "text": "How It Works",
+        "id": "how-it-works"
+      },
+      {
+        "level": 3,
+        "text": "Why This Matters",
+        "id": "why-this-matters"
+      },
+      {
+        "level": 3,
+        "text": "Real-World Example",
+        "id": "real-world-example"
+      },
+      {
+        "level": 2,
+        "text": "Events & Progress Tracking",
+        "id": "events-progress-tracking"
+      },
+      {
+        "level": 3,
+        "text": "Built-In Progress Output",
+        "id": "built-in-progress-output"
+      },
+      {
+        "level": 3,
+        "text": "Custom Event Handlers",
+        "id": "custom-event-handlers"
+      },
+      {
+        "level": 4,
+        "text": "Agent Lifecycle Events",
+        "id": "agent-lifecycle-events"
+      },
+      {
+        "level": 4,
+        "text": "Token-Level Events with Agent Context",
+        "id": "token-level-events-with-agent-context"
+      },
+      {
+        "level": 4,
+        "text": "Combining Progress + Custom Events",
+        "id": "combining-progress-custom-events"
+      },
+      {
+        "level": 3,
+        "text": "SSE Integration Example",
+        "id": "sse-integration-example"
+      },
+      {
+        "level": 2,
         "text": "Retries & Timeouts",
         "id": "retries-timeouts"
       },
@@ -433,8 +488,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 3,
-        "text": "TypeScript-First",
-        "id": "typescript-first"
+        "text": "Autonomous Multi-Agent Crews",
+        "id": "autonomous-multi-agent-crews"
       },
       {
         "level": 3,
@@ -458,8 +513,8 @@ export const generatedNavigation: NavigationDoc[] = [
       },
       {
         "level": 3,
-        "text": "Sub-Agent Composition",
-        "id": "sub-agent-composition"
+        "text": "TypeScript-First",
+        "id": "typescript-first"
       },
       {
         "level": 3,
