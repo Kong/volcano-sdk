@@ -36,7 +36,6 @@ describe('context configuration', () => {
       id: 'OpenAI-mock', model: 'mock', client: {},
       gen: async (p: string) => { capturedPrompt = p; return 'OK'; },
       genWithTools: async (_prompt: string, tools: any[]) => {
-        // Tool names now use hash-based IDs
         const found = tools.find(t => t.name.endsWith('.get_sign'));
         if (!found) throw new Error('get_sign tool not found');
         return {
@@ -56,11 +55,11 @@ describe('context configuration', () => {
       .then({ prompt: 'second step', contextMaxToolResults: 2 })
       .run();
 
-    const start = capturedPrompt.indexOf('[Context from previous steps]');
-    expect(start).toBeGreaterThanOrEqual(0);
-    const ctx = capturedPrompt.slice(start);
-    const lines = (ctx.match(/\n- /g) || []).length;
-    expect(lines).toBe(2);
+    const contextStart = capturedPrompt.indexOf('[Context from previous steps]');
+    expect(contextStart).toBeGreaterThanOrEqual(0);
+    const context = capturedPrompt.slice(contextStart);
+    const toolResultLines = (context.match(/\n- /g) || []).length;
+    expect(toolResultLines).toBe(2);
   }, 30000);
 
   it('agent-level contextMaxChars caps injected context length', async () => {
@@ -77,11 +76,10 @@ describe('context configuration', () => {
       .then({ prompt: 'second' })
       .run();
 
-    // Check context block size in second call
-    const p = captured[1];
-    const idx = p.indexOf('[Context from previous steps]');
-    expect(idx).toBeGreaterThanOrEqual(0);
-    const context = p.slice(idx);
+    const secondPrompt = captured[1];
+    const contextStart = secondPrompt.indexOf('[Context from previous steps]');
+    expect(contextStart).toBeGreaterThanOrEqual(0);
+    const context = secondPrompt.slice(contextStart);
     expect(context.length).toBeLessThanOrEqual(100);
   });
 });

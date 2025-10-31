@@ -68,7 +68,6 @@ describe('MCP OAuth - Direct Client Validation', () => {
   }, 20000);
   
   it('obtains OAuth token from token endpoint', async () => {
-    // Test the OAuth token endpoint with form-encoded request (RFC 6749)
     const params = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: 'test-client',

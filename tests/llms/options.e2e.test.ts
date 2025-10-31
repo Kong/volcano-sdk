@@ -6,7 +6,6 @@ describe('LLM Provider Options (E2E)', () => {
     // Note: gpt-5-mini has reliability issues, use gpt-4o-mini for options testing
     const testModel = 'gpt-4o-mini';
     
-    // Test seed for deterministic output
     const llmWithSeed = llmOpenAI({ 
       apiKey: process.env.OPENAI_API_KEY!,
       model: testModel,
@@ -29,7 +28,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Anthropic: uses optional parameters correctly', async () => {
-    // Test max_tokens limits output
     const llmShort = llmAnthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!,
       model: process.env.ANTHROPIC_MODEL || 'claude-3-haiku-20240307',
@@ -79,7 +77,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Bedrock: uses optional parameters correctly', async () => {
-    // Test temperature affects output diversity
     const llmLowTemp = llmBedrock({
       model: process.env.BEDROCK_MODEL || 'amazon.nova-micro-v1:0',
       region: process.env.AWS_REGION || 'us-east-1',
@@ -124,10 +121,11 @@ describe('LLM Provider Options (E2E)', () => {
     expect(highTempResult.length).toBeGreaterThan(0);
   }, 60000);
 
-  it('Llama: uses optional parameters correctly', async () => {
+  // Skip in CI - Llama is too slow (45s+ per call even with optimizations)
+  (process.env.CI === 'true' ? it.skip : it)('Llama: uses optional parameters correctly', async () => {
     const llm = llmLlama({
       baseURL: process.env.LLAMA_BASE_URL || 'http://localhost:11434',
-      model: process.env.LLAMA_MODEL || 'llama3.2:3b', // Faster 3b model
+      model: process.env.LLAMA_MODEL || 'llama3.1:8b',
       ...(process.env.LLAMA_API_KEY && { apiKey: process.env.LLAMA_API_KEY }),
       options: {
         temperature: 0.7,
@@ -146,7 +144,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Mistral: uses optional parameters correctly', async () => {
-    // Test max_tokens limits output length
     const llmShort = llmMistral({
       apiKey: process.env.MISTRAL_API_KEY!,
       model: process.env.MISTRAL_MODEL || 'mistral-small-latest',
@@ -178,7 +175,6 @@ describe('LLM Provider Options (E2E)', () => {
   }, 60000);
 
   it('Vertex Studio: uses optional parameters correctly', async () => {
-    // Test max_output_tokens limits response length
     const llmShort = llmVertexStudio({
       model: process.env.VERTEX_MODEL || 'gemini-2.5-flash-lite',
       apiKey: process.env.GCP_VERTEX_API_KEY!,

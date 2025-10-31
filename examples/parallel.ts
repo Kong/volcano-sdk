@@ -1,5 +1,3 @@
-// Parallel Execution Example
-// Run multiple LLM tasks simultaneously to save time
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
 const llm = llmOpenAI({ 
@@ -7,8 +5,7 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-// Example 1: Array mode - simple parallel tasks
-console.log("=== Parallel Array Mode ===");
+console.log("Array Mode:");
 const arrayResults = await agent({ llm })
   .parallel([
     { prompt: "What's 15 + 27?" },
@@ -19,8 +16,7 @@ const arrayResults = await agent({ llm })
 
 console.log("Results:", arrayResults[0].parallelResults?.map(r => r.llmOutput));
 
-// Example 2: Named mode - access results by key
-console.log("\n=== Parallel Named Mode ===");
+console.log("\nNamed Mode:");
 const namedResults = await agent({ llm })
   .parallel({
     addition: { prompt: "What's 25 + 75?" },
@@ -39,7 +35,6 @@ const namedResults = await agent({ llm })
 
 console.log("Summary:", namedResults[1].llmOutput);
 
-// Example 3: Multi-provider parallel execution
 import { llmAnthropic, llmMistral } from "../dist/volcano-sdk.js";
 
 if (process.env.ANTHROPIC_API_KEY && process.env.MISTRAL_API_KEY) {
@@ -52,7 +47,7 @@ if (process.env.ANTHROPIC_API_KEY && process.env.MISTRAL_API_KEY) {
     model: "mistral-small-latest" 
   });
 
-  console.log("\n=== Multi-Provider Parallel ===");
+  console.log("\nMulti-Provider:");
   const multiResults = await agent()
     .parallel({
       gpt: { prompt: "Say hello in English", llm },

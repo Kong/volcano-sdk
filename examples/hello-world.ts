@@ -1,8 +1,5 @@
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
-// Run with: npx tsx examples/hello-world.ts
-// The simplest Volcano SDK workflow with beautiful progress
-
 (async () => {
   
   const llm = llmOpenAI({ 

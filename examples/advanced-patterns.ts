@@ -1,5 +1,4 @@
-// Advanced Workflow Patterns Example
-import { agent, llmOpenAI, mcp } from "../dist/volcano-sdk.js";
+import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
 async function main() {
   const llm = llmOpenAI({ 
@@ -7,7 +6,7 @@ async function main() {
     model: "gpt-4o-mini" 
   });
 
-  console.log("=== 1. Parallel Execution ===");
+  console.log("1. Parallel Execution");
   const parallelResults = await agent({ llm })
     .parallel({
       sentiment: { prompt: "What's the sentiment of: 'I love this product!'?" },
@@ -16,9 +15,9 @@ async function main() {
     })
     .run();
   
-  console.log("Parallel results:", parallelResults[0].parallel);
+  console.log("Results:", parallelResults[0].parallel);
 
-  console.log("\n=== 2. Conditional Branching ===");
+  console.log("\n2. Conditional Branching");
   const branchResults = await agent({ llm })
     .then({ prompt: "Is 10 > 5? Reply YES or NO" })
     .branch(
@@ -30,9 +29,9 @@ async function main() {
     )
     .run();
   
-  console.log("Branch result:", branchResults[branchResults.length - 1].llmOutput);
+  console.log("Result:", branchResults[branchResults.length - 1].llmOutput);
 
-  console.log("\n=== 3. Switch Statement ===");
+  console.log("\n3. Switch Statement");
   const switchResults = await agent({ llm })
     .then({ prompt: "Pick a number: 1, 2, or 3" })
     .switch(
@@ -46,9 +45,9 @@ async function main() {
     )
     .run();
   
-  console.log("Switch result:", switchResults[switchResults.length - 1].llmOutput);
+  console.log("Result:", switchResults[switchResults.length - 1].llmOutput);
 
-  console.log("\n=== 4. ForEach Loop ===");
+  console.log("\n4. ForEach Loop");
   const colors = ["red", "blue", "green"];
   const forEachResults = await agent({ llm })
     .forEach(colors, (color, a) => 
@@ -56,10 +55,9 @@ async function main() {
     )
     .run();
   
-  console.log("ForEach results:");
   forEachResults.forEach((r, i) => console.log(`  ${colors[i]}: ${r.llmOutput}`));
 
-  console.log("\n=== 5. While Loop ===");
+  console.log("\n5. While Loop");
   let counter = 0;
   const whileResults = await agent({ llm })
     .while(
@@ -72,9 +70,9 @@ async function main() {
     )
     .run();
   
-  console.log("While loop ran", whileResults.length, "times");
+  console.log("Ran", whileResults.length, "times");
 
-  console.log("\n=== 6. Retry Until Success ===");
+  console.log("\n6. Retry Until Success");
   let attemptNum = 0;
   const mockLLM = {
     ...llm,
@@ -92,9 +90,9 @@ async function main() {
     )
     .run();
   
-  console.log("Retry succeeded after", retryResults.length, "attempts");
+  console.log("Succeeded after", retryResults.length, "attempts");
 
-  console.log("\n=== 7. Sub-Agent Composition ===");
+  console.log("\n7. Sub-Agent Composition");
   const analyzer = agent({ llm })
     .then({ prompt: "Extract key points from: 'AI is transforming industries'" });
   
@@ -106,9 +104,9 @@ async function main() {
     .runAgent(writer)
     .run();
   
-  console.log("Composed result:", composedResults[composedResults.length - 1].llmOutput);
+  console.log("Result:", composedResults[composedResults.length - 1].llmOutput);
 
-  console.log("\n=== 8. Combined Patterns ===");
+  console.log("\n8. Combined Patterns");
   const combinedResults = await agent({ llm })
     .parallel({
       check1: { prompt: "Is 'hello world' friendly? YES/NO" },
@@ -126,7 +124,7 @@ async function main() {
     )
     .run();
   
-  console.log("Combined pattern completed with", combinedResults.length, "total steps");
+  console.log("Completed:", combinedResults.length, "steps");
 }
 
 main().catch(console.error);

@@ -1,15 +1,11 @@
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
-// Run with: npx tsx examples/multi-agent-crew.ts
-// Autonomous multi-agent crews that self-coordinate
-
 (async () => {
   const llm = llmOpenAI({ 
     apiKey: process.env.OPENAI_API_KEY!, 
     model: "gpt-5-mini" 
   });
 
-  // Define specialized agents with names and descriptions
   const researcher = agent({
     llm,
     name: "researcher",
@@ -28,7 +24,6 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
     description: "Reviews content for clarity, grammar, and style. Use to polish and improve existing content."
   });
 
-  // The LLM automatically coordinates agents based on their descriptions
   const results = await agent({ 
     llm, 
     timeout: 180
@@ -42,12 +37,11 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
   console.log(results[0].llmOutput);
   
-  // Show which agents were used
   const agentCalls = (results[0] as any).agentCalls;
   if (agentCalls) {
-    console.log("\n=== AGENTS UTILIZED ===");
-    agentCalls.forEach((call: any, i: number) => {
-      console.log(`${i + 1}. ${call.name}: "${call.task.substring(0, 60)}..."`);
+    console.log("\nAgents used:");
+    agentCalls.forEach((call: any) => {
+      console.log(`  - ${call.name}: "${call.task.substring(0, 60)}..."`);
     });
   }
 })();

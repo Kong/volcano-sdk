@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types";
 import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 export type OpenAIOptions = {
   temperature?: number;
@@ -74,14 +75,7 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
         ...options,
       });
       
-      // Capture token usage
-      if (r.usage) {
-        lastUsage = {
-          inputTokens: r.usage.prompt_tokens,
-          outputTokens: r.usage.completion_tokens,
-          totalTokens: r.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(r.usage);
       
       return r.choices?.[0]?.message?.content ?? "";
     },
@@ -96,14 +90,7 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
         ...options,
       });
 
-      // Capture token usage
-      if (r.usage) {
-        lastUsage = {
-          inputTokens: r.usage.prompt_tokens,
-          outputTokens: r.usage.completion_tokens,
-          totalTokens: r.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(r.usage);
 
       const message = r.choices?.[0]?.message;
       const result = parseOpenAICompatibleResponse(message, nameMap);
@@ -119,14 +106,7 @@ export function llmOpenAI(cfg: OpenAIConfig): LLMHandle {
         ...options,
       });
       for await (const chunk of stream as any) {
-        // Capture usage if provided (last chunk for OpenAI)
-        if (chunk.usage) {
-          lastUsage = {
-            inputTokens: chunk.usage.prompt_tokens,
-            outputTokens: chunk.usage.completion_tokens,
-            totalTokens: chunk.usage.total_tokens
-          };
-        }
+        lastUsage = normalizeTokenUsage(chunk.usage) || lastUsage;
         const delta = chunk?.choices?.[0]?.delta?.content;
         if (typeof delta === "string" && delta.length > 0) {
           yield delta;
@@ -167,14 +147,13 @@ export function llmOpenAIResponses(cfg: OpenAIResponsesConfig): LLMHandle {
   const client = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
   const { jsonSchema, ...otherOptions } = cfg.options;
   
-  // Build response_format with json_schema mode
   const responseFormat = {
     type: "json_schema" as const,
     json_schema: {
       name: jsonSchema.name,
       description: jsonSchema.description,
       schema: jsonSchema.schema,
-      strict: jsonSchema.strict ?? true  // Default to strict mode
+      strict: jsonSchema.strict ?? true
     }
   };
 
