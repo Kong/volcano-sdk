@@ -75,8 +75,9 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
   const enableTraces = config.traces !== false; // enabled by default
   const enableMetrics = config.metrics !== false;
   
-  // Store SDK reference for flushing
+  // Store SDK and metric reader references for flushing
   let sdk: any = null;
+  let metricReader: any = null;
   
   // Auto-configure SDK if endpoint provided
   if (config.endpoint) {
@@ -87,20 +88,25 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
       const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
       
-      sdk = new NodeSDK({
-        serviceName,
-        traceExporter: enableTraces ? new OTLPTraceExporter({ 
-          url: `${config.endpoint}/v1/traces`,
-          timeoutMillis: 5000
-        }) : undefined,
-        metricReader: enableMetrics ? new PeriodicExportingMetricReader({
+      // Create metric reader separately so we can flush it
+      if (enableMetrics) {
+        metricReader = new PeriodicExportingMetricReader({
           exporter: new OTLPMetricExporter({ 
             url: `${config.endpoint}/v1/metrics`,
             timeoutMillis: 5000
           }),
           exportIntervalMillis: 5000,
           exportTimeoutMillis: 5000
-        }) : undefined
+        });
+      }
+      
+      sdk = new NodeSDK({
+        serviceName,
+        traceExporter: enableTraces ? new OTLPTraceExporter({ 
+          url: `${config.endpoint}/v1/traces`,
+          timeoutMillis: 5000
+        }) : undefined,
+        metricReader
       });
       
       sdk.start();
@@ -423,21 +429,30 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
     async flush() {
       // Flush both traces and metrics to backend
       try {
-        // Flush SDK if it was auto-configured
-        if (sdk && typeof sdk.shutdown === 'function') {
-          // Use forceFlush instead of shutdown to keep SDK active
-          if (typeof (sdk as any).forceFlush === 'function') {
-            await (sdk as any).forceFlush();
+        // Flush metric reader directly (forceFlush on reader works, SDK doesn't have it)
+        if (metricReader && typeof metricReader.forceFlush === 'function') {
+          await metricReader.forceFlush();
+          
+          if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
+            console.log('[Volcano] Metrics flushed via MetricReader');
           }
+        } else if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
+          console.log('[Volcano] No MetricReader to flush');
         }
         
-        if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
-          console.log('[Volcano] Telemetry flushed');
+        // Traces are auto-flushed by SpanProcessor, but we can try if SDK has it
+        if (sdk) {
+          const tracerProvider = sdk.getTracerProvider?.();
+          if (tracerProvider && typeof tracerProvider.forceFlush === 'function') {
+            await tracerProvider.forceFlush();
+            
+            if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
+              console.log('[Volcano] Traces flushed via TracerProvider');
+            }
+          }
         }
       } catch (e) {
-        if (process.env.VOLCANO_DEBUG_TELEMETRY === 'true') {
-          console.warn('[Volcano] Failed to flush telemetry:', e);
-        }
+        console.warn('[Volcano] Failed to flush telemetry:', e);
       }
     }
   };

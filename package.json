@@ -1,6 +1,6 @@
 {
   "name": "volcano-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Build AI agents that seamlessly combine LLM reasoning with real-world actions via MCP tools — in just a few lines of TypeScript.",
   "author": "Kong <office@konghq.com>",
   "type": "module",
@@ -39,7 +39,8 @@
     "pretest": "./scripts/kill-test-servers.sh",
     "test": "NODE_OPTIONS='--no-deprecation' vitest run",
     "test:watch": "NODE_OPTIONS='--no-deprecation' vitest",
-    "test:kill-servers": "./scripts/kill-test-servers.sh"
+    "test:kill-servers": "./scripts/kill-test-servers.sh",
+    "test:ollama": "node scripts/test-ollama-health.mjs"
   },
   "peerDependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.895.0",

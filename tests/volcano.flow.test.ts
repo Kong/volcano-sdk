@@ -87,7 +87,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
     {
       name: 'Llama',
       make: () => {
-        return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.1:8b' });
+        return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.2:3b' });
       },
     },
     {
@@ -151,8 +151,8 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
 
         let results;
         try {
-          // Llama is slower, needs longer timeout
-          const agentTimeout = p.name === 'Llama' ? 300 : 60;
+          // Llama 3b is faster than 8b locally, but CI is slower
+          const agentTimeout = p.name === 'Llama' ? 150 : 60; // CI needs more time
           results = await agent({
             llm,
             hideProgress: true,
@@ -199,7 +199,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
           const step2Names = (step2.toolCalls || []).map(c => c.name);
           expect(step2Names.some(n => n.endsWith('.get_preferences'))).toBe(true);
         }
-      }, p.name === 'Llama' ? 300000 : 120000);
+      }, p.name === 'Llama' ? 240000 : 120000); // Llama needs 4 minutes in CI
 
       it('runs a one-step automatic flow using both MCP servers (one-liner)', async () => {
         if (p.requireEnv) for (const k of p.requireEnv) { if (!process.env[k]) throw new Error(`${k} is required for this test`); }
@@ -219,8 +219,8 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
 
         let results;
         try {
-          // Llama is slower, needs longer timeout
-          const agentTimeout = p.name === 'Llama' ? 300 : 60;
+          // Llama 3b is faster than 8b locally, but CI is slower
+          const agentTimeout = p.name === 'Llama' ? 150 : 60; // CI needs more time
           results = await agent({ llm, hideProgress: true, timeout: agentTimeout })
             .then({
               prompt,
@@ -254,7 +254,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
           // Other providers can handle multiple tools or be more flexible
           expect(step.toolCalls.length).toBeGreaterThan(0);
         }
-      }, p.name === 'Llama' ? 240000 : 60000);
+      }, p.name === 'Llama' ? 180000 : 60000); // Llama needs 3 minutes in CI
     });
   }
 });

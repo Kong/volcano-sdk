@@ -226,7 +226,8 @@ describe('Telemetry E2E - All Providers with Live Observability', () => {
       hideProgress: true,
       name: 'researcher',
       description: 'Researches'
-    });
+    })
+      .then({ prompt: 'Research the topic' });
     
     const writer = agent({
       llm,
@@ -234,20 +235,28 @@ describe('Telemetry E2E - All Providers with Live Observability', () => {
       hideProgress: true,
       name: 'writer',
       description: 'Writes'
-    });
+    })
+      .then({ prompt: 'Write the content' });
     
-    await agent({ 
+    const results = await agent({ 
       llm, 
       telemetry: mock.telemetry,
       hideProgress: true,
       name: 'coordinator'
     })
       .then({
-        prompt: 'Write a sentence about AI',
+        prompt: 'Research AI and then write a brief explanation',
         agents: [researcher, writer],
         maxAgentIterations: 3
       })
       .run();
+    
+    // Debug: Check what happened
+    const allMetrics = mock.recordedMetrics.map(m => m.name);
+    if (!allMetrics.includes('agent.subagent_call')) {
+      console.log('No agent.subagent_call found. All metrics:', allMetrics);
+      console.log('Results:', results.map(r => ({ prompt: r.prompt, llmOutput: r.llmOutput?.substring(0, 100) })));
+    }
     
     // Verify parent-child relationship was recorded
     const subAgentCalls = mock.recordedMetrics.filter(m => m.name === 'agent.subagent_call');

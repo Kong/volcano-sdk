@@ -9,7 +9,7 @@
   "links": [],
   "panels": [
     {
-      "title": "🎯 EXECUTIVE OVERVIEW",
+      "title": "EXECUTIVE OVERVIEW",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
       "id": 100,
@@ -212,7 +212,7 @@
       "type": "gauge"
     },
     {
-      "title": "🤖 AGENT ANALYTICS",
+      "title": "AGENT ANALYTICS",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
       "id": 200,
@@ -352,7 +352,7 @@
       "type": "timeseries"
     },
     {
-      "title": "💰 TOKEN ECONOMICS",
+      "title": "TOKEN ECONOMICS",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 22},
       "id": 300,
@@ -509,7 +509,7 @@
       "type": "gauge"
     },
     {
-      "title": "🚀 PERFORMANCE",
+      "title": "PERFORMANCE",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 39},
       "id": 400,
@@ -655,7 +655,7 @@
       "type": "table"
     },
     {
-      "title": "🔧 MCP TOOLS",
+      "title": "MCP TOOLS",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 56},
       "id": 500,
@@ -750,7 +750,7 @@
       "type": "table"
     },
     {
-      "title": "🚨 ERRORS & RELIABILITY",
+      "title": "ERRORS & RELIABILITY",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 65},
       "id": 600,
@@ -825,7 +825,7 @@
       "type": "piechart"
     },
     {
-      "title": "📊 WORKFLOW INSIGHTS",
+      "title": "WORKFLOW INSIGHTS",
       "type": "row",
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 74},
       "id": 700,

@@ -4,7 +4,18 @@ import eslint from '@eslint/js';
 export default [
   { ignores: ['**/dist/**', 'node_modules/**', 'examples/**', 'eslint.config.*', 'mcp/**', 'tests/**'] },
   // JS base rules for JS files (none currently, but safe)
-  { files: ['**/*.{js,cjs,mjs}'], ...eslint.configs.recommended },
+  { 
+    files: ['**/*.{js,cjs,mjs}'], 
+    ...eslint.configs.recommended,
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        fetch: 'readonly',
+        TextDecoder: 'readonly'
+      }
+    }
+  },
   // TS recommended (no type-checking) applied to TS files
   ...tseslint.configs.recommended.map(cfg => ({
     ...cfg,

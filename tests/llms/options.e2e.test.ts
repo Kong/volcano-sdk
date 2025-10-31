@@ -127,7 +127,7 @@ describe('LLM Provider Options (E2E)', () => {
   it('Llama: uses optional parameters correctly', async () => {
     const llm = llmLlama({
       baseURL: process.env.LLAMA_BASE_URL || 'http://localhost:11434',
-      model: process.env.LLAMA_MODEL || 'llama3.1:8b',
+      model: process.env.LLAMA_MODEL || 'llama3.2:3b', // Faster 3b model
       ...(process.env.LLAMA_API_KEY && { apiKey: process.env.LLAMA_API_KEY }),
       options: {
         temperature: 0.7,

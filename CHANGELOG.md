@@ -5,6 +5,16 @@ All notable changes to Volcano SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+## [1.0.4] - 2025-10-30
+
+### Fixed
+
+- **Token Metrics Now Tracked for MCP Automatic Tool Selection**: Fixed missing token tracking in steps with `mcps` (automatic tool selection). Previously, token usage was only recorded for simple LLM-only steps, causing MCP workflows to show zero tokens in observability dashboards. Now all LLM calls properly record `llm.tokens.input`, `llm.tokens.output`, and `llm.tokens.total` metrics regardless of whether tools are being used.
+
+- **Telemetry Flush Now Works with Auto-Configured SDK**: Fixed `telemetry.flush()` to properly flush metrics when using auto-configured SDK via `endpoint` parameter. Now directly calls `metricReader.forceFlush()` instead of trying to use non-existent `SDK.forceFlush()` method. Metrics are now immediately sent to the collector instead of waiting for the 5-second periodic export.
+
 ## [1.0.3] - 2025-10-30
 
 ### Added
@@ -14,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agent Relationship Metrics**: Track parent-child agent relationships with `volcano.agent.subagent_calls` and `volcano.agent.executions`. Enables answering "What agent is used most?" and "What's the parent-child usage pattern?"
 
 - **Comprehensive Grafana Dashboard**: 23-panel dashboard (`grafana-volcano-comprehensive.json`) with agent analytics, token economics, performance metrics, and error tracking. Answers questions like "Which agent uses most tokens?", "What are the parent-child relationships?", and "Which provider is fastest?"
+
+- **Comprehensive Telemetry Test Suite**: New `telemetry.comprehensive.test.ts` with 24 tests validating all telemetry scenarios including named/anonymous agents, token tracking, LLM metrics, step metrics, sub-agents, multi-provider workflows, error handling, and span creation.
 
 ### Changed
 
@@ -67,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `@opentelemetry/sdk-node`: v0.205 → v0.207
   - `zod`: Stayed on v3.23 (v4 incompatible with MCP SDK)
 
-- **Better Llama Support**: Upgraded default model from `llama3.2:3b` to `llama3.1:8b` for significantly improved tool calling reliability. Increased timeouts in CI to accommodate the larger model's slower inference.
+- **Better Llama Support**: Switched to `llama3.2:3b` for faster CI execution while maintaining tool calling support. This smaller model is 3x faster than the 8B variant, reducing CI time significantly.
 
 - **Cleaner Test Output**: Added `hideProgress: true` to 25+ test files. Only progress-specific tests show output now, making test runs much cleaner.
 

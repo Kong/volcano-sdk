@@ -64,7 +64,7 @@ describe('Telemetry - Token Tracking (E2E)', () => {
   it('Llama tracks tokens correctly (if available)', async () => {
     const llm = llmLlama({
       baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434',
-      model: process.env.LLAMA_MODEL || 'llama3.1:8b'
+      model: process.env.LLAMA_MODEL || 'llama3.2:3b'
     });
     
     await agent({ llm, hideProgress: true })

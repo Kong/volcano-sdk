@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores  # Larger runner for faster Llama inference
     env:
       OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
     steps:
@@ -39,9 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.cache/ollama-models
-          key: ollama-models-${{ runner.os }}-llama3.1-8b-v1
+          key: ollama-models-${{ runner.os }}-llama3.2-3b-v1
           restore-keys: |
-            ollama-models-${{ runner.os }}-llama3.1-8b-
+            ollama-models-${{ runner.os }}-llama3.2-3b-
             ollama-models-${{ runner.os }}-
 
       - name: Install Ollama
@@ -87,13 +87,13 @@ jobs:
           ollama list || echo "No models found"
           
           # Check if model exists or download it
-          echo "Checking for llama3.1:8b model..."
-          if ollama show llama3.1:8b >/dev/null 2>&1; then
-            echo "✅ Model llama3.1:8b found in cache!"
+          echo "Checking for llama3.2:3b model..."
+          if ollama show llama3.2:3b >/dev/null 2>&1; then
+            echo "✅ Model llama3.2:3b found in cache!"
           else
-            echo "📥 Model not found, downloading llama3.1:8b..."
-            echo "This will take 3-5 minutes on first run, but will be cached for future runs."
-            ollama pull llama3.1:8b
+            echo "📥 Model not found, downloading llama3.2:3b..."
+            echo "This will take 1-2 minutes on first run (much smaller than 8b), but will be cached for future runs."
+            ollama pull llama3.2:3b
             echo "✅ Model download complete!"
           fi
           
@@ -104,7 +104,7 @@ jobs:
           # Verify model is working
           echo "Testing Ollama functionality..."
           test_response=$(curl -s http://127.0.0.1:11434/api/generate -d '{
-            "model": "llama3.1:8b",
+            "model": "llama3.2:3b",
             "prompt": "Say OK",
             "stream": false
           }' -H "Content-Type: application/json")
@@ -128,6 +128,13 @@ jobs:
           # Also check default Ollama location to see if models went there instead
           echo "Checking default Ollama location (~/.ollama):"
           du -sh ~/.ollama 2>/dev/null || echo "Default location empty or doesn't exist"
+
+      - name: Verify Ollama Health (Comprehensive)
+        run: node scripts/test-ollama-health.mjs
+        env:
+          OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
+          LLAMA_BASE_URL: http://127.0.0.1:11434
+          LLAMA_MODEL: llama3.2:3b
 
       - name: Run tests (unit/e2e)
         run: npm test
