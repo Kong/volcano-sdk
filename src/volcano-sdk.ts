@@ -10,6 +10,7 @@ export { llmMistral } from "./llms/mistral.js";
 export { llmBedrock } from "./llms/bedrock.js";
 export { llmVertexStudio } from "./llms/vertex-studio.js";
 export { llmAzure } from "./llms/azure.js";
+export { llmCohere } from "./llms/cohere.js";
 export { createVolcanoTelemetry, noopTelemetry } from "./telemetry.js";
 export type { VolcanoTelemetryConfig, VolcanoTelemetry } from "./telemetry.js";
 export type { OpenAIConfig, OpenAIOptions } from "./llms/openai.js";
