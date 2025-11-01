@@ -104,7 +104,6 @@ describe('GitHub Issue Handler - Context Persistence', () => {
   let labelsProc: any;
 
   beforeAll(async () => {
-    // Mock GitHub Issues MCP Server
     issuesProc = startMockServer('github-issues', '4101', [
       {
         name: 'get_issue',
@@ -167,7 +166,6 @@ describe('GitHub Issue Handler - Context Persistence', () => {
       }
     ]);
 
-    // Mock Team MCP Server
     teamProc = startMockServer('team-members', '4102', [
       {
         name: 'list_team_members',
@@ -188,7 +186,6 @@ describe('GitHub Issue Handler - Context Persistence', () => {
       }
     ]);
 
-    // Mock Labels MCP Server
     labelsProc = startMockServer('labels', '4103', [
       {
         name: 'create_label',
@@ -238,13 +235,11 @@ describe('GitHub Issue Handler - Context Persistence', () => {
 
     const issueNumber = 123;
 
-    // Mock LLM that returns specific tool calls for each step
     const llm: any = {
       id: 'mock-github-llm',
       model: 'test',
       client: {},
       gen: async (prompt: string) => {
-        // Step 4 should have access to issue number from step 1
         if (prompt.includes('Write a label')) {
           // This prompt should include context about issue 123
           expect(prompt).toContain('123');

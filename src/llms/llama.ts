@@ -1,5 +1,6 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 type OpenAILikeClient = {
   chat: { completions: { create: (args: any) => Promise<any> } };
@@ -30,7 +31,7 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
     throw new Error(
       "llmLlama: Missing required 'model' parameter. " +
       "Please specify which Llama model to use. " +
-      "Example: llmLlama({ baseURL: 'http://localhost:11434', model: 'llama3.2:3b' })"
+      "Example: llmLlama({ baseURL: 'http://localhost:11434', model: 'llama3.1:8b' })"
     );
   }
   const model = cfg.model;
@@ -71,7 +72,6 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
                 throw err;
               }
               
-              // Handle streaming responses
               if (params.stream) {
                 return res; // Return the response object for streaming
               }
@@ -101,7 +101,7 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
     throw new Error(
       "llmLlama: Missing configuration. " +
       "Please provide either 'client' or 'baseURL' for an OpenAI-compatible endpoint (e.g., Ollama). " +
-      "Example: llmLlama({ baseURL: 'http://localhost:11434', model: 'llama3.2:3b' })"
+      "Example: llmLlama({ baseURL: 'http://localhost:11434', model: 'llama3.1:8b' })"
     );
   }
 
@@ -116,14 +116,7 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
         ...options,
       });
       
-      // Capture token usage (OpenAI-compatible)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens,
-          outputTokens: resp.usage.completion_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
@@ -139,14 +132,7 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
         ...options,
       } as any);
       
-      // Capture token usage (OpenAI-compatible)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens,
-          outputTokens: resp.usage.completion_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const message = resp?.choices?.[0]?.message;
       const result = parseOpenAICompatibleResponse(message, nameMap);
@@ -161,7 +147,6 @@ export function llmLlama(cfg: LlamaConfig): LLMHandle {
         ...options,
       });
       
-      // Handle Server-Sent Events streaming
       if (streamResponse && streamResponse.body) {
         const reader = streamResponse.body.getReader();
         const decoder = new TextDecoder();

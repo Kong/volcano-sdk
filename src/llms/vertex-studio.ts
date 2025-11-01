@@ -1,5 +1,6 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 import { sanitizeToolName } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 type VertexStudioClient = {
   generateContent: (params: any) => Promise<any>;
@@ -98,14 +99,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
 
       const resp = await client!.generateContent(params);
       
-      // Capture token usage (Vertex format)
-      if (resp.usageMetadata) {
-        lastUsage = {
-          inputTokens: resp.usageMetadata.promptTokenCount,
-          outputTokens: resp.usageMetadata.candidatesTokenCount,
-          totalTokens: resp.usageMetadata.totalTokenCount
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usageMetadata);
       
       const candidates = resp?.candidates || [];
       const content = candidates[0]?.content?.parts || [];
@@ -157,14 +151,7 @@ export function llmVertexStudio(cfg: VertexStudioConfig): LLMHandle {
 
       const resp = await client!.generateContent(params);
       
-      // Capture token usage (Vertex format)
-      if (resp.usageMetadata) {
-        lastUsage = {
-          inputTokens: resp.usageMetadata.promptTokenCount,
-          outputTokens: resp.usageMetadata.candidatesTokenCount,
-          totalTokens: resp.usageMetadata.totalTokenCount
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usageMetadata);
       
       const candidates = resp?.candidates || [];
       const content = candidates[0]?.content?.parts || [];

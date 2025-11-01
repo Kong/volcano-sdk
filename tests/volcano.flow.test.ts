@@ -87,7 +87,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
     {
       name: 'Llama',
       make: () => {
-        return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.2:3b' });
+        return llmLlama({ baseURL: process.env.LLAMA_BASE_URL || 'http://127.0.0.1:11434', model: process.env.LLAMA_MODEL || 'llama3.1:8b' });
       },
     },
     {
@@ -140,7 +140,12 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
     },
   ];
 
-  for (const p of providerMatrix) {
+  // Skip Llama in CI - too slow even with optimizations (45s+ per call)
+  const activeProviders = process.env.CI === 'true' 
+    ? providerMatrix.filter(p => p.name !== 'Llama')
+    : providerMatrix;
+
+  for (const p of activeProviders) {
     describe(`Provider: ${p.name}`, () => {
       it('runs a two-step automatic flow using both MCP servers', async () => {
         if (p.requireEnv) for (const k of p.requireEnv) { if (!process.env[k]) throw new Error(`${k} is required for this test`); }
@@ -184,7 +189,6 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
         const step1 = results[0];
         expect(step1.toolCalls && step1.toolCalls.length).toBeGreaterThanOrEqual(1);
         const step1Names = (step1.toolCalls || []).map(c => c.name);
-        // Tool names now use hash-based IDs: mcp_XXXXXXXX.get_sign
         expect(step1Names.some(n => n.endsWith('.get_sign'))).toBe(true);
 
         const step2 = results[1];

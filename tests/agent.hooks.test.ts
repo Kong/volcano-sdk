@@ -112,10 +112,7 @@ describe('agent pre/post hooks', () => {
       genStream: async function*(){} 
     };
 
-    // Mock MCP handle for tool-only step
     const mockMcp = { id: 'mock', url: 'http://mock:3000/mcp' };
-    
-    // Mock the MCP functionality by patching the internal function
     const originalWithMCP = (global as any).__volcanoWithMCP;
     (global as any).__volcanoWithMCP = async (handle: any, fn: any) => {
       return await fn({ callTool: async () => ({ result: 'mocked' }) });

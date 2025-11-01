@@ -1,8 +1,5 @@
 import { agent, llmOpenAI, mcp } from "../dist/volcano-sdk.js";
 
-// Run with: npx tsx examples/basic.ts
-// (make sure OPENAI_API_KEY is set, and MCP servers are running locally)
-
 (async () => {
   const llm = llmOpenAI({ 
     apiKey: process.env.OPENAI_API_KEY!, 

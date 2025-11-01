@@ -1,17 +1,9 @@
 import type { ToolDefinition, LLMToolResult } from "./types.js";
 
-/**
- * Sanitize tool names to only include alphanumeric characters, underscores, and hyphens.
- * This ensures compatibility across different LLM providers.
- */
 export function sanitizeToolName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/**
- * Safely parse JSON arguments from tool calls.
- * Returns an empty object if parsing fails.
- */
 export function parseToolArguments(argsJson: string): Record<string, any> {
   try {
     return JSON.parse(argsJson);
@@ -20,9 +12,6 @@ export function parseToolArguments(argsJson: string): Record<string, any> {
   }
 }
 
-/**
- * Type definitions for OpenAI-compatible tool call responses
- */
 export interface OpenAICompatibleToolCall {
   function?: {
     name: string;
@@ -37,10 +26,6 @@ export interface OpenAICompatibleMessage {
   tool_calls?: OpenAICompatibleToolCall[];
 }
 
-/**
- * Create tool mapping for OpenAI-compatible providers.
- * Handles name sanitization and creates a reverse lookup map.
- */
 export function createOpenAICompatibleTools(tools: ToolDefinition[]) {
   const nameMap = new Map<string, { dottedName: string; def: ToolDefinition }>();
   const formattedTools = tools.map((tool) => {
@@ -60,9 +45,6 @@ export function createOpenAICompatibleTools(tools: ToolDefinition[]) {
   return { nameMap, formattedTools };
 }
 
-/**
- * Parse OpenAI-compatible tool call response into LLMToolResult format.
- */
 export function parseOpenAICompatibleResponse(
   message: any,
   nameMap: Map<string, { dottedName: string; def: ToolDefinition }>

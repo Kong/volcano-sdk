@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { agent, llmOpenAI, llmAnthropic, llmMistral, llmLlama, llmBedrock, llmVertexStudio, llmAzure, createVolcanoTelemetry } from '../src/volcano-sdk.js';
 
 describe('Telemetry E2E - All Providers with Live Observability', () => {
-  // Mock telemetry that captures all metrics
   function createMockTelemetry() {
     const recordedMetrics: Array<{name: string; value: number; attrs: any}> = [];
     const recordedSpans: Array<{name: string; attrs: any}> = [];
@@ -26,9 +25,7 @@ describe('Telemetry E2E - All Providers with Live Observability', () => {
         recordMetric: (name: string, value: number, attrs: any) => {
           recordedMetrics.push({ name, value, attrs });
         },
-        flush: async () => {
-          // Mock flush - no-op for testing
-        }
+      flush: async () => {}
       },
       recordedMetrics,
       recordedSpans

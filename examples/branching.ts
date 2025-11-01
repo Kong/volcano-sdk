@@ -1,5 +1,3 @@
-// Conditional Branching Example
-// Route workflows based on LLM decisions
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
 const llm = llmOpenAI({ 
@@ -7,8 +5,7 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-// Example 1: Simple if/else branch
-console.log("=== If/Else Branch ===");
+console.log("If/Else Branch:");
 const email = "Congratulations! You won $1,000,000!";
 
 const branchResult = await agent({ llm })
@@ -25,8 +22,7 @@ const branchResult = await agent({ llm })
 console.log("Decision:", branchResult[0].llmOutput);
 console.log("Action:", branchResult[1].llmOutput);
 
-// Example 2: Switch with multiple cases
-console.log("\n=== Switch Statement ===");
+console.log("\nSwitch Statement:");
 const ticket = "My account is locked and I can't log in!";
 
 const switchResult = await agent({ llm })
@@ -46,8 +42,7 @@ const switchResult = await agent({ llm })
 console.log("Priority:", switchResult[0].llmOutput);
 console.log("Action:", switchResult[1].llmOutput);
 
-// Example 3: Nested branching
-console.log("\n=== Nested Branches ===");
+console.log("\nNested Branches:");
 const nestedResult = await agent({ llm })
   .then({ prompt: "Is 42 > 20? YES or NO" })
   .branch(

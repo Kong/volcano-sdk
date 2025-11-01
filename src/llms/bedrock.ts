@@ -1,5 +1,6 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 import { sanitizeToolName } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 type BedrockLikeClient = {
   send: (command: any) => Promise<any>;
@@ -141,14 +142,7 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
       
       const resp = await client!.send(command);
       
-      // Capture token usage (Bedrock format)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.inputTokens,
-          outputTokens: resp.usage.outputTokens,
-          totalTokens: resp.usage.totalTokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const content = resp?.output?.message?.content || [];
       const text = content.find((c: any) => c?.text)?.text || "";
@@ -192,14 +186,7 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
 
       const resp = await client!.send(command);
       
-      // Capture token usage (Bedrock format)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.inputTokens,
-          outputTokens: resp.usage.outputTokens,
-          totalTokens: resp.usage.totalTokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const content = resp?.output?.message?.content || [];
       
@@ -247,7 +234,6 @@ export function llmBedrock(cfg: BedrockConfig): LLMHandle {
         
         const response = await client!.send(command);
         
-        // Handle Bedrock streaming response
         if (response.stream) {
           for await (const chunk of response.stream) {
             if (chunk.contentBlockDelta?.delta?.text) {

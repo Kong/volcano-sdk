@@ -1,4 +1,3 @@
-// Advanced workflow pattern implementations for agent()
 import type { StepResult, AgentBuilder } from "./volcano-sdk.js";
 
 export async function executeParallel(
@@ -8,14 +7,12 @@ export async function executeParallel(
   const stepStart = Date.now();
   
   if (Array.isArray(stepsOrDict)) {
-    // Array mode: execute all in parallel
     const results = await Promise.all(stepsOrDict.map(s => executeStep(s)));
     return {
       parallelResults: results,
       durationMs: Date.now() - stepStart,
     };
   } else {
-    // Dict mode: execute all in parallel with named keys
     const keys = Object.keys(stepsOrDict);
     const promises = keys.map(key => executeStep(stepsOrDict[key]));
     const results = await Promise.all(promises);
@@ -117,10 +114,9 @@ export async function executeRetryUntil(
     
     const lastResult = attemptResults[attemptResults.length - 1];
     if (successCondition(lastResult)) {
-      return allResults; // Return all accumulated results
+      return allResults;
     }
     
-    // Wait with backoff before next attempt
     if (attempt < maxAttempts - 1) {
       const waitMs = 1000 * Math.pow(backoff, attempt);
       await new Promise(resolve => setTimeout(resolve, waitMs));
@@ -136,18 +132,16 @@ export async function executeRunAgent(
   parentTotalSteps?: number,
   parentContext?: StepResult[]
 ): Promise<StepResult[]> {
-  // Mark this as a sub-agent run to suppress progress headers/footers
-  // but keep step progress for explicit composition
+  // Suppress progress header/footer but keep step progress for explicit composition
   (subAgent as any).__isSubAgent = true;
-  (subAgent as any).__isExplicitSubAgent = true; // For .runAgent() - shows steps
+  (subAgent as any).__isExplicitSubAgent = true;
   (subAgent as any).__parentStepIndex = parentStepIndex;
   (subAgent as any).__parentTotalSteps = parentTotalSteps;
   
-  // Pass parent's context history to subagent so it has access to previous steps
+  // Pass parent's context so subagent has access to previous steps
   if (parentContext && parentContext.length > 0) {
     (subAgent as any).__parentContext = parentContext;
   }
   
-  // Run the sub-agent and return its results
   return await subAgent.run();
 }

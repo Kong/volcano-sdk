@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { agent, llmOpenAI } from '../dist/volcano-sdk.js';
 
-// Mock LLM for testing
 const createMockLLM = (responses: string[]) => {
   let callCount = 0;
   return {
