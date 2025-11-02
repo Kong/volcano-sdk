@@ -1,5 +1,6 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 type AnthropicLikeClient = {
   messages: {
@@ -77,7 +78,6 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
             throw err;
           }
           
-          // Handle streaming responses
           if (stream) {
             return {
               body: res.body,
@@ -140,7 +140,6 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
               ...(mappedTools.length ? { tools: mappedTools } : {}),
             };
             
-            // Handle tool_choice conversion from OpenAI format to Anthropic format
             if (tool_choice && mappedTools.length > 0) {
               if (tool_choice === "auto") {
                 payload.tool_choice = { type: "auto" };
@@ -194,14 +193,7 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
         ...(options.thinking && { thinking: options.thinking }),
       });
       
-      // Capture token usage
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.input_tokens,
-          outputTokens: resp.usage.output_tokens,
-          totalTokens: (resp.usage.input_tokens || 0) + (resp.usage.output_tokens || 0)
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const text = resp?.content?.[0]?.text ?? resp?.content ?? "";
       return typeof text === "string" ? text : JSON.stringify(text);
@@ -209,7 +201,6 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
     async genWithTools(prompt: string, tools: ToolDefinition[]): Promise<LLMToolResult> {
       const { nameMap, formattedTools } = createOpenAICompatibleTools(tools);
 
-      // Use the OpenAI-compatible shim that handles tools properly
       const resp = await (client as any).chat.completions.create({
         model,
         messages: [{ role: "user", content: prompt }],
@@ -217,14 +208,7 @@ export function llmAnthropic(cfg: AnthropicConfig): LLMHandle {
         tool_choice: "auto",
       });
 
-      // Capture token usage (from OpenAI-compatible shim)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens || resp.usage.input_tokens,
-          outputTokens: resp.usage.completion_tokens || resp.usage.output_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
 
       const message = resp.choices?.[0]?.message;
       const result = parseOpenAICompatibleResponse(message, nameMap);

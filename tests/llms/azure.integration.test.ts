@@ -94,7 +94,6 @@ describe('Azure AI provider (integration)', () => {
     
     const prompt = 'Count from 1 to 3, saying each number separately';
     
-    // Test native streaming
     let streamed = '';
     let chunkCount = 0;
     for await (const chunk of llm.genStream(prompt)) {

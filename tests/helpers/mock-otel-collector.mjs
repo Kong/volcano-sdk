@@ -1,14 +1,11 @@
-// Mock OpenTelemetry Collector for testing
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-// Storage for received telemetry data
 const receivedSpans = [];
 const receivedMetrics = [];
 
-// OTLP HTTP endpoint for traces
 app.post('/v1/traces', (req, res) => {
   console.log('[Collector] Received traces request');
   console.log('[Collector] Body keys:', Object.keys(req.body || {}));
@@ -31,7 +28,6 @@ app.post('/v1/traces', (req, res) => {
   res.status(200).json({ partialSuccess: {} });
 });
 
-// OTLP HTTP endpoint for metrics
 app.post('/v1/metrics', (req, res) => {
   const metrics = req.body?.resourceMetrics?.[0]?.scopeMetrics?.[0]?.metrics || [];
   metrics.forEach(metric => {
@@ -46,7 +42,6 @@ app.post('/v1/metrics', (req, res) => {
   res.status(200).json({ partialSuccess: {} });
 });
 
-// Helper endpoints for tests
 app.get('/test/spans', (req, res) => {
   res.json(receivedSpans);
 });

@@ -1,5 +1,3 @@
-// Loops Example
-// Iterate over data or retry until success
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
 const llm = llmOpenAI({ 
@@ -7,8 +5,7 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-// Example 1: forEach - process array of items
-console.log("=== ForEach Loop ===");
+console.log("ForEach Loop:");
 const cities = ["Paris", "Tokyo", "New York"];
 
 const forEachResult = await agent({ llm })
@@ -17,13 +14,11 @@ const forEachResult = await agent({ llm })
   )
   .run();
 
-console.log("Fun facts:");
 forEachResult.forEach((result, i) => {
   console.log(`  ${cities[i]}: ${result.llmOutput}`);
 });
 
-// Example 2: while loop - process until condition met
-console.log("\n=== While Loop ===");
+console.log("\nWhile Loop:");
 let counter = 0;
 
 const whileResult = await agent({ llm })
@@ -31,7 +26,6 @@ const whileResult = await agent({ llm })
     (history) => {
       if (history.length === 0) return true;
       const last = history[history.length - 1];
-      // Continue until we see "DONE"
       return !last.llmOutput?.includes("DONE");
     },
     (a) => {
@@ -46,14 +40,11 @@ const whileResult = await agent({ llm })
   )
   .run();
 
-console.log("While loop results:");
 whileResult.forEach((r, i) => console.log(`  Step ${i + 1}: ${r.llmOutput}`));
 
-// Example 3: retryUntil - self-correcting agent
-console.log("\n=== Retry Until Success ===");
+console.log("\nRetry Until Success:");
 let attemptNumber = 0;
 
-// Simulate a flaky LLM that succeeds on 3rd try
 const flakyLLM = {
   ...llm,
   gen: async (prompt: string) => {
@@ -73,11 +64,10 @@ const retryResult = await agent({ llm: flakyLLM as any })
   )
   .run();
 
-console.log("Retry attempts made:", retryResult.length);
-console.log("Final answer:", retryResult[retryResult.length - 1].llmOutput);
+console.log("Attempts:", retryResult.length);
+console.log("Answer:", retryResult[retryResult.length - 1].llmOutput);
 
-// Example 4: Data processing pipeline with forEach
-console.log("\n=== Data Processing Pipeline ===");
+console.log("\nData Processing Pipeline:");
 const temperatures = [{ city: "Boston", temp: 72 }, { city: "Miami", temp: 95 }, { city: "Seattle", temp: 58 }];
 
 const pipelineResult = await agent({ llm })

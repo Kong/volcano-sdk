@@ -1,5 +1,6 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 import { createOpenAICompatibleTools, parseOpenAICompatibleResponse } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 type OpenAILikeClient = {
   chat: { completions: { create: (args: any) => Promise<any> } };
@@ -59,7 +60,6 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
               throw err;
             }
             
-            // Handle streaming responses
             if (params.stream) {
               return res; // Return the response object for streaming
             }
@@ -90,14 +90,7 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
         ...options,
       });
       
-      // Capture token usage
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens,
-          outputTokens: resp.usage.completion_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const msg = resp?.choices?.[0]?.message?.content ?? resp?.choices?.[0]?.text ?? "";
       return typeof msg === "string" ? msg : JSON.stringify(msg);
@@ -113,14 +106,7 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
         ...options,
       } as any);
       
-      // Capture token usage
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens,
-          outputTokens: resp.usage.completion_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const message = resp?.choices?.[0]?.message;
       const result = parseOpenAICompatibleResponse(message, nameMap);
@@ -135,7 +121,6 @@ export function llmMistral(cfg: MistralConfig): LLMHandle {
         ...options,
       });
       
-      // Handle Server-Sent Events streaming
       if (streamResponse && streamResponse.body) {
         const reader = streamResponse.body.getReader();
         const decoder = new TextDecoder();

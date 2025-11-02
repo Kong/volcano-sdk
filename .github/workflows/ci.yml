@@ -11,9 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest-4-cores  # Larger runner for faster Llama inference
-    env:
-      OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,112 +32,9 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Cache Ollama models
-        id: cache-ollama
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.cache/ollama-models
-          key: ollama-models-${{ runner.os }}-llama3.2-3b-v1
-          restore-keys: |
-            ollama-models-${{ runner.os }}-llama3.2-3b-
-            ollama-models-${{ runner.os }}-
-
-      - name: Install Ollama
-        run: |
-          curl -fsSL https://ollama.com/install.sh | sh
-
-      - name: Setup Ollama with cached models
-        env:
-          OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
-        run: |
-          mkdir -p "$OLLAMA_MODELS"
-          echo "Cache hit: ${{ steps.cache-ollama.outputs.cache-hit }}"
-          echo "OLLAMA_MODELS path: $OLLAMA_MODELS"
-          ls -la "$OLLAMA_MODELS" || echo "Cache directory empty"
-          
-          # Export for all ollama commands in this step
-          export OLLAMA_MODELS="$OLLAMA_MODELS"
-          
-          # Start Ollama with custom model directory
-          echo "Starting Ollama server..."
-          nohup ollama serve > ollama.log 2>&1 &
-          
-          # Wait for Ollama to start
-          echo "Waiting for Ollama to start..."
-          for i in {1..15}; do
-            if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-              echo "✅ Ollama server started successfully"
-              break
-            fi
-            echo "Waiting for Ollama... ($i/15)"
-            sleep 2
-          done
-          
-          # Check if server started
-          if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-            echo "❌ Ollama failed to start. Server logs:"
-            cat ollama.log || echo "No logs available"
-            exit 1
-          fi
-          
-          # List available models for debugging
-          echo "Available models in Ollama:"
-          ollama list || echo "No models found"
-          
-          # Check if model exists or download it
-          echo "Checking for llama3.2:3b model..."
-          if ollama show llama3.2:3b >/dev/null 2>&1; then
-            echo "✅ Model llama3.2:3b found in cache!"
-          else
-            echo "📥 Model not found, downloading llama3.2:3b..."
-            echo "This will take 1-2 minutes on first run (much smaller than 8b), but will be cached for future runs."
-            ollama pull llama3.2:3b
-            echo "✅ Model download complete!"
-          fi
-          
-          # Verify model is available
-          echo "Final model verification:"
-          ollama list
-          
-          # Verify model is working
-          echo "Testing Ollama functionality..."
-          test_response=$(curl -s http://127.0.0.1:11434/api/generate -d '{
-            "model": "llama3.2:3b",
-            "prompt": "Say OK",
-            "stream": false
-          }' -H "Content-Type: application/json")
-          
-          if echo "$test_response" | grep -q '"response"'; then
-            echo "✅ Ollama is working correctly"
-            echo "Test response: $test_response"
-          else
-            echo "❌ Ollama test failed"
-            echo "Response: $test_response"
-            exit 1
-          fi
-          
-          # Verify models are in cache directory for next run
-          echo "Verifying cache will be saved..."
-          echo "Contents of OLLAMA_MODELS directory:"
-          find "$OLLAMA_MODELS" -type f -exec ls -lh {} \; 2>/dev/null || echo "No files found"
-          echo "Total cache size:"
-          du -sh "$OLLAMA_MODELS" 2>/dev/null || echo "Cannot measure"
-          
-          # Also check default Ollama location to see if models went there instead
-          echo "Checking default Ollama location (~/.ollama):"
-          du -sh ~/.ollama 2>/dev/null || echo "Default location empty or doesn't exist"
-
-      - name: Verify Ollama Health (Comprehensive)
-        run: node scripts/test-ollama-health.mjs
-        env:
-          OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
-          LLAMA_BASE_URL: http://127.0.0.1:11434
-          LLAMA_MODEL: llama3.2:3b
-
       - name: Run tests (unit/e2e)
         run: npm test
         env:
-          OLLAMA_MODELS: ${{ github.workspace }}/.cache/ollama-models
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}

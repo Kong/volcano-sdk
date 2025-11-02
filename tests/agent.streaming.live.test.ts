@@ -58,13 +58,11 @@ describe('agent streaming (live APIs)', () => {
 
     const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-5-mini' });
     
-    // Test with run()
     const runResults = await agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 2' })
       .then({ prompt: 'Say done' })
       .run();
 
-    // Test with stream()
     const streamResults: any[] = [];
     for await (const stepResult of agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 2' })

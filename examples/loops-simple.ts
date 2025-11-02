@@ -1,5 +1,3 @@
-// Loops Example
-// Iterate, process batches, and retry logic
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
 const llm = llmOpenAI({ 
@@ -7,8 +5,7 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-// Example 1: ForEach - process list of items
-console.log("=== ForEach: Process List ===");
+console.log("1. ForEach - Process List");
 const tasks = ["Write email", "Review document", "Schedule meeting"];
 
 const forEachResult = await agent({ llm })
@@ -22,8 +19,7 @@ console.log("Task results:");
 forEachResult.slice(0, -1).forEach((r, i) => console.log(`  ${i + 1}. ${r.llmOutput}`));
 console.log("Summary:", forEachResult[forEachResult.length - 1].llmOutput);
 
-// Example 2: While loop - process until done
-console.log("\n=== While: Process Until Done ===");
+console.log("\n2. While - Process Until Done");
 let stepCount = 0;
 
 const whileResult = await agent({ llm })
@@ -32,7 +28,6 @@ const whileResult = await agent({ llm })
       if (history.length === 0) return true;
       const last = history[history.length - 1];
       stepCount++;
-      // Stop after 3 steps or when we see DONE
       return stepCount < 3 && !last.llmOutput?.includes("DONE");
     },
     (a) => a.then({ 
@@ -47,16 +42,13 @@ const whileResult = await agent({ llm })
 console.log("While loop executed", whileResult.length, "times");
 whileResult.forEach((r, i) => console.log(`  ${i + 1}: ${r.llmOutput}`));
 
-// Example 3: RetryUntil - keep trying until valid
-console.log("\n=== RetryUntil: Self-Correction ===");
+console.log("\n3. RetryUntil - Self-Correction");
 let attemptCount = 0;
 
-// Simulate LLM that needs retries
 const unreliableLLM = {
   ...llm,
   gen: async (prompt: string) => {
     attemptCount++;
-    // Fail first 2 attempts, succeed on 3rd
     if (attemptCount < 3) {
       return `Attempt ${attemptCount}: Hmm, maybe 41?`;
     }
@@ -72,11 +64,10 @@ const retryResult = await agent({ llm: unreliableLLM as any })
   )
   .run();
 
-console.log("Attempts needed:", retryResult.length);
+console.log("Attempts:", retryResult.length);
 retryResult.forEach((r, i) => console.log(`  Attempt ${i + 1}: ${r.llmOutput}`));
 
-// Example 4: Batch processing with forEach
-console.log("\n=== Batch Processing ===");
+console.log("\n4. Batch Processing");
 const numbers = [5, 12, 7, 23, 9];
 
 const batchResult = await agent({ llm })

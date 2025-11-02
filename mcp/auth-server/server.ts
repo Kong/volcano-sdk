@@ -1,4 +1,3 @@
-// MCP Server with OAuth Authentication
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -7,17 +6,15 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 
 const app = express();
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Support form-encoded OAuth token requests (RFC 6749)
+app.use(express.urlencoded({ extended: true }));
 
 const transports = new Map();
 
-// OAuth token storage (in production, this would be a proper OAuth server)
 const VALID_TOKENS = new Set([
   'test-oauth-token-12345',
   'Bearer test-oauth-token-12345'
 ]);
 
-// Middleware to check OAuth authentication
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers['authorization'];
   
@@ -28,7 +25,6 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
     });
   }
   
-  // Check if token is valid
   if (!VALID_TOKENS.has(authHeader)) {
     return res.status(401).json({ 
       error: 'unauthorized',
@@ -47,7 +43,6 @@ function getAuthServer() {
     'Get current weather for a city',
     { city: z.string().describe('City name') },
     async ({ city }) => {
-      // Mock weather data
       const weather = {
         'San Francisco': { temp: 65, condition: 'Foggy' },
         'New York': { temp: 72, condition: 'Sunny' },
@@ -66,7 +61,6 @@ function getAuthServer() {
   return server;
 }
 
-// Apply auth middleware to all MCP endpoints
 app.post('/mcp', requireAuth, async (req, res) => {
   const sessionId = req.headers['mcp-session-id'] as string;
   let transport = sessionId ? transports.get(sessionId) : undefined;
@@ -90,11 +84,9 @@ app.get('/mcp', requireAuth, async (req, res) => {
   await transport.handleRequest(req, res);
 });
 
-// OAuth token endpoint (simplified for testing)
 app.post('/oauth/token', (req, res) => {
   const { grant_type, client_id, client_secret } = req.body;
   
-  // Simplified OAuth flow
   if (grant_type === 'client_credentials' && 
       client_id === 'test-client' && 
       client_secret === 'test-secret') {

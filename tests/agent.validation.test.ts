@@ -33,7 +33,6 @@ describe('tool argument validation', () => {
       id: 'OpenAI-mock', model: 'mock', client: {},
       gen: async () => 'OK',
       genWithTools: async (_p: string, tools: any[]) => {
-        // pick our tool and emit invalid args
         const dotted = `${svc.id}.do_thing`;
         const found = tools.find(t => t.name === dotted);
         return { content: '', toolCalls: [{ name: found.name, arguments: { x: 'NaN' }, mcpHandle: svc }] };

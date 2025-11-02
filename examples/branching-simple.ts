@@ -1,5 +1,3 @@
-// Conditional Branching Example
-// Make decisions and route workflows dynamically
 import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
 const llm = llmOpenAI({ 
@@ -7,8 +5,7 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-// Example 1: Binary decision (if/else)
-console.log("=== Binary Branch (If/Else) ===");
+console.log("1. Binary Branch (If/Else)");
 const number = 17;
 
 const binaryResult = await agent({ llm })
@@ -24,8 +21,7 @@ const binaryResult = await agent({ llm })
 
 console.log(binaryResult[1].llmOutput);
 
-// Example 2: Multi-way routing (switch)
-console.log("\n=== Multi-Way Switch ===");
+console.log("\n2. Multi-Way Switch");
 const userMessage = "I need help resetting my password";
 
 const switchResult = await agent({ llm })
@@ -45,8 +41,7 @@ const switchResult = await agent({ llm })
 console.log("Classification:", switchResult[0].llmOutput);
 console.log("Action:", switchResult[1].llmOutput);
 
-// Example 3: Branching with parallel analysis
-console.log("\n=== Branch After Parallel Analysis ===");
+console.log("\n3. Branch After Parallel Analysis");
 const text = "This product is amazing but the price is too high";
 
 const parallelBranchResult = await agent({ llm })

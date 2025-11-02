@@ -1,10 +1,6 @@
-// OpenTelemetry integration for Volcano SDK
-// Opt-in observability with traces and metrics
-
 import { createRequire } from 'node:module';
 import type { StepResult, LLMHandle, MCPHandle } from './volcano-sdk.js';
 
-// Type-only imports - actual OTEL imports are dynamic
 type Tracer = any;
 type Span = any;
 type Meter = any;
@@ -13,14 +9,9 @@ type Histogram = any;
 
 export type VolcanoTelemetryConfig = {
   serviceName?: string;
-  // Optional: OTLP endpoint (e.g., 'http://localhost:4318')
-  // If provided, auto-configures OpenTelemetry exporters
-  // If not provided, uses environment variables or global SDK configuration
-  endpoint?: string;
-  // Users can provide their own tracer/meter or we'll use global
+  endpoint?: string; // OTLP endpoint (e.g., 'http://localhost:4318')
   tracer?: Tracer;
   meter?: Meter;
-  // Feature flags
   traces?: boolean;
   metrics?: boolean;
 };
@@ -42,8 +33,6 @@ function tryLoadOtel() {
   if (otelApi) return otelApi;
   
   try {
-    // Dynamic import to avoid hard dependency
-    // Use createRequire for ES module compatibility
     const require = createRequire(import.meta.url);
     otelApi = require('@opentelemetry/api');
     return otelApi;
@@ -59,7 +48,6 @@ function tryLoadOtel() {
 export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): VolcanoTelemetry {
   const otel = tryLoadOtel();
   if (!otel) {
-    // Return no-op telemetry if OTEL not available
     return {
       startAgentSpan: () => null,
       startStepSpan: () => null,
@@ -72,14 +60,12 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
   }
   
   const serviceName = config.serviceName || 'volcano-sdk';
-  const enableTraces = config.traces !== false; // enabled by default
+  const enableTraces = config.traces !== false;
   const enableMetrics = config.metrics !== false;
   
-  // Store SDK and metric reader references for flushing
   let sdk: any = null;
   let metricReader: any = null;
   
-  // Auto-configure SDK if endpoint provided
   if (config.endpoint) {
     try {
       const require = createRequire(import.meta.url);
@@ -88,7 +74,6 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
       const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
       
-      // Create metric reader separately so we can flush it
       if (enableMetrics) {
         metricReader = new PeriodicExportingMetricReader({
           exporter: new OTLPMetricExporter({ 
@@ -125,122 +110,47 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
   // Get or create meter
   const meter = config.meter || (enableMetrics ? otel.metrics.getMeter(serviceName, '0.1.0') : null);
   
-  // Create metrics
-  let agentDurationHistogram: Histogram | null = null;
-  let stepDurationHistogram: Histogram | null = null;
-  let llmCallsCounter: Counter | null = null;
-  let mcpCallsCounter: Counter | null = null;
-  let agentCallsCounter: Counter | null = null;
-  let agentDelegationHistogram: Histogram | null = null;
-  let errorsCounter: Counter | null = null;
+  // Metrics registry with configuration
+  type MetricConfig = {
+    instrument: Counter | Histogram | null;
+    type: 'counter' | 'histogram';
+  };
   
-  // Token metrics
-  let llmTokensInputCounter: Counter | null = null;
-  let llmTokensOutputCounter: Counter | null = null;
-  let llmTokensTotalCounter: Counter | null = null;
-  
-  // Performance metrics
-  let llmDurationHistogram: Histogram | null = null;
-  let mcpToolDurationHistogram: Histogram | null = null;
-  let timeToFirstTokenHistogram: Histogram | null = null;
-  
-  // Agent-specific metrics
-  let agentTokensCounter: Counter | null = null;
-  let agentExecutionCounter: Counter | null = null;
-  let subAgentCallsCounter: Counter | null = null;
-  
-  // Workflow metrics
-  let workflowStepCounter: Histogram | null = null;
-  let retryCounter: Counter | null = null;
-  let timeoutCounter: Counter | null = null;
+  const metricsRegistry = new Map<string, MetricConfig>();
   
   if (meter) {
     try {
-      // Existing metrics
-      agentDurationHistogram = meter.createHistogram('volcano.agent.duration', {
-        description: 'Agent workflow duration',
-        unit: 'ms'
-      });
-      stepDurationHistogram = meter.createHistogram('volcano.step.duration', {
-        description: 'Individual step duration',
-        unit: 'ms'
-      });
-      llmCallsCounter = meter.createCounter('volcano.llm.calls.total', {
-        description: 'Total LLM API calls',
-        unit: 'calls'
-      });
-      mcpCallsCounter = meter.createCounter('volcano.mcp.calls.total', {
-        description: 'Total MCP tool calls',
-        unit: 'calls'
-      });
-      agentCallsCounter = meter.createCounter('volcano.agent.calls.total', {
-        description: 'Total sub-agent delegations',
-        unit: 'calls'
-      });
-      agentDelegationHistogram = meter.createHistogram('volcano.agent.delegation.count', {
-        description: 'Number of agents delegated to per step',
-        unit: 'agents'
-      });
-      errorsCounter = meter.createCounter('volcano.errors.total', {
-        description: 'Total errors by type',
-        unit: 'errors'
-      });
-      
-      // Token metrics
-      llmTokensInputCounter = meter.createCounter('volcano.llm.tokens.input', {
-        description: 'Input tokens sent to LLM',
-        unit: 'tokens'
-      });
-      llmTokensOutputCounter = meter.createCounter('volcano.llm.tokens.output', {
-        description: 'Output tokens generated by LLM',
-        unit: 'tokens'
-      });
-      llmTokensTotalCounter = meter.createCounter('volcano.llm.tokens.total', {
-        description: 'Total tokens (input + output)',
-        unit: 'tokens'
-      });
-      
-      // Performance metrics
-      llmDurationHistogram = meter.createHistogram('volcano.llm.duration', {
-        description: 'LLM API call duration',
-        unit: 'ms'
-      });
-      mcpToolDurationHistogram = meter.createHistogram('volcano.mcp.tool.duration', {
-        description: 'Individual MCP tool call duration',
-        unit: 'ms'
-      });
-      timeToFirstTokenHistogram = meter.createHistogram('volcano.llm.time_to_first_token', {
-        description: 'Time until first token from LLM',
-        unit: 'ms'
-      });
-      
-      // Agent-specific metrics
-      agentTokensCounter = meter.createCounter('volcano.agent.tokens', {
-        description: 'Tokens consumed by named agents',
-        unit: 'tokens'
-      });
-      agentExecutionCounter = meter.createCounter('volcano.agent.executions', {
-        description: 'Agent execution count by name',
-        unit: 'executions'
-      });
-      subAgentCallsCounter = meter.createCounter('volcano.agent.subagent_calls', {
-        description: 'Sub-agent calls with parent-child relationship',
-        unit: 'calls'
-      });
-      
-      // Workflow metrics
-      workflowStepCounter = meter.createHistogram('volcano.workflow.steps', {
-        description: 'Number of steps per workflow',
-        unit: 'steps'
-      });
-      retryCounter = meter.createCounter('volcano.workflow.retries', {
-        description: 'Retry attempts',
-        unit: 'retries'
-      });
-      timeoutCounter = meter.createCounter('volcano.workflow.timeouts', {
-        description: 'Timeout occurrences',
-        unit: 'timeouts'
-      });
+      // Initialize all metrics and register them
+      const metricDefinitions = [
+        { name: 'agent.duration', type: 'histogram' as const, description: 'Agent workflow duration', unit: 'ms' },
+        { name: 'step.duration', type: 'histogram' as const, description: 'Individual step duration', unit: 'ms' },
+        { name: 'llm.call', type: 'counter' as const, description: 'Total LLM API calls', unit: 'calls' },
+        { name: 'mcp.call', type: 'counter' as const, description: 'Total MCP tool calls', unit: 'calls' },
+        { name: 'agent.call', type: 'counter' as const, description: 'Total sub-agent delegations', unit: 'calls' },
+        { name: 'agent.delegation', type: 'histogram' as const, description: 'Number of agents delegated to per step', unit: 'agents' },
+        { name: 'error', type: 'counter' as const, description: 'Total errors by type', unit: 'errors' },
+        { name: 'llm.tokens.input', type: 'counter' as const, description: 'Input tokens sent to LLM', unit: 'tokens' },
+        { name: 'llm.tokens.output', type: 'counter' as const, description: 'Output tokens generated by LLM', unit: 'tokens' },
+        { name: 'llm.tokens.total', type: 'counter' as const, description: 'Total tokens (input + output)', unit: 'tokens' },
+        { name: 'llm.duration', type: 'histogram' as const, description: 'LLM API call duration', unit: 'ms' },
+        { name: 'mcp.tool.duration', type: 'histogram' as const, description: 'Individual MCP tool call duration', unit: 'ms' },
+        { name: 'llm.time_to_first_token', type: 'histogram' as const, description: 'Time until first token from LLM', unit: 'ms' },
+        { name: 'agent.tokens', type: 'counter' as const, description: 'Tokens consumed by named agents', unit: 'tokens' },
+        { name: 'agent.execution', type: 'counter' as const, description: 'Agent execution count by name', unit: 'executions' },
+        { name: 'agent.subagent_call', type: 'counter' as const, description: 'Sub-agent calls with parent-child relationship', unit: 'calls' },
+        { name: 'workflow.steps', type: 'histogram' as const, description: 'Number of steps per workflow', unit: 'steps' },
+        { name: 'workflow.retry', type: 'counter' as const, description: 'Retry attempts', unit: 'retries' },
+        { name: 'workflow.timeout', type: 'counter' as const, description: 'Timeout occurrences', unit: 'timeouts' }
+      ];
+
+      for (const def of metricDefinitions) {
+        const fullName = `volcano.${def.name}`;
+        const instrument = def.type === 'counter'
+          ? meter.createCounter(fullName, { description: def.description, unit: def.unit })
+          : meter.createHistogram(fullName, { description: def.description, unit: def.unit });
+        
+        metricsRegistry.set(def.name, { instrument, type: def.type });
+      }
     } catch (e) {
       console.warn('[Volcano] Failed to create metrics:', e);
     }
@@ -274,23 +184,19 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
           'step.type': stepType
         };
         
-        // Add optional step name for better debugging
         if (stepName) {
           attrs['step.name'] = stepName;
         }
         
-        // Add step prompt preview (first 100 chars)
         if (stepPrompt) {
           attrs['step.prompt'] = stepPrompt.substring(0, 100);
         }
         
-        // Add LLM information to step span
         if (llm) {
           attrs['llm.provider'] = (llm as any).id || 'unknown';
           attrs['llm.model'] = llm.model || 'unknown';
         }
         
-        // Create descriptive span name: "Step 1: data-analysis" or "Step 1" or "step.execute"
         let spanName = 'step.execute';
         if (stepName) {
           spanName = `Step ${stepIndex + 1}: ${stepName}`;
@@ -354,7 +260,6 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
         } else {
           span.setStatus({ code: otel.SpanStatusCode.OK });
           
-          // Add result attributes
           if (result) {
             if (result.durationMs) span.setAttribute('duration_ms', result.durationMs);
             if (result.llmMs) span.setAttribute('llm.duration_ms', result.llmMs);
@@ -372,54 +277,19 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       if (process.env.VOLCANO_DEBUG_TELEMETRY) {
         console.log(`[Volcano Telemetry] Recording: ${name} = ${value}`, attributes);
       }
+      
       try {
-        // Core metrics
-        if (name === 'agent.duration' && agentDurationHistogram) {
-          agentDurationHistogram.record(value, attributes);
-        } else if (name === 'step.duration' && stepDurationHistogram) {
-          stepDurationHistogram.record(value, attributes);
-        } else if (name === 'llm.call' && llmCallsCounter) {
-          llmCallsCounter.add(1, attributes);
-        } else if (name === 'mcp.call' && mcpCallsCounter) {
-          mcpCallsCounter.add(1, attributes);
-        } else if (name === 'agent.call' && agentCallsCounter) {
-          agentCallsCounter.add(value, attributes);
-        } else if (name === 'agent.delegation' && agentDelegationHistogram) {
-          agentDelegationHistogram.record(value, attributes);
-        } else if (name === 'error' && errorsCounter) {
-          errorsCounter.add(1, attributes);
-        }
-        // Token metrics
-        else if (name === 'llm.tokens.input' && llmTokensInputCounter) {
-          llmTokensInputCounter.add(value, attributes);
-        } else if (name === 'llm.tokens.output' && llmTokensOutputCounter) {
-          llmTokensOutputCounter.add(value, attributes);
-        } else if (name === 'llm.tokens.total' && llmTokensTotalCounter) {
-          llmTokensTotalCounter.add(value, attributes);
-        }
-        // Performance metrics
-        else if (name === 'llm.duration' && llmDurationHistogram) {
-          llmDurationHistogram.record(value, attributes);
-        } else if (name === 'mcp.tool.duration' && mcpToolDurationHistogram) {
-          mcpToolDurationHistogram.record(value, attributes);
-        } else if (name === 'llm.time_to_first_token' && timeToFirstTokenHistogram) {
-          timeToFirstTokenHistogram.record(value, attributes);
-        }
-        // Agent-specific metrics
-        else if (name === 'agent.tokens' && agentTokensCounter) {
-          agentTokensCounter.add(value, attributes);
-        } else if (name === 'agent.execution' && agentExecutionCounter) {
-          agentExecutionCounter.add(1, attributes);
-        } else if (name === 'agent.subagent_call' && subAgentCallsCounter) {
-          subAgentCallsCounter.add(1, attributes);
-        }
-        // Workflow metrics
-        else if (name === 'workflow.steps' && workflowStepCounter) {
-          workflowStepCounter.record(value, attributes);
-        } else if (name === 'workflow.retry' && retryCounter) {
-          retryCounter.add(1, attributes);
-        } else if (name === 'workflow.timeout' && timeoutCounter) {
-          timeoutCounter.add(1, attributes);
+        const metricConfig = metricsRegistry.get(name);
+        if (!metricConfig || !metricConfig.instrument) return;
+
+        if (metricConfig.type === 'histogram') {
+          (metricConfig.instrument as Histogram).record(value, attributes);
+        } else {
+          // For counters, some metrics always add 1, others add the value
+          const counterValue = name === 'llm.call' || name === 'agent.execution' || 
+                              name === 'agent.subagent_call' || name === 'workflow.retry' || 
+                              name === 'workflow.timeout' || name === 'error' ? 1 : value;
+          (metricConfig.instrument as Counter).add(counterValue, attributes);
         }
       } catch (e) {
         console.warn('[Volcano] Failed to record metric:', e);

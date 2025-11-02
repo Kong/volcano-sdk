@@ -147,7 +147,6 @@ describe('Bedrock provider (unit)', () => {
   });
 
   it('handles AWS configuration errors gracefully', async () => {
-    // Test that AWS errors are properly propagated
     const llm = llmBedrock({ model: 'anthropic.claude-sonnet-4-20250514-v1:0' });
     
     await expect(async () => {

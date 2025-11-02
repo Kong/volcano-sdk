@@ -1,5 +1,6 @@
 import type { LLMHandle, LLMToolResult, ToolDefinition } from "./types.js";
 import { sanitizeToolName, parseToolArguments } from "./utils.js";
+import { normalizeTokenUsage } from "../token-utils.js";
 
 type AzureAIClient = {
   createResponse: (params: any) => Promise<any>;
@@ -102,7 +103,6 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
           throw err;
         }
 
-        // Handle streaming responses
         if (params.stream) {
           return response; // Return response object for streaming
         }
@@ -132,14 +132,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
 
       const resp = await client!.createResponse(params);
       
-      // Capture token usage (Azure format)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens || resp.usage.input_tokens,
-          outputTokens: resp.usage.completion_tokens || resp.usage.output_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const output = resp?.output || [];
       const messageOutput = output.find((item: any) => item?.type === 'message');
@@ -178,14 +171,7 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
 
       const resp = await client!.createResponse(params);
       
-      // Capture token usage (Azure format)
-      if (resp.usage) {
-        lastUsage = {
-          inputTokens: resp.usage.prompt_tokens || resp.usage.input_tokens,
-          outputTokens: resp.usage.completion_tokens || resp.usage.output_tokens,
-          totalTokens: resp.usage.total_tokens
-        };
-      }
+      lastUsage = normalizeTokenUsage(resp.usage);
       
       const output = resp?.output || [];
       
@@ -274,7 +260,6 @@ export function llmAzure(cfg: AzureConfig): LLMHandle {
         throw new Error(`Azure AI streaming failed: ${response.status}`);
       }
 
-      // Handle Azure streaming response (likely Server-Sent Events)
       if (response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
