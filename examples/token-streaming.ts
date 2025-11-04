@@ -27,12 +27,14 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
     .then({ prompt: "Name 3 programming languages" })
     .then({ prompt: "Pick one and explain why it's popular" })
     .stream({
-      onToken: (token, meta) => {
+      onToken: (token) => {
         process.stdout.write(token);
       },
-      onStep: (step, index) => {
-        console.log(`\n✓ Step ${index + 1} done (${step.durationMs}ms)`);
+      onStep: (_step, index) => {
+        console.log(`\n✓ Step ${index + 1} done`);
       }
-    })) {}
+    })) {
+    void step;
+  }
 })();
 

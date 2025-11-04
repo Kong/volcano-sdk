@@ -39,8 +39,7 @@ import { agent, llmOpenAI, createVolcanoTelemetry } from "../dist/volcano-sdk.js
     description: 'Polishes and improves content'
   });
 
-  // Coordinator with multiple delegations
-  const results = await agent({ 
+  await agent({ 
     llm, 
     telemetry,
     name: 'coordinator'

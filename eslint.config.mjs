@@ -2,7 +2,7 @@ import tseslint from 'typescript-eslint';
 import eslint from '@eslint/js';
 
 export default [
-  { ignores: ['**/dist/**', 'node_modules/**', 'examples/**', 'eslint.config.*', 'mcp/**', 'tests/**'] },
+  { ignores: ['**/dist/**', 'node_modules/**', 'eslint.config.*', 'mcp/**', 'tests/**'] },
   // JS base rules for JS files (none currently, but safe)
   { 
     files: ['**/*.{js,cjs,mjs}'], 
@@ -21,7 +21,7 @@ export default [
     ...cfg,
     files: ['src/**/*.ts']
   })),
-  // TS type-checked rules applied to TS files with project settings
+  // TS type-checked rules applied to src files only
   {
     files: ['src/**/*.ts'],
     languageOptions: {
@@ -38,5 +38,10 @@ export default [
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off'
     }
-  }
+  },
+  // TS recommended for examples (without type-checking to avoid project config issues)
+  ...tseslint.configs.recommended.map(cfg => ({
+    ...cfg,
+    files: ['examples/**/*.ts']
+  }))
 ];

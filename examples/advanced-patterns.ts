@@ -21,7 +21,7 @@ async function main() {
   const branchResults = await agent({ llm })
     .then({ prompt: "Is 10 > 5? Reply YES or NO" })
     .branch(
-      (h) => h[0].llmOutput?.includes("YES") || false,
+      (h) => h[0]?.llmOutput?.includes("YES") || false,
       {
         true: (a) => a.then({ prompt: "Say: Correct! 10 is greater than 5" }),
         false: (a) => a.then({ prompt: "Say: Wrong" })
@@ -61,9 +61,9 @@ async function main() {
   let counter = 0;
   const whileResults = await agent({ llm })
     .while(
-      (history) => {
+      () => {
         counter++;
-        return counter < 3; // Stop after 2 iterations
+        return counter < 3;
       },
       (a) => a.then({ prompt: `Iteration ${counter}: Say hello` }),
       { maxIterations: 5 }
@@ -74,15 +74,15 @@ async function main() {
 
   console.log("\n6. Retry Until Success");
   let attemptNum = 0;
-  const mockLLM = {
+  const mockLLM: typeof llm = {
     ...llm,
-    gen: async (prompt: string) => {
+    gen: async () => {
       attemptNum++;
       return attemptNum < 2 ? "TRY AGAIN" : "SUCCESS";
     }
   };
   
-  const retryResults = await agent({ llm: mockLLM as any })
+  const retryResults = await agent({ llm: mockLLM })
     .retryUntil(
       (a) => a.then({ prompt: "Generate result" }),
       (result) => result.llmOutput?.includes("SUCCESS") || false,
@@ -107,7 +107,7 @@ async function main() {
   console.log("Result:", composedResults[composedResults.length - 1].llmOutput);
 
   console.log("\n8. Combined Patterns");
-  const combinedResults = await agent({ llm })
+  await agent({ llm })
     .parallel({
       check1: { prompt: "Is 'hello world' friendly? YES/NO" },
       check2: { prompt: "Is 'hello world' formal? YES/NO" }
@@ -124,7 +124,7 @@ async function main() {
     )
     .run();
   
-  console.log("Completed:", combinedResults.length, "steps");
+  console.log("Completed");
 }
 
 main().catch(console.error);

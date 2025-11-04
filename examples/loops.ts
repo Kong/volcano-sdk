@@ -45,9 +45,9 @@ whileResult.forEach((r, i) => console.log(`  Step ${i + 1}: ${r.llmOutput}`));
 console.log("\nRetry Until Success:");
 let attemptNumber = 0;
 
-const flakyLLM = {
+const flakyLLM: typeof llm = {
   ...llm,
-  gen: async (prompt: string) => {
+  gen: async () => {
     attemptNumber++;
     if (attemptNumber < 3) {
       return `Attempt ${attemptNumber}: The answer is maybe 42?`;
@@ -56,7 +56,7 @@ const flakyLLM = {
   }
 };
 
-const retryResult = await agent({ llm: flakyLLM as any })
+const retryResult = await agent({ llm: flakyLLM })
   .retryUntil(
     (a) => a.then({ prompt: "What's the meaning of life?" }),
     (result) => result.llmOutput?.includes("definitely") || false,

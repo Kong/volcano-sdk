@@ -1,12 +1,3 @@
-// Self-Contained MCP Automatic Tool Selection Example
-// Run with: OPENAI_API_KEY=your-key npx tsx examples/mcp-auto-selection.ts
-//
-// This example demonstrates:
-// - Automatic tool selection across multiple MCP servers
-// - Self-contained MCP servers that start automatically
-// - Multi-step workflow with context preservation
-// - Proper cleanup on exit
-
 import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
@@ -16,15 +7,10 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { agent, llmOpenAI, mcp, createVolcanoTelemetry } from "../dist/volcano-sdk.js";
 
-// ============================================================================
-// MCP SERVER 1: Weather Service
-// ============================================================================
-
 function createWeatherServer() {
   const server = new McpServer({ name: 'weather-mcp', version: '1.0.0' });
   
-  // Mock weather data
-  const weatherData: Record<string, any> = {
+  const weatherData: Record<string, { temp: number; condition: string; rain: boolean }> = {
     'san francisco': { temp: 65, condition: 'Partly cloudy', rain: false },
     'new york': { temp: 72, condition: 'Sunny', rain: false },
     'seattle': { temp: 58, condition: 'Rainy', rain: true },
@@ -82,14 +68,9 @@ function createWeatherServer() {
   return server;
 }
 
-// ============================================================================
-// MCP SERVER 2: Task Management Service
-// ============================================================================
-
 function createTaskServer() {
   const server = new McpServer({ name: 'tasks-mcp', version: '1.0.0' });
   
-  // In-memory task storage
   const tasks: Array<{ id: string; title: string; priority: string; done: boolean }> = [];
 
   server.tool(
@@ -149,10 +130,6 @@ function createTaskServer() {
   return server;
 }
 
-// ============================================================================
-// HTTP Server Setup
-// ============================================================================
-
 function startMCPServer(serverFactory: () => McpServer, port: number, name: string) {
   const app = express();
   app.use(express.json());
@@ -170,7 +147,7 @@ function startMCPServer(serverFactory: () => McpServer, port: number, name: stri
       }
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sid) => transports.set(sid, transport)
+        onsessioninitialized: (sid) => { transports.set(sid, transport); }
       });
       const server = serverFactory();
       await server.connect(transport);
@@ -193,22 +170,12 @@ function startMCPServer(serverFactory: () => McpServer, port: number, name: stri
   return server;
 }
 
-// ============================================================================
-// Main Example
-// ============================================================================
-
 async function main() {
-  console.log('🌋 Volcano SDK - Self-Contained MCP Automatic Selection Example\n');
-
-  // Start MCP servers
-  console.log('Starting MCP servers...');
   const weatherServer = startMCPServer(createWeatherServer, 8001, 'weather');
   const tasksServer = startMCPServer(createTaskServer, 8002, 'tasks');
 
-  // Wait for servers to be ready
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Setup cleanup
   const cleanup = () => {
     console.log('\n\n🧹 Shutting down MCP servers...');
     weatherServer.close();
@@ -220,7 +187,6 @@ async function main() {
   process.on('SIGTERM', cleanup);
 
   try {
-    // Initialize LLM and MCP handles
     const llm = llmOpenAI({ 
       apiKey: process.env.OPENAI_API_KEY!, 
       model: "gpt-4o-mini" 
@@ -228,85 +194,67 @@ async function main() {
 
     const telemetry = createVolcanoTelemetry({
       serviceName: 'volcano-local-test',
-      endpoint: 'http://localhost:4318', // Auto-configures OTLP exporters
+      endpoint: 'http://localhost:4318'
     });
 
     const weatherMcp = mcp('http://localhost:8001/mcp');
     const tasksMcp = mcp('http://localhost:8002/mcp');
 
-    console.log('\n🚀 Running multi-step workflow with automatic tool selection...\n');
-
-    // Run workflow with automatic tool selection
     const results = await agent({ 
       llm, 
       telemetry,
       instructions: "You are a helpful assistant. Use the available tools to complete tasks efficiently."
     })
-      // Step 1: Check weather
       .then({
         prompt: "What's the weather like in Seattle? Should I bring an umbrella?",
         mcps: [weatherMcp],
         maxToolIterations: 2
       })
-      
-      // Step 2: Based on weather, create tasks
       .then({
         prompt: "Based on the weather forecast, create high-priority tasks for anything weather-related I should prepare for",
         mcps: [weatherMcp, tasksMcp],
         maxToolIterations: 3
       })
-      
-      // Step 3: Check on tasks
       .then({
         prompt: "Show me all my pending tasks",
         mcps: [tasksMcp],
         maxToolIterations: 1
       })
-      
+
       .run((step, index) => {
-        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`📍 Step ${index + 1}/${3}`);
-        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`\nStep ${index + 1}/${3}`);
         
         if (step.prompt) {
-          console.log(`\n💬 Prompt: ${step.prompt}`);
+          console.log(`Prompt: ${step.prompt}`);
         }
         
         if (step.toolCalls && step.toolCalls.length > 0) {
-          console.log(`\n🔧 Tools called: ${step.toolCalls.length}`);
+          console.log(`Tools called: ${step.toolCalls.length}`);
           step.toolCalls.forEach((call, i) => {
-            console.log(`\n   ${i + 1}. ${call.name}`);
-            console.log(`      Arguments:`, call.arguments);
-            console.log(`      Result:`, call.result);
+            console.log(`  ${i + 1}. ${call.name}`);
+            console.log(`     Args:`, call.arguments);
+            console.log(`     Result:`, call.result);
           });
         }
         
         if (step.llmOutput) {
-          console.log(`\n🤖 LLM Response:\n   ${step.llmOutput}`);
+          console.log(`Response: ${step.llmOutput}`);
         }
       });
 
-    console.log('\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✨ Workflow Complete!');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log(`\nComplete! ${results.length} steps, ${results.reduce((acc, r) => acc + (r.toolCalls?.length || 0), 0)} tools used`);
 
-    console.log(`📊 Summary:`);
-    console.log(`   - Total steps: ${results.length}`);
-    console.log(`   - Tools used: ${results.reduce((acc, r) => acc + (r.toolCalls?.length || 0), 0)}`);
     
-    // Clean up
     cleanup();
 
   } catch (error) {
-    console.error('\n❌ Error:', error);
+    console.error('\nError:', error);
     cleanup();
   }
 }
 
-// Run the example
 if (!process.env.OPENAI_API_KEY) {
-  console.error('❌ Error: OPENAI_API_KEY environment variable is required');
-  console.error('   Run with: OPENAI_API_KEY=your-key npx tsx examples/mcp-auto-selection.ts');
+  console.error('Error: OPENAI_API_KEY required');
   process.exit(1);
 }
 

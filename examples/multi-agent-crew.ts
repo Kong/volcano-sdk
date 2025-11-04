@@ -37,10 +37,10 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
   console.log(results[0].llmOutput);
   
-  const agentCalls = (results[0] as any).agentCalls;
+  const agentCalls = (results[0] as { agentCalls?: Array<{ name: string; task: string }> }).agentCalls;
   if (agentCalls) {
     console.log("\nAgents used:");
-    agentCalls.forEach((call: any) => {
+    agentCalls.forEach((call) => {
       console.log(`  - ${call.name}: "${call.task.substring(0, 60)}..."`);
     });
   }

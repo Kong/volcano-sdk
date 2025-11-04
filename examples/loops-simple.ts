@@ -45,9 +45,9 @@ whileResult.forEach((r, i) => console.log(`  ${i + 1}: ${r.llmOutput}`));
 console.log("\n3. RetryUntil - Self-Correction");
 let attemptCount = 0;
 
-const unreliableLLM = {
+const unreliableLLM: typeof llm = {
   ...llm,
-  gen: async (prompt: string) => {
+  gen: async () => {
     attemptCount++;
     if (attemptCount < 3) {
       return `Attempt ${attemptCount}: Hmm, maybe 41?`;
@@ -56,7 +56,7 @@ const unreliableLLM = {
   }
 };
 
-const retryResult = await agent({ llm: unreliableLLM as any })
+const retryResult = await agent({ llm: unreliableLLM })
   .retryUntil(
     (a) => a.then({ prompt: "What is 6 × 7?" }),
     (result) => result.llmOutput?.includes("42") || false,

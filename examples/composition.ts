@@ -8,9 +8,6 @@ const llm = llmOpenAI({
 const summarizer = agent({ llm })
   .then({ prompt: "Summarize the previous text in one sentence" });
 
-const translator = agent({ llm })
-  .then({ prompt: "Translate to Spanish" });
-
 const formalizer = agent({ llm })
   .then({ prompt: "Make the text more formal and professional" });
 
