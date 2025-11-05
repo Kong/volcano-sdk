@@ -77,6 +77,116 @@ type StepResult = {
 - APIs returning complete responses
 - Testing and debugging (inspect all steps together)
 
+## Conversational Results
+
+Ask natural language questions about what your agent did. Instead of manually parsing results, use an LLM to analyze execution and provide contextual answers.
+
+### Basic Usage
+
+```typescript
+const results = await agent({ llm })
+  .then({ prompt: "Analyze sales data", mcps: [database] })
+  .then({ prompt: "Generate report" })
+  .run();
+
+// Ask questions in natural language
+const summary = await results.summary(llm);
+console.log(summary);
+// "The agent analyzed sales data from Q3 2025 and generated a comprehensive report..."
+
+const tools = await results.toolsUsed(llm);
+console.log(tools);
+// "The agent used database.query_sales to fetch sales data..."
+```
+
+### Available Methods
+
+#### `results.ask(llm, question)`
+Ask any question about the execution:
+
+```typescript
+await results.ask(llm, "What did the agent accomplish?");
+await results.ask(llm, "Were there any errors?");
+await results.ask(llm, "How many API calls were made?");
+await results.ask(llm, "What should I do next?");
+await results.ask(llm, "Summarize in one sentence");
+```
+
+#### `results.summary(llm)`
+Get a high-level overview:
+
+```typescript
+const summary = await results.summary(llm);
+// "The agent completed 3 steps in 15.2 seconds, analyzing 30 emails and detecting no spam."
+```
+
+#### `results.toolsUsed(llm)`
+Understand which tools were called:
+
+```typescript
+const tools = await results.toolsUsed(llm);
+// "The agent called list_all_unread_emails to fetch 30 emails from Gmail..."
+```
+
+#### `results.errors(llm)`
+Check for issues:
+
+```typescript
+const errors = await results.errors(llm);
+// "No errors detected." or "Step 2 failed due to timeout..."
+```
+
+### Cost Optimization
+
+Use a cheaper model for analyzing results:
+
+```typescript
+const workLlm = llmOpenAI({ model: "gpt-5" });  // Expensive, for actual work
+const summaryLlm = llmOpenAI({ model: "gpt-4o-mini" });  // Cheap, for summaries
+
+const results = await agent({ llm: workLlm })
+  .then({ prompt: "Complex analysis", mcps: [tools] })
+  .run();
+
+// Use cheap model for post-analysis
+await results.summary(summaryLlm);
+await results.ask(summaryLlm, "What were the key findings?");
+```
+
+### Real-World Example: Gmail Spam Detector
+
+```typescript
+// Before: 40 lines of manual result parsing
+const toolCalls = results[0].toolCalls || [];
+const spamMarked = toolCalls.filter(t => t.name.includes('mark_as_spam'));
+// ... complex parsing logic ...
+
+// After: 2 lines with conversational API
+await results.summary(summaryLlm);
+await results.ask(summaryLlm, "List all spam emails with sender and subject");
+```
+
+### Benefits
+
+- ✅ **Contextual** - LLM understands what the agent actually did
+- ✅ **Flexible** - Ask any question, get relevant answers
+- ✅ **Clean code** - No manual result parsing
+- ✅ **Self-documenting** - LLM explains execution in plain English
+- ✅ **Domain-agnostic** - Works for any workflow
+- ✅ **Interactive** - Drill down with follow-up questions
+
+### How It Works
+
+When you call `results.ask()` or `results.summary()`:
+
+1. Volcano builds a context string with all step results
+2. The context includes prompts, LLM outputs, tool calls, and timing
+3. Your question is added to the context
+4. The LLM analyzes the full execution and answers
+5. The answer is returned as a string
+
+The LLM sees the complete execution history and can provide intelligent, contextual answers about what happened.
+
 ## stream() Method
 
 Stream step results in real-time as they complete using the `stream()` method.

@@ -96,6 +96,21 @@ Intelligent connection pooling for MCP servers, tool discovery caching with TTL,
 
 </td>
 </tr>
+
+<tr>
+<td width="33%">
+
+### 💬 Conversational Results
+Ask questions about agent execution in natural language. Use an LLM to analyze results, explain what happened, and extract insights.
+
+</td>
+<td width="33%">
+
+</td>
+<td width="33%">
+
+</td>
+</tr>
 </table>
 
 **[Explore all features →](https://volcano.dev/docs#key-features)**

@@ -63,6 +63,78 @@ const myAgent = agent({
 | `.retryUntil(body, success, opts?)` | Retry until success condition is met            |
 | `.runAgent(subAgent)`               | Compose and run sub-agents                      |
 
+## AgentResults
+
+The `run()` method returns an enhanced array with conversational analysis methods.
+
+```typescript
+interface AgentResults extends Array<StepResult> {
+  ask(llm: LLMHandle, question: string): Promise<string>;
+  summary(llm: LLMHandle): Promise<string>;
+  toolsUsed(llm: LLMHandle): Promise<string>;
+  errors(llm: LLMHandle): Promise<string>;
+}
+```
+
+### Methods
+
+#### `ask(llm, question): Promise<string>`
+
+Ask any natural language question about the workflow execution:
+
+```typescript
+const results = await agent({ llm }).then({ prompt: "..." }).run();
+
+await results.ask(llm, "What did the agent do?");
+await results.ask(llm, "Were there any failures?");
+await results.ask(llm, "How many tools were called?");
+await results.ask(llm, "Summarize in one sentence");
+```
+
+The LLM analyzes all step results (prompts, outputs, tool calls, timing) and provides contextual answers.
+
+#### `summary(llm): Promise<string>`
+
+Get a high-level overview of what the agent accomplished:
+
+```typescript
+const overview = await results.summary(llm);
+// "The agent completed 3 steps in 24.5s, analyzed 30 emails, and detected no spam."
+```
+
+#### `toolsUsed(llm): Promise<string>`
+
+Understand which MCP tools were called and why:
+
+```typescript
+const tools = await results.toolsUsed(llm);
+// "Called list_all_unread_emails to fetch emails, then called mark_as_spam for 2 suspicious messages."
+```
+
+#### `errors(llm): Promise<string>`
+
+Check if there were any errors or issues:
+
+```typescript
+const errors = await results.errors(llm);
+// "No errors detected." or "Step 2 timed out after 60 seconds..."
+```
+
+### Usage Example
+
+```typescript
+const workLlm = llmOpenAI({ model: "gpt-5" });
+const summaryLlm = llmOpenAI({ model: "gpt-4o-mini" }); // Cheaper for summaries
+
+const results = await agent({ llm: workLlm })
+  .then({ prompt: "Complex task", mcps: [tools] })
+  .run();
+
+// Use cheap model to analyze expensive model's work
+const summary = await results.summary(summaryLlm);
+const nextSteps = await results.ask(summaryLlm, "What should I do next?");
+```
+
 ## Step Types
 
 Volcano SDK supports three types of steps:

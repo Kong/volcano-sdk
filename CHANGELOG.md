@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- **Conversational Results API**: Ask natural language questions about agent execution using LLMs
+  - `results.ask(llm, question)` - Ask any question about what the agent accomplished
+  - `results.summary(llm)` - Get intelligent overview of execution
+  - `results.toolsUsed(llm)` - Understand which tools were called and why
+  - `results.errors(llm)` - Check for execution issues with context
+  - Reduces example code by ~50% by replacing manual result parsing with LLM-powered analysis
+  - Use cheap models (gpt-4o-mini) for summaries, expensive models (gpt-5) for actual work
+- **Automatic OAuth Token Refresh**: Long-running workflows with zero token management
+  - New `refreshToken` field in `MCPAuthConfig` for automatic token renewal
+  - Automatic 401 error detection and retry with refreshed tokens
+  - Works with Gmail, Google Drive, Slack, GitHub, and any OAuth 2.0 service
+  - Tokens cached and refreshed transparently without interrupting workflows
+  - Perfect for production deployments that run for hours or days
+- **Type-check Script**: Added `yarn type-check` command for comprehensive TypeScript validation without emitting files
+- **Example Linting**: Examples folder now included in ESLint checks (previously ignored)
+
 ## [1.0.4] - 2025-10-30
 
 ### Fixed

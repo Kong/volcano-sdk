@@ -242,6 +242,85 @@ await agent({ llm })
   .run();
 ```
 
+### Automatic Token Refresh
+
+Volcano automatically refreshes expired OAuth tokens using refresh tokens. Perfect for long-running workflows and user-authenticated services like Gmail, Google Drive, or Slack.
+
+```typescript
+// With automatic token refresh
+const gmail = mcp("https://api.gmail.com/mcp", {
+  auth: {
+    type: "bearer",
+    token: process.env.GMAIL_ACCESS_TOKEN,          // Can be expired!
+    refreshToken: process.env.GMAIL_REFRESH_TOKEN,  // Long-lived refresh token
+    tokenEndpoint: "https://oauth2.googleapis.com/token",
+    clientId: process.env.GMAIL_CLIENT_ID,
+    clientSecret: process.env.GMAIL_CLIENT_SECRET,
+  },
+});
+
+// Even if your access token expires during this workflow,
+// Volcano automatically refreshes it and retries the request
+await agent({ llm })
+  .then({
+    prompt: "Analyze all my unread emails for spam",
+    mcps: [gmail],
+  })
+  .run();
+```
+
+**How it works:**
+
+1. When Volcano detects a **401 Unauthorized** error from the MCP server
+2. It checks if a `refreshToken` is configured
+3. Automatically calls the `tokenEndpoint` with `grant_type=refresh_token`
+4. Gets a fresh access token
+5. Retries the failed request with the new token
+6. Caches the new token for subsequent requests
+
+**Benefits:**
+
+- ✅ **No manual token management** - Set it once, forget about it
+- ✅ **Long-running workflows** - Run for hours without token expiration errors
+- ✅ **Production-ready** - Handles token expiration gracefully
+- ✅ **Transparent retry** - Automatic retry on 401 errors
+- ✅ **Works everywhere** - Tool discovery, explicit calls, automatic selection
+
+**Use cases:**
+
+- Gmail, Google Drive, Google Calendar (user OAuth)
+- Slack, Discord, Teams (user OAuth)
+- GitHub, GitLab (user OAuth)
+- Any service using OAuth 2.0 refresh tokens
+
+**Example: Gmail spam detector that runs forever**
+
+```typescript
+// Start with an expired token - Volcano will refresh it automatically!
+const gmail = mcp("http://localhost:3800/mcp", {
+  auth: {
+    type: "bearer",
+    token: "ya29.expired_token",  // Can be expired
+    refreshToken: "1//refresh_token_here",
+    tokenEndpoint: "https://oauth2.googleapis.com/token",
+    clientId: "your-app.apps.googleusercontent.com",
+    clientSecret: "your-client-secret",
+  },
+});
+
+// This can run for hours - tokens auto-refresh as needed
+while (true) {
+  await agent({ llm })
+    .then({ 
+      prompt: "Check for spam in new emails", 
+      mcps: [gmail] 
+    })
+    .run();
+  
+  await new Promise(resolve => setTimeout(resolve, 300000)); // Every 5 min
+}
+```
+
 ### Mixed Authentication
 
 Combine authenticated and non-authenticated MCP servers in the same workflow:
@@ -267,13 +346,76 @@ await agent({ llm })
 
 **MCP Spec Compliance:** Per the official MCP specification, servers use OAuth 2.1 for authentication. Volcano supports both OAuth (automatic token acquisition) and Bearer (bring your own token).
 
+### Authentication Configuration Reference
+
+#### `MCPAuthConfig` Type
+
+```typescript
+type MCPAuthConfig = {
+  type: 'oauth' | 'bearer';
+  token?: string;
+  clientId?: string;
+  clientSecret?: string;
+  tokenEndpoint?: string;
+  scope?: string;
+  refreshToken?: string;
+};
+```
+
+#### Field Descriptions
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | `'oauth'` \| `'bearer'` | ✅ Yes | Authentication type |
+| `token` | `string` | For `bearer` | Access token for Bearer auth. Can be expired if `refreshToken` is provided. |
+| `clientId` | `string` | For `oauth` | OAuth client ID from your OAuth provider |
+| `clientSecret` | `string` | For `oauth` | OAuth client secret from your OAuth provider |
+| `tokenEndpoint` | `string` | For `oauth` | OAuth token endpoint URL (e.g., `https://oauth2.googleapis.com/token`) |
+| `scope` | `string` | Optional | OAuth scopes to request (space-separated) |
+| `refreshToken` | `string` | Optional | Long-lived refresh token for automatic token renewal. When provided with `tokenEndpoint`, `clientId`, and `clientSecret`, Volcano will automatically refresh expired access tokens. |
+
+#### Configuration Examples
+
+**OAuth (Client Credentials):**
+```typescript
+{
+  type: 'oauth',
+  clientId: 'your-client-id',
+  clientSecret: 'your-client-secret',
+  tokenEndpoint: 'https://api.example.com/oauth/token',
+  scope: 'read write'  // optional
+}
+```
+
+**Bearer Token (Simple):**
+```typescript
+{
+  type: 'bearer',
+  token: 'your-access-token'
+}
+```
+
+**Bearer Token (With Auto-Refresh):**
+```typescript
+{
+  type: 'bearer',
+  token: 'your-access-token',          // Can be expired
+  refreshToken: 'your-refresh-token',  // Long-lived
+  tokenEndpoint: 'https://oauth2.googleapis.com/token',
+  clientId: 'your-client-id',
+  clientSecret: 'your-client-secret'
+}
+```
+
 ### Authentication Features
 
 - **OAuth token caching:** Tokens are cached and reused until expiration (60s buffer)
-- **Automatic refresh:** Expired tokens are refreshed automatically
+- **Automatic token refresh:** Expired access tokens automatically refreshed using refresh tokens
+- **401 retry logic:** On authentication errors, Volcano refreshes and retries automatically
 - **Per-endpoint configuration:** Each MCP server can have different auth
 - **Connection pooling:** Authenticated connections are pooled separately
 - **Spec compliant:** Follows MCP OAuth 2.1 authentication standard
+- **Grant type support:** Both `client_credentials` and `refresh_token` grant types
 
 ## Connection Pooling & Performance
 
