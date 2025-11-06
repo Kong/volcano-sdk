@@ -25,20 +25,21 @@ const myAgent = agent({
 
 ### Options
 
-| Option                  | Type        | Default                      | Description                              |
-| ----------------------- | ----------- | ---------------------------- | ---------------------------------------- |
-| `llm`                   | LLMHandle   | -                            | Default LLM provider for all steps       |
-| `instructions`          | string      | -                            | Global system instructions               |
-| `timeout`               | number      | 60                           | Default timeout per step (seconds)       |
-| `retry`                 | RetryConfig | `{ retries: 3, delay: 0 }`   | Retry configuration                      |
-| `contextMaxChars`       | number      | 20480                        | Soft cap for injected context size       |
-| `contextMaxToolResults` | number      | 8                            | Number of recent tool results to include |
-| `maxToolIterations`     | number      | 4                            | Max tool calls per automatic step        |
-| `hideProgress`          | boolean     | false                        | Suppress progress output                 |
-| `telemetry`             | object      | -                            | OpenTelemetry configuration              |
-| `mcpAuth`               | object      | -                            | Agent-level MCP authentication           |
-| `name`                  | string      | -                            | Agent name (for crews/composition)       |
-| `description`           | string      | -                            | Agent description (for crews)            |
+| Option                          | Type        | Default                      | Description                              |
+| ------------------------------- | ----------- | ---------------------------- | ---------------------------------------- |
+| `llm`                           | LLMHandle   | -                            | Default LLM provider for all steps       |
+| `instructions`                  | string      | -                            | Global system instructions               |
+| `timeout`                       | number      | 60                           | Default timeout per step (seconds)       |
+| `retry`                         | RetryConfig | `{ retries: 3, delay: 0 }`   | Retry configuration                      |
+| `contextMaxChars`               | number      | 20480                        | Soft cap for injected context size       |
+| `contextMaxToolResults`         | number      | 8                            | Number of recent tool results to include |
+| `maxToolIterations`             | number      | 4                            | Max tool calls per automatic step        |
+| `disableParallelToolExecution`  | boolean     | false                        | Disable automatic parallel tool execution (forces sequential) |
+| `hideProgress`                  | boolean     | false                        | Suppress progress output                 |
+| `telemetry`                     | object      | -                            | OpenTelemetry configuration              |
+| `mcpAuth`                       | object      | -                            | Agent-level MCP authentication           |
+| `name`                          | string      | -                            | Agent name (for crews/composition)       |
+| `description`                   | string      | -                            | Agent description (for crews)            |
 
 ### Methods
 

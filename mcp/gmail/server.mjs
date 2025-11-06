@@ -195,16 +195,98 @@ function createGmailServer(accessToken) {
   );
 
   server.tool(
-    'mark_as_spam',
-    'Mark an email as spam and move to spam folder (keeps email as unread)',
+    'create_label',
+    'Create a new Gmail label or get existing label ID',
     { 
-      emailId: z.string().describe('Email ID to mark as spam')
+      name: z.string().describe('Label name to create (e.g., "SPAM DETECTED")')
     },
-    async ({ emailId }) => {
+    async ({ name }) => {
+      try {
+        // Try to create the label
+        const response = await gmailApi('/users/me/labels', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name,
+            labelListVisibility: 'labelShow',
+            messageListVisibility: 'show'
+          })
+        });
+
+        return { 
+          content: [{ 
+            type: 'text', 
+            text: JSON.stringify({ 
+              id: response.id, 
+              name: response.name,
+              status: 'created'
+            }, null, 2) 
+          }] 
+        };
+      } catch (error) {
+        // If label already exists, find it
+        if (error.message.includes('409') || error.message.includes('already exists')) {
+          const labels = await gmailApi('/users/me/labels');
+          const existingLabel = labels.labels.find(l => l.name === name);
+          
+          if (existingLabel) {
+            return { 
+              content: [{ 
+                type: 'text', 
+                text: JSON.stringify({ 
+                  id: existingLabel.id, 
+                  name: existingLabel.name,
+                  status: 'already_exists'
+                }, null, 2) 
+              }] 
+            };
+          }
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.tool(
+    'mark_as_spam',
+    'Mark an email as spam and move to spam folder (keeps email as unread). Optionally add custom label.',
+    { 
+      emailId: z.string().describe('Email ID to mark as spam'),
+      customLabel: z.string().optional().describe('Optional custom label name to add (e.g., "SPAM DETECTED")')
+    },
+    async ({ emailId, customLabel }) => {
+      const addLabelIds = ['SPAM'];
+      
+      // If custom label is provided, create it if needed and add it
+      if (customLabel) {
+        try {
+          // First try to get existing labels
+          const labelsResponse = await gmailApi('/users/me/labels');
+          let labelId = labelsResponse.labels.find(l => l.name === customLabel)?.id;
+          
+          // If label doesn't exist, create it
+          if (!labelId) {
+            const createResponse = await gmailApi('/users/me/labels', {
+              method: 'POST',
+              body: JSON.stringify({
+                name: customLabel,
+                labelListVisibility: 'labelShow',
+                messageListVisibility: 'show'
+              })
+            });
+            labelId = createResponse.id;
+          }
+          
+          addLabelIds.push(labelId);
+        } catch (error) {
+          // Continue without custom label if there's an error
+          console.error('Error adding custom label:', error.message);
+        }
+      }
+
       await gmailApi(`/users/me/messages/${emailId}/modify`, {
         method: 'POST',
         body: JSON.stringify({
-          addLabelIds: ['SPAM'],
+          addLabelIds,
           removeLabelIds: ['INBOX']
         })
       });
@@ -212,7 +294,9 @@ function createGmailServer(accessToken) {
       return { 
         content: [{ 
           type: 'text', 
-          text: `Email ${emailId} marked as spam (kept as unread)` 
+          text: customLabel 
+            ? `Email ${emailId} marked as spam with label "${customLabel}" (kept as unread)` 
+            : `Email ${emailId} marked as spam (kept as unread)` 
         }] 
       };
     }

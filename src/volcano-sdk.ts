@@ -85,6 +85,65 @@ function normalizeError(e: any, kind: 'timeout'|'validation'|'llm'|'mcp-conn'|'m
   return new MCPToolError(e?.message || 'MCP tool error', { ...meta, retryable: false }, { cause: e });
 }
 
+/* ---------- Tool Parallelization ---------- */
+
+/**
+ * Determines if a set of tool calls can be safely executed in parallel.
+ * Conservative approach: only parallelize when it's obviously safe.
+ * 
+ * Safe conditions (ALL must be true):
+ * 1. All calls are to the SAME tool
+ * 2. All calls operate on DIFFERENT resources (different IDs)
+ * 3. All arguments are different (no duplicate operations)
+ */
+function canSafelyParallelize(toolCalls: any[]): boolean {
+  if (toolCalls.length <= 1) return false;
+  
+  // Condition 1: All same tool name
+  const toolNames = toolCalls.map(c => c?.name).filter(Boolean);
+  if (toolNames.length !== toolCalls.length) return false; // Some missing names
+  
+  const uniqueTools = new Set(toolNames);
+  if (uniqueTools.size !== 1) return false; // Different tools
+  
+  // Condition 2: Extract resource IDs using pattern matching
+  const getResourceId = (args: any): string | undefined => {
+    if (!args || typeof args !== 'object') return undefined;
+    
+    // Find any parameter ending with 'id' (case-insensitive) or exactly named 'id'
+    for (const key in args) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === 'id' || lowerKey.endsWith('id')) {
+        const value = args[key];
+        // Return the ID if it's a non-empty string or number
+        if (value !== undefined && value !== null && value !== '') {
+          return String(value);
+        }
+      }
+    }
+    
+    return undefined;
+  };
+  
+  const resourceIds = toolCalls.map(c => getResourceId(c?.arguments));
+  
+  // All must have resource IDs
+  if (!resourceIds.every(id => id !== undefined && id !== null && id !== '')) {
+    return false;
+  }
+  
+  // All must be different (no duplicate resources)
+  const uniqueIds = new Set(resourceIds);
+  if (uniqueIds.size !== resourceIds.length) return false; // Duplicate IDs
+  
+  // Condition 3: All arguments must be different
+  const argStrings = toolCalls.map(c => JSON.stringify(c?.arguments || {}));
+  const uniqueArgs = new Set(argStrings);
+  if (uniqueArgs.size !== argStrings.length) return false; // Duplicate operations
+  
+  return true; // Safe to parallelize
+}
+
 /* ---------- MCP (Streamable HTTP) ---------- */
 export type MCPAuthConfig = {
   type: 'oauth' | 'bearer';
@@ -1076,6 +1135,8 @@ type AgentOptions = {
   telemetry?: import('./telemetry.js').VolcanoTelemetry;
   // Maximum tool calling iterations for automatic selection (default 4)
   maxToolIterations?: number;
+  // Disable parallel tool execution (parallel execution is enabled by default for performance)
+  disableParallelToolExecution?: boolean;
 };
 
 /**
@@ -1096,6 +1157,7 @@ interface StepExecutionContext {
   agentSpan: any;
   progress?: ReturnType<typeof createProgressHandler> | null;
   capturedStreamOnToken?: (token: string, meta: TokenMetadata) => void;
+  disableParallelToolExecution?: boolean;
 }
 
 /**
@@ -1294,7 +1356,8 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
     telemetry,
     agentSpan,
     progress,
-    capturedStreamOnToken
+    capturedStreamOnToken,
+    disableParallelToolExecution
   } = ctx;
 
   safeExecuteHook((s as any).pre, 'Pre-step');
@@ -1365,31 +1428,121 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           r.llmOutput = toolPlan?.content || r.llmOutput;
           break;
         }
-        // Execute tools sequentially and append results to prompt for the next iteration
+        
+        // Check if we can safely execute tools in parallel
+        const canParallelize = !disableParallelToolExecution && canSafelyParallelize(toolPlan.toolCalls);
         let toolResultsAppend = "\n\n[Tool results]\n";
-        for (const call of toolPlan.toolCalls) {
-          const mapped = call;
-          let handle = mapped?.mcpHandle;
-          if (!handle) continue;
-          // Apply agent-level auth
-          handle = applyAgentAuth(handle);
-          // Validate args when schema known
-          try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
-          const idx = mapped.name.indexOf('.');
-          const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
-          const mcpStart = Date.now();
-          let result: any;
-          try {
-            result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), telemetry, 'call_tool');
-          } catch (e) {
-            const provider = classifyProviderFromMcp(handle);
-            throw normalizeError(e, 'mcp-tool', { stepId: stepIndex, provider });
+        
+        if (canParallelize) {
+          // PARALLEL EXECUTION: Execute all tools simultaneously
+          telemetry?.recordMetric('tool.execution.parallel', 1, { count: toolPlan.toolCalls.length });
+          
+          const toolPromises = toolPlan.toolCalls.map(async (call) => {
+            const mapped = call;
+            let handle = mapped?.mcpHandle;
+            if (!handle) return null;
+            
+            // Apply agent-level auth
+            handle = applyAgentAuth(handle);
+            
+            // Validate args when schema known
+            try { 
+              validateWithSchema(
+                (availableTools.find(t => t.name === mapped.name) as any)?.parameters, 
+                mapped.arguments, 
+                `Tool ${mapped.name}`
+              ); 
+            } catch (e) { 
+              throw e; 
+            }
+            
+            const idx = mapped.name.indexOf('.');
+            const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
+            const mcpStart = Date.now();
+            
+            try {
+              const result = await withMCP(
+                handle, 
+                (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), 
+                telemetry, 
+                'call_tool'
+              );
+              const mcpMs = Date.now() - mcpStart;
+              
+              return {
+                name: mapped.name,
+                arguments: mapped.arguments,
+                endpoint: handle.url,
+                result,
+                ms: mcpMs
+              };
+            } catch (e) {
+              const provider = classifyProviderFromMcp(handle);
+              throw normalizeError(e, 'mcp-tool', { stepId: stepIndex, provider });
+            }
+          });
+          
+          const toolResults = await Promise.all(toolPromises);
+          
+          // Build results in original order
+          for (const toolCall of toolResults) {
+            if (!toolCall) continue;
+            aggregated.push(toolCall);
+            toolResultsAppend += `- ${toolCall.name} -> ${typeof toolCall.result === 'string' ? toolCall.result : JSON.stringify(toolCall.result)}\n`;
           }
-          const mcpMs = Date.now() - mcpStart;
-          const toolCall: any = { name: mapped.name, arguments: mapped.arguments, endpoint: handle.url, result, ms: mcpMs };
-          aggregated.push(toolCall);
-          toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
+        } else {
+          // SEQUENTIAL EXECUTION: Execute tools one by one (safe default)
+          telemetry?.recordMetric('tool.execution.sequential', 1, { count: toolPlan.toolCalls.length });
+          
+          for (const call of toolPlan.toolCalls) {
+            const mapped = call;
+            let handle = mapped?.mcpHandle;
+            if (!handle) continue;
+            
+            // Apply agent-level auth
+            handle = applyAgentAuth(handle);
+            
+            // Validate args when schema known
+            try { 
+              validateWithSchema(
+                (availableTools.find(t => t.name === mapped.name) as any)?.parameters, 
+                mapped.arguments, 
+                `Tool ${mapped.name}`
+              ); 
+            } catch (e) { 
+              throw e; 
+            }
+            
+            const idx = mapped.name.indexOf('.');
+            const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
+            const mcpStart = Date.now();
+            let result: any;
+            
+            try {
+              result = await withMCP(
+                handle, 
+                (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), 
+                telemetry, 
+                'call_tool'
+              );
+            } catch (e) {
+              const provider = classifyProviderFromMcp(handle);
+              throw normalizeError(e, 'mcp-tool', { stepId: stepIndex, provider });
+            }
+            
+            const mcpMs = Date.now() - mcpStart;
+            const toolCall: any = { 
+              name: mapped.name, 
+              arguments: mapped.arguments, 
+              endpoint: handle.url, 
+              result, 
+              ms: mcpMs 
+            };
+            aggregated.push(toolCall);
+            toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
+          }
         }
+        
         if (aggregated.length) r.toolCalls = aggregated;
         // Prepare next prompt with appended tool results
         workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + toolResultsAppend;
@@ -1847,7 +2000,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               telemetry,
               agentSpan,
               progress,
-              capturedStreamOnToken: undefined
+              capturedStreamOnToken: undefined,
+              disableParallelToolExecution: opts?.disableParallelToolExecution
             });
           };
 
@@ -1988,7 +2142,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               telemetry,
               agentSpan,
               progress,
-              capturedStreamOnToken
+              capturedStreamOnToken,
+              disableParallelToolExecution: opts?.disableParallelToolExecution
             });
           };
 

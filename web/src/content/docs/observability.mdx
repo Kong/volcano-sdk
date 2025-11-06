@@ -305,13 +305,15 @@ Volcano records metrics for dashboards and alerting.
 
 ### Available Metrics
 
-| Metric                    | Type      | Description                                               |
-| ------------------------- | --------- | --------------------------------------------------------- |
-| `volcano.agent.duration`  | Histogram | Total agent execution time (ms)                           |
-| `volcano.step.duration`   | Histogram | Individual step duration (ms), labeled by type            |
-| `volcano.llm.calls.total` | Counter   | Total LLM API calls, labeled by provider and error status |
-| `volcano.mcp.calls.total` | Counter   | Total MCP tool calls                                      |
-| `volcano.errors.total`    | Counter   | Total errors by type and provider                         |
+| Metric                            | Type      | Description                                               |
+| --------------------------------- | --------- | --------------------------------------------------------- |
+| `volcano.agent.duration`          | Histogram | Total agent execution time (ms)                           |
+| `volcano.step.duration`           | Histogram | Individual step duration (ms), labeled by type            |
+| `volcano.llm.calls.total`         | Counter   | Total LLM API calls, labeled by provider and error status |
+| `volcano.mcp.calls.total`         | Counter   | Total MCP tool calls                                      |
+| `volcano.errors.total`            | Counter   | Total errors by type and provider                         |
+| `volcano.tool.execution.parallel` | Counter   | Parallel tool execution batches (with count attribute)    |
+| `volcano.tool.execution.sequential` | Counter | Sequential tool execution batches (with count attribute)  |
 
 ### Metric Labels
 
@@ -321,6 +323,57 @@ Metrics include labels for filtering and grouping:
 - `model` - Specific model used
 - `type` - Step type (llm, mcp_auto, mcp_explicit)
 - `error` - Boolean indicating success/failure
+- `count` - Number of items in batch (for tool.execution.* metrics)
+
+### Parallel Tool Execution Metrics
+
+The `tool.execution.parallel` and `tool.execution.sequential` metrics track how tools are being executed:
+
+**`volcano.tool.execution.parallel`**
+- Incremented when multiple tools are executed simultaneously
+- `count` attribute shows how many tools were parallelized
+- Example: 5 emails marked as spam in one parallel batch → `count: 5`
+
+**`volcano.tool.execution.sequential`**
+- Incremented when tools are executed one-by-one
+- `count` attribute shows how many tools were in the sequential batch
+- Example: 3 different tools called sequentially → `count: 3`
+
+**Prometheus queries:**
+
+```promql
+# Total parallel executions
+sum(volcano_tool_execution_parallel_total)
+
+# Total sequential executions  
+sum(volcano_tool_execution_sequential_total)
+
+# Parallelization rate (percentage of executions that were parallel)
+sum(volcano_tool_execution_parallel_total) / 
+  (sum(volcano_tool_execution_parallel_total) + sum(volcano_tool_execution_sequential_total)) * 100
+
+# Average batch size for parallel executions
+avg(volcano_tool_execution_parallel_total) by (count)
+
+# Total tools executed in parallel
+sum(volcano_tool_execution_parallel_total * count)
+
+# Tools saved from parallelization (tools that would have taken longer sequentially)
+sum(volcano_tool_execution_parallel_total * (count - 1))
+```
+
+**Grafana dashboard panels:**
+- Parallelization rate over time (line graph)
+- Parallel vs Sequential execution ratio (pie chart)
+- Average parallel batch size (gauge)
+- Total time saved from parallelization (estimate)
+
+**Use these metrics to:**
+- Monitor parallelization effectiveness
+- Identify workflows that benefit most from parallel execution
+- Validate performance improvements
+- Debug when parallelization isn't happening as expected
+- Compare performance with `disableParallelToolExecution: true` vs default
 
 ## Observability Backends
 

@@ -41,10 +41,12 @@ SAFEGUARDS:
 - NEVER mark billing/invoice/payment emails as spam
 - When unsure, do not mark as spam
 
-Be conservative.`
+Be conservative.
+
+When marking emails as spam, add the "SPAM DETECTED" label to the email in question.`
 })
   .then({
-    prompt: "Get all unread emails, analyze for spam, mark any spam",
+    prompt: "Get all unread emails, analyze for spam, mark any spam with custom label 'SPAM DETECTED'",
     mcps: [gmail],
     maxToolIterations: 20,
     timeout: 300
@@ -52,7 +54,7 @@ Be conservative.`
   .run();
 
 const emailList = await results.ask(summaryLlm, 
-  "List EVERY SINGLE email that was analyzed (all 42+) with sender and subject. Do NOT truncate or summarize - show the complete list numbered 1-42."
+  "List EVERY SINGLE email that was analyzed with sender and subject. Do NOT truncate or summarize - show the complete list."
 );
 console.log(emailList);
 
