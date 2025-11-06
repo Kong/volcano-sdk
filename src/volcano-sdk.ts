@@ -1,11 +1,14 @@
 // src/volcano-sdk.ts
 import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { llmOpenAI as llmOpenAIProvider, llmOpenAIResponses as llmOpenAIResponsesProvider } from "./llms/openai.js";
 import { executeParallel, executeBranch, executeSwitch, executeWhile, executeForEach, executeRetryUntil, executeRunAgent } from "./patterns.js";
 import { createHash } from "node:crypto";
 import { recordTokenMetrics, getLLMProviderId } from "./token-utils.js";
 import * as CONSTANTS from "./constants.js";
+import { spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
@@ -161,6 +164,16 @@ export type MCPHandle = {
   id: string; 
   url: string; 
   auth?: MCPAuthConfig;
+  transport?: 'http' | 'stdio';
+  process?: ChildProcess;
+  cleanup?: () => Promise<void>;
+};
+
+export type MCPStdioConfig = {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
 };
 
 /**
@@ -198,13 +211,75 @@ export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle 
     id, 
     url, 
     auth: options?.auth,
+    transport: 'http',
     listTools: async () => {
-      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.listTools());
+      return withMCP({ id, url, auth: options?.auth, transport: 'http' } as MCPHandle, (c) => c.listTools());
     },
     callTool: async (name, args) => {
-      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.callTool({ name, arguments: args }));
+      return withMCP({ id, url, auth: options?.auth, transport: 'http' } as MCPHandle, (c) => c.callTool({ name, arguments: args }));
     }
   };
+}
+
+/**
+ * Connect to an MCP (Model Context Protocol) server via stdio.
+ * Spawns a child process to run the MCP server and communicates via stdin/stdout.
+ * 
+ * @param config - Configuration for the stdio MCP server
+ * @returns MCPHandle for listing and calling tools, plus cleanup function
+ * 
+ * @example
+ * // Basic usage
+ * const aha = mcpStdio({
+ *   command: "node",
+ *   args: ["dist/index.js"],
+ *   cwd: "/path/to/aha-mcp"
+ * });
+ * 
+ * @example
+ * // With environment variables
+ * const aha = mcpStdio({
+ *   command: "npx",
+ *   args: ["-y", "@aha-develop/aha-mcp"],
+ *   env: {
+ *     AHA_DOMAIN: "yourcompany.aha.io",
+ *     AHA_API_KEY: process.env.AHA_API_KEY!
+ *   }
+ * });
+ * 
+ * // Remember to cleanup when done
+ * await aha.cleanup?.();
+ */
+export function mcpStdio(config: MCPStdioConfig): MCPHandle {
+  const hash = createHash('md5')
+    .update(`${config.command}:${config.args?.join(':')}:${config.cwd || ''}`)
+    .digest('hex')
+    .substring(0, 8);
+  const id = `mcp_${hash}`;
+  
+  // Unique identifier for this stdio server
+  const stdioKey = `stdio:${id}`;
+  
+  const handle: MCPHandle = {
+    id,
+    url: stdioKey,
+    transport: 'stdio',
+    listTools: async () => {
+      return withMCPStdio(handle, config, (c) => c.listTools());
+    },
+    callTool: async (name, args) => {
+      return withMCPStdio(handle, config, (c) => c.callTool({ name, arguments: args }));
+    },
+    cleanup: async () => {
+      await cleanupStdioServer(stdioKey);
+      STDIO_CONFIGS.delete(stdioKey);
+    }
+  };
+  
+  // Register the config so discoverTools can use it
+  registerStdioConfig(handle, config);
+  
+  return handle;
 }
 
 // Ajv validator instance
@@ -233,7 +308,17 @@ type MCPPoolEntry = {
   auth?: MCPAuthConfig;
 };
 
+type MCPStdioPoolEntry = {
+  client: MCPClient;
+  transport: StdioClientTransport;
+  process: ChildProcess;
+  lastUsed: number;
+  busyCount: number;
+  config: MCPStdioConfig;
+};
+
 const MCP_POOL = new Map<string, MCPPoolEntry>();
+const MCP_STDIO_POOL = new Map<string, MCPStdioPoolEntry>();
 let MCP_POOL_MAX = CONSTANTS.DEFAULT_MCP_POOL_MAX_SIZE;
 let MCP_POOL_IDLE_MS = CONSTANTS.DEFAULT_MCP_POOL_IDLE_MS;
 
@@ -392,6 +477,16 @@ async function cleanupIdlePool() {
       MCP_POOL.delete(url);
     }
   }
+  // Also cleanup stdio servers
+  for (const [key, entry] of MCP_STDIO_POOL) {
+    if (entry.busyCount === 0 && now - entry.lastUsed > MCP_POOL_IDLE_MS) {
+      try { 
+        await entry.client.close(); 
+        entry.process.kill();
+      } catch {}
+      MCP_STDIO_POOL.delete(key);
+    }
+  }
 }
 
 // Periodic cleanup
@@ -401,6 +496,120 @@ function ensurePoolSweeper() {
     POOL_SWEEPER = setInterval(() => { cleanupIdlePool(); }, CONSTANTS.DEFAULT_MCP_POOL_SWEEP_INTERVAL_MS);
     // In tests or short-lived processes we don't need to keep the event loop alive
     if (typeof POOL_SWEEPER.unref === 'function') POOL_SWEEPER.unref();
+  }
+}
+
+// Stdio MCP server management
+async function getPooledStdioClient(key: string, config: MCPStdioConfig): Promise<MCPStdioPoolEntry> {
+  let entry = MCP_STDIO_POOL.get(key);
+  if (!entry) {
+    // Spawn the process with merged environment variables
+    const env = {
+      ...process.env,
+      ...config.env
+    };
+    
+    const childProcess = spawn(config.command, config.args || [], {
+      cwd: config.cwd,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    // Handle process errors
+    childProcess.on('error', (err) => {
+      console.error(`MCP stdio process error: ${err.message}`);
+    });
+    
+    // Create stdio transport
+    const transport = new StdioClientTransport({
+      command: config.command,
+      args: config.args,
+      env: config.env
+    });
+    
+    const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
+    
+    // Connect to the spawned process
+    await client.connect(transport);
+    
+    entry = { 
+      client, 
+      transport, 
+      process: childProcess, 
+      lastUsed: Date.now(), 
+      busyCount: 0,
+      config 
+    };
+    MCP_STDIO_POOL.set(key, entry);
+  }
+  entry.busyCount++;
+  entry.lastUsed = Date.now();
+  return entry;
+}
+
+async function cleanupStdioServer(key: string) {
+  const entry = MCP_STDIO_POOL.get(key);
+  if (entry) {
+    try {
+      await entry.client.close();
+      entry.process.kill();
+    } catch (err) {
+      console.error(`Error cleaning up stdio server: ${err}`);
+    }
+    MCP_STDIO_POOL.delete(key);
+  }
+}
+
+async function withMCPStdio<T>(h: MCPHandle, config: MCPStdioConfig, fn: (c: MCPClient) => Promise<T>, telemetry?: any, operation?: string): Promise<T> {
+  ensurePoolSweeper();
+  const entry = await getPooledStdioClient(h.url, config);
+  
+  // Start MCP span if telemetry configured
+  const mcpSpan = telemetry && operation ? telemetry.startMCPSpan(null, h, operation) : null;
+  
+  try {
+    const result = await fn(entry.client);
+    
+    telemetry?.endSpan(mcpSpan);
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: false });
+    
+    return result;
+  } catch (error) {
+    telemetry?.endSpan(mcpSpan, undefined, error);
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: true });
+    throw error;
+  } finally {
+    entry.busyCount = Math.max(0, entry.busyCount - 1);
+    entry.lastUsed = Date.now();
+  }
+}
+
+// Store stdio configs for handles that need them
+const STDIO_CONFIGS = new Map<string, MCPStdioConfig>();
+
+function registerStdioConfig(handle: MCPHandle, config: MCPStdioConfig) {
+  STDIO_CONFIGS.set(handle.url, config);
+}
+
+function getStdioConfig(handle: MCPHandle): MCPStdioConfig | undefined {
+  return STDIO_CONFIGS.get(handle.url);
+}
+
+// Helper to route to the correct withMCP variant based on transport
+async function withMCPAny<T>(
+  handle: MCPHandle, 
+  fn: (c: MCPClient) => Promise<T>, 
+  telemetry?: any, 
+  operation?: string
+): Promise<T> {
+  if (handle.transport === 'stdio') {
+    const config = getStdioConfig(handle);
+    if (!config) {
+      throw new Error(`Stdio config not found for handle ${handle.id}`);
+    }
+    return withMCPStdio(handle, config, fn, telemetry, operation);
+  } else {
+    return withMCP(handle, fn, telemetry, operation);
   }
 }
 
@@ -558,7 +767,8 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
         allTools.push(...cached.tools);
         continue;
       }
-      const tools = await withMCP(handle, async (client) => {
+      
+      const fetchFn = async (client: MCPClient) => {
         const result = await client.listTools();
         const mapped = result.tools.map(tool => ({
           name: `${handle.id}.${tool.name}`,
@@ -568,7 +778,19 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
         }));
         TOOL_CACHE.set(handle.url, { tools: mapped, ts: Date.now() });
         return mapped;
-      });
+      };
+      
+      let tools: ToolDefinition[];
+      if (handle.transport === 'stdio') {
+        const config = getStdioConfig(handle);
+        if (!config) {
+          throw new Error(`Stdio config not found for handle ${handle.id}`);
+        }
+        tools = await withMCPStdio(handle, config, fetchFn);
+      } else {
+        tools = await withMCP(handle, fetchFn);
+      }
+      
       allTools.push(...tools);
     } catch (error) {
       // Invalidate cache on failure
@@ -604,7 +826,7 @@ async function getToolSchema(handle: MCPHandle, toolName: string): Promise<any |
     return found?.parameters as any;
   }
   try {
-    const tools = await withMCP(handle, async (client) => {
+    const fetchFn = async (client: MCPClient) => {
       const result = await client.listTools();
       const mapped = result.tools.map(tool => ({
         name: `${handle.id}.${tool.name}`,
@@ -614,7 +836,19 @@ async function getToolSchema(handle: MCPHandle, toolName: string): Promise<any |
       }));
       TOOL_CACHE.set(handle.url, { tools: mapped, ts: Date.now() });
       return mapped;
-    });
+    };
+    
+    let tools: ToolDefinition[];
+    if (handle.transport === 'stdio') {
+      const config = getStdioConfig(handle);
+      if (!config) {
+        throw new Error(`Stdio config not found for handle ${handle.id}`);
+      }
+      tools = await withMCPStdio(handle, config, fetchFn);
+    } else {
+      tools = await withMCP(handle, fetchFn);
+    }
+    
     const found = tools.find(t => t.name === `${handle.id}.${toolName}`);
     return found?.parameters as any;
   } catch {
@@ -690,9 +924,9 @@ export type StreamOptions = {
 
 export type Step =
   | { prompt: string; name?: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
-  | { mcp: MCPHandle; name?: string; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; name?: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; name?: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
+  | { mcp: MCPHandle; name?: string; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToolCall?: (toolName: string, args: any, result: any) => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToolCall?: (toolName: string, args: any, result: any) => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void; onToolCall?: (toolName: string, args: any, result: any) => void }
   | { prompt: string; name?: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
@@ -887,12 +1121,16 @@ async function executeLLMWithStreaming(
   prompt: string,
   stepOnToken: ((token: string) => void) | undefined,
   streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined,
-  meta: { stepIndex: number; stepPrompt?: string }
+  meta: { stepIndex: number; stepPrompt?: string },
+  progress?: ReturnType<typeof createProgressHandler> | null,
+  progressTokenCallback?: () => void
 ): Promise<string> {
   const hasStepOnToken = !!stepOnToken;
-  const effectiveOnToken = stepOnToken || streamOnToken;
+  const hasStreamOnToken = !!streamOnToken;
+  const hasUserCallback = hasStepOnToken || hasStreamOnToken;
   
-  if (effectiveOnToken && typeof llm.genStream === 'function') {
+  // Use streaming if we have any callback OR if genStream is available
+  if (typeof llm.genStream === 'function' && (hasUserCallback || progressTokenCallback || progress)) {
     const tokens: string[] = [];
     const tokenMeta: TokenMetadata = {
       stepIndex: meta.stepIndex,
@@ -903,10 +1141,18 @@ async function executeLLMWithStreaming(
     
     for await (const token of llm.genStream(prompt)) {
       tokens.push(token);
+      
+      // Call progress token counter
+      if (progressTokenCallback) {
+        progressTokenCallback();
+      }
+      
+      
+      // Call user callbacks
       try {
         if (hasStepOnToken) {
           stepOnToken!(token);
-        } else {
+        } else if (hasStreamOnToken) {
           streamOnToken!(token, tokenMeta);
         }
       } catch (e) {
@@ -943,10 +1189,11 @@ const createProgressDisplay = (workflowStart: number, isTTY: boolean) => ({
     }
   },
   
-  showComplete: (durationMs: number, tokens: number, provider?: string) => {
+  showComplete: (durationMs: number, tokens: number, provider?: string, toolCalls?: number) => {
     if (isTTY) process.stdout.write('\r\x1b[K');
+    const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
     const providerInfo = provider ? ` | ${provider}` : '';
-    console.log(`   ✅ Complete | ${tokens.toLocaleString()} token${tokens > 1 ? 's' : ''} | ${(durationMs/1000).toFixed(1)}s${providerInfo}\n`);
+    console.log(`   ✅ Complete | ${tokens.toLocaleString()} token${tokens > 1 ? 's' : ''}${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s${providerInfo}\n`);
   }
 });
 
@@ -986,7 +1233,7 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
         }, 100);
       }
     },
-    llmToken: (count: number, provider?: string) => {
+    llmToken: (count: number, provider?: string, toolCalls?: number) => {
       // For agent crews, suppress token progress (parent tracks via onToken callback)
       // For explicit sub-agents, show token progress
       if (isSubAgent && !isExplicitSubAgent) return;
@@ -1000,8 +1247,9 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       const elapsed = (Date.now() - operationStart) / 1000;
       const throughput = Math.round(count / Math.max(elapsed, 0.1));
       if (count % 10 === 0 || count === 1) {
+        const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
         const providerInfo = provider ? ` | ${provider}` : '';
-        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s | ${elapsed.toFixed(1)}s${providerInfo}`);
+        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s${toolCallsInfo} | ${elapsed.toFixed(1)}s${providerInfo}`);
       }
     },
     agentStart: (agentName: string, task: string) => {
@@ -1017,7 +1265,7 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
         process.stdout.write('   ⏳ Waiting for LLM');
       }
     },
-    agentToken: (count: number, provider?: string) => {
+    agentToken: (count: number, provider?: string, toolCalls?: number) => {
       // Clear waiting interval on first token
       if (count === 1 && waitInterval) {
         clearInterval(waitInterval);
@@ -1031,14 +1279,16 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
           // First token - clear the "Waiting..." line
           process.stdout.write('\r\x1b[K');
         }
+        
+        const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
         const providerInfo = provider ? ` | ${provider}` : '';
-        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s | ${elapsed.toFixed(1)}s${providerInfo}`);
+        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s${toolCallsInfo} | ${elapsed.toFixed(1)}s${providerInfo}`);
       }
     },
-    agentComplete: (agentName: string, tokens: number, durationMs: number, provider?: string) => {
-      display.showComplete(durationMs, tokens, provider);
+    agentComplete: (agentName: string, tokens: number, durationMs: number, provider?: string, toolCalls?: number) => {
+      display.showComplete(durationMs, tokens, provider, toolCalls);
     },
-    stepComplete: (durationMs: number, tokenCount?: number, provider?: string, crewTokens?: number, crewModels?: string[]) => {
+    stepComplete: (durationMs: number, tokenCount?: number, provider?: string, crewTokens?: number, crewModels?: string[], toolCallCount?: number) => {
       // For agent crews, suppress step complete (parent shows completion)
       // For explicit sub-agents, show step complete
       if (isSubAgent && !isExplicitSubAgent) return;
@@ -1046,23 +1296,27 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       if (crewTokens && crewModels) {
         // Crew workflow - don't show anything here, workflowEnd will show the final summary
         return;
-      } else if (tokenCount) {
-        display.showComplete(durationMs, tokenCount, provider);
+      } else if (tokenCount !== undefined) {
+        // Always pass toolCallCount (even if 0) to showComplete
+        display.showComplete(durationMs, tokenCount, provider, toolCallCount !== undefined ? toolCallCount : 0);
       } else {
         if (isTTY) process.stdout.write('\r\x1b[K');
-        console.log(`   ✅ Complete | ${(durationMs/1000).toFixed(1)}s\n`);
+        const toolCallsInfo = toolCallCount !== undefined ? ` | ${toolCallCount} tool call${toolCallCount !== 1 ? 's' : ''}` : '';
+        console.log(`   ✅ Complete${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s\n`);
       }
     },
-    workflowEnd: (stepCount: number, totalTokens?: number, totalDuration?: number, models?: string[]) => {
+    workflowEnd: (stepCount: number, totalTokens?: number, totalDuration?: number, models?: string[], totalToolCalls?: number) => {
       if (isSubAgent) return; // Suppress footer for sub-agents
       
       console.log('━'.repeat(50));
       if (totalTokens && models && models.length > 0) {
         const modelsList = models.join(', ');
-        console.log(`🎉 Agent complete | ${totalTokens.toLocaleString()} tokens | ${((totalDuration || 0)/1000).toFixed(1)}s | ${modelsList}`);
+        const toolCallsInfo = totalToolCalls !== undefined ? ` | ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''}` : '';
+        console.log(`🎉 Agent complete | ${totalTokens.toLocaleString()} tokens${toolCallsInfo} | ${((totalDuration || 0)/1000).toFixed(1)}s | ${modelsList}`);
       } else {
         const total = (Date.now() - workflowStart) / 1000;
-        console.log(`🎉 Workflow complete! ${stepCount} step${stepCount > 1 ? 's' : ''} in ${total.toFixed(1)}s`);
+        const toolCallsInfo = totalToolCalls !== undefined ? ` | ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''}` : '';
+        console.log(`🎉 Workflow complete! ${stepCount} step${stepCount > 1 ? 's' : ''} in ${total.toFixed(1)}s${toolCallsInfo}`);
       }
     }
   };
@@ -1157,6 +1411,7 @@ interface StepExecutionContext {
   agentSpan: any;
   progress?: ReturnType<typeof createProgressHandler> | null;
   capturedStreamOnToken?: (token: string, meta: TokenMetadata) => void;
+  onToolCall?: (toolName: string, args: any, result: any) => void;
   disableParallelToolExecution?: boolean;
 }
 
@@ -1357,6 +1612,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
     agentSpan,
     progress,
     capturedStreamOnToken,
+    onToolCall,
     disableParallelToolExecution
   } = ctx;
 
@@ -1399,11 +1655,15 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
       r.llmOutput = "No tools available for this request.";
     } else {
       const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
+      let currentToolCallCount = 0;  // Track tool calls for real-time progress
       const maxIterations = (s as any).maxToolIterations ?? defaultMaxToolIterations;
       let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
       for (let i = 0; i < maxIterations; i++) {
         const llmStart = Date.now();
         let toolPlan: LLMToolResult;
+        
+        // Progress updates happen via tool call counter display below
+        
         try {
           toolPlan = await usedLlm.genWithTools(workingPrompt, availableTools);
         } catch (e) {
@@ -1422,6 +1682,12 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           model: usedLlm.model,
           agent_name: agentName
         });
+        
+        // Track tokens for MCP tool steps (from usage)
+        if (usage) {
+          (r as any).__tokenCount = ((r as any).__tokenCount || 0) + (usage.total_tokens || usage.totalTokens || 0);
+          (r as any).__provider = getLLMProviderId(usedLlm);
+        }
         
         if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
           // finish with final content
@@ -1461,7 +1727,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
             const mcpStart = Date.now();
             
             try {
-              const result = await withMCP(
+              const result = await withMCPAny(
                 handle, 
                 (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), 
                 telemetry, 
@@ -1488,7 +1754,28 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           for (const toolCall of toolResults) {
             if (!toolCall) continue;
             aggregated.push(toolCall);
+            currentToolCallCount++;  // Increment counter
+            
+            // Update progress with same format as LLM steps
+            if (progress && process.stdout?.isTTY) {
+              const elapsed = (Date.now() - stepStart) / 1000;
+              const currentTokens = (r as any).__tokenCount || 0;
+              const throughput = currentTokens > 0 ? Math.round(currentTokens / Math.max(elapsed, 0.1)) : 0;
+              const provider = (r as any).__provider || '';
+              process.stdout.write(`\r   💭 ${currentTokens} tokens | ${throughput} tok/s | ${currentToolCallCount} tool call${currentToolCallCount !== 1 ? 's' : ''} | ${elapsed.toFixed(1)}s | ${provider}`);
+            }
+            
             toolResultsAppend += `- ${toolCall.name} -> ${typeof toolCall.result === 'string' ? toolCall.result : JSON.stringify(toolCall.result)}\n`;
+            
+            // Call onToolCall callback if provided
+            if (onToolCall) {
+              try {
+                onToolCall(toolCall.name, toolCall.arguments, toolCall.result);
+              } catch (err) {
+                // Don't let callback errors break execution
+                console.error('onToolCall callback error:', err);
+              }
+            }
           }
         } else {
           // SEQUENTIAL EXECUTION: Execute tools one by one (safe default)
@@ -1519,7 +1806,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
             let result: any;
             
             try {
-              result = await withMCP(
+              result = await withMCPAny(
                 handle, 
                 (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), 
                 telemetry, 
@@ -1539,7 +1826,28 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
               ms: mcpMs 
             };
             aggregated.push(toolCall);
+            currentToolCallCount++;  // Increment counter
+            
+            // Update progress with same format as LLM steps
+            if (progress && process.stdout?.isTTY) {
+              const elapsed = (Date.now() - stepStart) / 1000;
+              const currentTokens = (r as any).__tokenCount || 0;
+              const throughput = currentTokens > 0 ? Math.round(currentTokens / Math.max(elapsed, 0.1)) : 0;
+              const provider = (r as any).__provider || '';
+              process.stdout.write(`\r   💭 ${currentTokens} tokens | ${throughput} tok/s | ${currentToolCallCount} tool call${currentToolCallCount !== 1 ? 's' : ''} | ${elapsed.toFixed(1)}s | ${provider}`);
+            }
+            
             toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
+            
+            // Call onToolCall callback if provided
+            if (onToolCall) {
+              try {
+                onToolCall(mapped.name, mapped.arguments, result);
+              } catch (err) {
+                // Don't let callback errors break execution
+                console.error('onToolCall callback error:', err);
+              }
+            }
           }
         }
         
@@ -1600,7 +1908,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
             for await (const token of usedLlm.genStream(workingPrompt)) {
               tokens.push(token);
               coordTokenCount++;
-              progress.llmToken(coordTokenCount, getLLMProviderId(usedLlm));
+              progress.llmToken(coordTokenCount, getLLMProviderId(usedLlm), 0);  // Coordinator has 0 tool calls
             }
             coordinatorResponse = tokens.join('');
           } else {
@@ -1635,7 +1943,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           } else {
             process.stdout.write('🧠 Coordinator: Final answer ready\n');
           }
-          process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
+          process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | 0 tool calls | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
         }
           r.llmOutput = decision.answer;
           break;
@@ -1652,7 +1960,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           } else {
             process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
           }
-          process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
+          process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | 0 tool calls | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
         }
           const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
           if (!selectedAgent) {
@@ -1667,12 +1975,13 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           let agentTokenCount = 0;
           
           try {
-            // Pass onToken to agent for progress tracking
+            // Pass onToken to agent for progress tracking AND token preview
             const agentStep: any = { prompt: decision.task };
             if (progress) {
               agentStep.onToken = () => {
                 agentTokenCount++;
-                progress.agentToken(agentTokenCount, decision.agentName);
+                const toolCallsInAgent = agentResult?.reduce((sum, step) => sum + (step.toolCalls?.length || 0), 0) || 0;
+                progress.agentToken(agentTokenCount, decision.agentName, toolCallsInAgent);
               };
             }
             // Mark delegated agent as sub-agent to suppress its progress banner
@@ -1699,9 +2008,10 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           modelsUsed.add(getLLMProviderId(usedLlm));
           
           const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
+          const agentToolCalls = agentResult.reduce((sum, step) => sum + (step.toolCalls?.length || 0), 0);
           agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
           
-            if (progress) progress.agentComplete(decision.agentName, agentTokenCount, agentMs, getLLMProviderId(usedLlm));
+            if (progress) progress.agentComplete(decision.agentName, agentTokenCount, agentMs, getLLMProviderId(usedLlm), agentToolCalls);
           
           workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
         } else {
@@ -1753,15 +2063,17 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
       let tokenCount = 0;
       const progressOnToken = shouldShowProgress ? () => {
         tokenCount++;
-        progress!.llmToken(tokenCount, getLLMProviderId(usedLlm));
+        progress!.llmToken(tokenCount, getLLMProviderId(usedLlm), 0);  // 0 tool calls for LLM-only steps
       } : undefined;
       
       r.llmOutput = await executeLLMWithStreaming(
         usedLlm,
         finalPrompt,
-        stepOnToken || progressOnToken,
+        stepOnToken,
         capturedStreamOnToken,
-        { stepIndex, stepPrompt: (s as any).prompt }
+        { stepIndex, stepPrompt: (s as any).prompt },
+        progress,
+        progressOnToken
       );
       (r as any).__tokenCount = tokenCount;
       (r as any).__provider = getLLMProviderId(usedLlm);
@@ -2001,6 +2313,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               agentSpan,
               progress,
               capturedStreamOnToken: undefined,
+              onToolCall: (s as any).onToolCall,
               disableParallelToolExecution: opts?.disableParallelToolExecution
             });
           };
@@ -2014,7 +2327,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           if (progress) {
             const crewTokens = (r as any).__crewTotalTokens;
             const crewModels = (r as any).__crewModels;
-            progress.stepComplete(r.durationMs || 0, (r as any).__tokenCount, (r as any).__provider, crewTokens, crewModels);
+            const toolCallCount = r.toolCalls?.length || (r.mcp ? 1 : 0);
+            progress.stepComplete(r.durationMs || 0, (r as any).__tokenCount, (r as any).__provider, crewTokens, crewModels, toolCallCount);
           }
           log?.(r, out.length);
           out.push(r);
@@ -2061,7 +2375,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             if (crewModels) crewModels.forEach((m: string) => modelsUsed.add(m));
           });
           const totalDuration = out.reduce((acc, s) => acc + (s.durationMs || 0), 0);
-          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed));
+          const totalToolCalls = out.reduce((acc, s) => acc + (s.toolCalls?.length || 0) + (s.mcp ? 1 : 0), 0);
+          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed), totalToolCalls);
         }
         isRunning = false;
       }
@@ -2143,6 +2458,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               agentSpan,
               progress,
               capturedStreamOnToken,
+              onToolCall: (s as any).onToolCall,
               disableParallelToolExecution: opts?.disableParallelToolExecution
             });
           };
@@ -2176,7 +2492,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             if (crewModels) crewModels.forEach((m: string) => modelsUsed.add(m));
           });
           const totalDuration = out.reduce((acc, s) => acc + (s.durationMs || 0), 0);
-          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed));
+          const totalToolCalls = out.reduce((acc, s) => acc + (s.toolCalls?.length || 0) + (s.mcp ? 1 : 0), 0);
+          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed), totalToolCalls);
         }
         isRunning = false;
       }

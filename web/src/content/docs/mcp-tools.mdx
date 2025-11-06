@@ -8,6 +8,123 @@ The Model Context Protocol (MCP) enables AI agents to securely interact with ext
 
 **What is MCP?** The Model Context Protocol is an open standard for connecting AI systems to external data sources and tools. It enables LLMs to safely interact with databases, APIs, file systems, and other services through a unified interface.
 
+## Transport Types
+
+Volcano SDK supports two MCP transport types:
+
+### HTTP/SSE Transport
+
+Connect to remote MCP servers over HTTP with Server-Sent Events (SSE):
+
+```typescript
+import { mcp } from "volcano-sdk";
+
+// Basic HTTP connection
+const remoteMcp = mcp("https://api.example.com/mcp");
+
+// With authentication
+const authMcp = mcp("https://api.example.com/mcp", {
+  auth: {
+    type: 'bearer',
+    token: process.env.API_TOKEN!
+  }
+});
+```
+
+**Use cases:**
+- Cloud-based MCP servers (e.g., Atlassian Rovo)
+- Remote APIs and services
+- Production deployments
+- Shared infrastructure
+
+**Features:**
+- Connection pooling for performance
+- OAuth 2.1 and Bearer token auth
+- Automatic reconnection
+- TLS/HTTPS security
+
+### Stdio Transport
+
+Connect to local MCP servers via standard input/output:
+
+```typescript
+import { mcpStdio } from "volcano-sdk";
+
+// Basic stdio connection
+const localMcp = mcpStdio({
+  command: "node",
+  args: ["dist/index.js"],
+  cwd: "/path/to/mcp-server"
+});
+
+// With environment variables
+const configuredMcp = mcpStdio({
+  command: "npx",
+  args: ["-y", "@your-org/mcp-server"],
+  env: {
+    API_KEY: process.env.API_KEY!,
+    DATABASE_URL: process.env.DATABASE_URL!,
+    DEBUG: "true"
+  }
+});
+
+// Remember to cleanup when done
+await configuredMcp.cleanup?.();
+```
+
+**Use cases:**
+- Local development and testing
+- File system access
+- Command-line tools
+- Sensitive data (stays local)
+- Custom scripts and automation
+
+**Features:**
+- Process lifecycle management
+- Environment variable injection
+- No HTTP overhead (faster)
+- Automatic cleanup
+- Process pooling and reuse
+
+### Combining Transports
+
+Use both stdio and HTTP in the same workflow:
+
+```typescript
+import { agent, llmOpenAI, mcpStdio, mcp } from "volcano-sdk";
+
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+// Local stdio server for file access
+const filesMcp = mcpStdio({
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-filesystem"],
+  env: { ALLOWED_PATHS: process.cwd() }
+});
+
+// Remote HTTP server for cloud services
+const cloudMcp = mcp("https://api.example.com/mcp", {
+  auth: { type: 'bearer', token: process.env.CLOUD_TOKEN! }
+});
+
+// Use both in the same workflow
+await agent({ llm })
+  .then({
+    prompt: "Read local files and analyze them",
+    mcps: [filesMcp],
+    maxToolIterations: 3
+  })
+  .then({
+    prompt: "Upload results to cloud storage",
+    mcps: [cloudMcp],
+    maxToolIterations: 2
+  })
+  .run();
+
+// Cleanup stdio server
+await filesMcp.cleanup?.();
+```
+
 ## Automatic Tool Selection
 
 Let the LLM intelligently choose which tools to call based on the prompt. This is the recommended approach for most use cases.
@@ -623,3 +740,224 @@ __internal_clearOAuthTokenCache();
 ```
 
 **Note:** These are internal APIs for advanced use cases and testing. The default configuration works well for most applications.
+
+## Stdio Transport API Reference
+
+### `mcpStdio(config)` Function
+
+Creates an MCP handle for a stdio-based server.
+
+```typescript
+function mcpStdio(config: MCPStdioConfig): MCPHandle
+```
+
+#### `MCPStdioConfig` Type
+
+```typescript
+type MCPStdioConfig = {
+  command: string;              // Command to execute (e.g., "node", "npx", "python")
+  args?: string[];              // Command arguments
+  env?: Record<string, string>; // Environment variables to pass to the process
+  cwd?: string;                 // Working directory for the process
+};
+```
+
+#### Field Descriptions
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `command` | `string` | ✅ Yes | Executable command (e.g., `"node"`, `"npx"`, `"python3"`) |
+| `args` | `string[]` | Optional | Array of command-line arguments |
+| `env` | `Record<string, string>` | Optional | Environment variables (merged with `process.env`) |
+| `cwd` | `string` | Optional | Working directory path for the spawned process |
+
+#### Return Value
+
+Returns an `MCPHandle` with these additional properties:
+
+```typescript
+type MCPHandle = {
+  id: string;
+  url: string;
+  transport: 'stdio' | 'http';
+  listTools: () => Promise<{ tools: Tool[] }>;
+  callTool: (name: string, args: any) => Promise<any>;
+  cleanup?: () => Promise<void>;  // ⚠️ Important: Always call this when done!
+};
+```
+
+#### Example Configurations
+
+**Running a built server:**
+```typescript
+const server = mcpStdio({
+  command: "node",
+  args: ["dist/index.js"],
+  cwd: "/Users/you/projects/my-mcp-server"
+});
+```
+
+**Using npx:**
+```typescript
+const server = mcpStdio({
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-filesystem"],
+  env: { ALLOWED_PATHS: "/Users/you/documents" }
+});
+```
+
+**With environment variables:**
+```typescript
+const ahaMcp = mcpStdio({
+  command: "node",
+  args: ["dist/index.js"],
+  cwd: "/path/to/aha-mcp",
+  env: {
+    AHA_DOMAIN: "yourcompany.aha.io",
+    AHA_API_KEY: process.env.AHA_API_KEY!,
+    DEBUG: "true"
+  }
+});
+```
+
+**Python-based MCP server:**
+```typescript
+const pythonMcp = mcpStdio({
+  command: "python3",
+  args: ["-m", "my_mcp_server"],
+  cwd: "/path/to/python-project",
+  env: {
+    PYTHONPATH: "/path/to/python-project",
+    API_KEY: process.env.PYTHON_API_KEY!
+  }
+});
+```
+
+### Lifecycle Management
+
+**Important:** Always cleanup stdio servers when done to prevent resource leaks:
+
+```typescript
+const server = mcpStdio({ command: "node", args: ["server.js"] });
+
+try {
+  // Use the server
+  await server.listTools();
+  await server.callTool("my_tool", { arg: "value" });
+} finally {
+  // Always cleanup, even on errors
+  await server.cleanup?.();
+}
+```
+
+**In agent workflows:**
+```typescript
+const localMcp = mcpStdio({ command: "node", args: ["server.js"] });
+
+try {
+  await agent({ llm })
+    .then({ prompt: "Do something", mcps: [localMcp] })
+    .run();
+} finally {
+  await localMcp.cleanup?.();
+}
+```
+
+**Error handling:**
+```typescript
+const server = mcpStdio({
+  command: "node",
+  args: ["server.js"],
+  cwd: "/path/to/server"
+});
+
+server.process?.on('error', (err) => {
+  console.error('MCP server process error:', err);
+});
+
+server.process?.stderr?.on('data', (data) => {
+  console.error('MCP server stderr:', data.toString());
+});
+
+try {
+  const tools = await server.listTools();
+} catch (error) {
+  console.error('Failed to connect:', error);
+} finally {
+  await server.cleanup?.();
+}
+```
+
+### Process Pooling
+
+Volcano automatically pools stdio processes:
+
+- Processes are reused for the same configuration
+- Idle processes cleaned up after 30 seconds (default)
+- Multiple calls to the same server reuse the process
+- Cleanup terminates the process and removes from pool
+
+```typescript
+const server = mcpStdio({ command: "node", args: ["server.js"] });
+
+// First call spawns the process
+await server.listTools();
+
+// Subsequent calls reuse the same process (faster!)
+await server.callTool("tool1", {});
+await server.callTool("tool2", {});
+
+// Cleanup terminates the process
+await server.cleanup?.();
+```
+
+### Common Patterns
+
+**Single-use server:**
+```typescript
+const server = mcpStdio({ command: "node", args: ["server.js"] });
+try {
+  const result = await server.callTool("my_tool", { arg: "value" });
+  console.log(result);
+} finally {
+  await server.cleanup?.();
+}
+```
+
+**Long-running workflow:**
+```typescript
+const server = mcpStdio({ 
+  command: "npx", 
+  args: ["-y", "@your/mcp-server"],
+  env: { API_KEY: process.env.API_KEY! }
+});
+
+try {
+  // Use server across multiple steps
+  await agent({ llm })
+    .then({ prompt: "Step 1", mcps: [server] })
+    .then({ prompt: "Step 2", mcps: [server] })
+    .then({ prompt: "Step 3", mcps: [server] })
+    .run();
+} finally {
+  await server.cleanup?.();
+}
+```
+
+**Multiple stdio servers:**
+```typescript
+const server1 = mcpStdio({ command: "node", args: ["server1.js"] });
+const server2 = mcpStdio({ command: "node", args: ["server2.js"] });
+
+try {
+  await agent({ llm })
+    .then({ prompt: "Use both servers", mcps: [server1, server2] })
+    .run();
+} finally {
+  // Cleanup all servers
+  await Promise.all([
+    server1.cleanup?.(),
+    server2.cleanup?.()
+  ]);
+}
+```

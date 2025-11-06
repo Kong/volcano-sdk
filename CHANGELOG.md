@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
+#### Stdio MCP Transport Support
+- **`mcpStdio()` function**: Connect to local MCP servers via standard input/output (stdin/stdout)
+- **Environment variable injection**: Pass API keys and configuration to child processes via `env` parameter
+- **Automatic process management**: Spawn, pool, and cleanup child processes automatically
+- **Mixed transport support**: Use stdio and HTTP/SSE MCP servers in the same workflow seamlessly
+
+#### Real-Time Callbacks
+- **`onToken(token)`**: Per-token callback for real-time LLM streaming visualization
+- **`onToolCall(toolName, args, result)`**: Per-tool-call callback fired immediately when each MCP tool completes
+- Both callbacks work independently or together
+- Available for all step types (LLM-only, MCP tools, agent crews)
+- Override automatic progress display when custom visualization needed
+
+- **Tool call counts in progress**: Now displayed in real-time and completion messages
 - **Conservative Parallel Tool Execution**: Automatic parallelization of tool calls for 2-10x performance improvements
   - Tools executed in parallel when safe: same tool, different resource IDs, different arguments
   - Falls back to sequential execution when dependencies might exist (different tools, duplicate IDs, no IDs)

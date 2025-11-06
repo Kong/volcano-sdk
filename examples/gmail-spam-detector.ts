@@ -21,12 +21,15 @@ const gmail = mcp("http://localhost:3800/mcp", {
   }
 });
 
-console.log("Analyzing Gmail for spam...\n");
-
 const results = await agent({ 
   llm,
   timeout: 300,
-  instructions: `Analyze emails for spam indicators:
+  instructions: `Analyze emails for spam indicators and OUTPUT YOUR ANALYSIS AS YOU GO:
+
+IMPORTANT: As you analyze each email, output a line like:
+"✓ Checking: [Subject] from [Sender] - [Spam/Clean]"
+
+Spam indicators:
 - Suspicious sender addresses or domains
 - Urgent/threatening language ("Act now!", "Your account will be closed")
 - Requests for passwords or personal info

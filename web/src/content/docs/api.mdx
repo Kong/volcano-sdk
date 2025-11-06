@@ -172,10 +172,18 @@ Let the LLM automatically choose which tools to call:
   retry?: RetryConfig;
   contextMaxChars?: number;
   contextMaxToolResults?: number;
+  maxToolIterations?: number;
   pre?: () => void;
   post?: () => void;
+  onToken?: (token: string) => void;
+  onToolCall?: (toolName: string, args: any, result: any) => void;
 }
 ```
+
+**Callbacks:**
+
+- `onToken`: Called for each token streamed from the LLM (real-time text output)
+- `onToolCall`: Called immediately when each tool completes (real-time tool progress)
 
 ### Explicit MCP Tool Call
 
@@ -208,6 +216,80 @@ Call a specific tool directly:
 | `retry`        | RetryConfig | Retry config for this step (overrides agent default) |
 | `pre`          | () => void  | Hook called before step execution                    |
 | `post`         | () => void  | Hook called after successful step execution          |
+| `onToken`      | (token: string) => void | Real-time callback for each LLM token (streaming) |
+| `onToolCall`   | (toolName: string, args: any, result: any) => void | Real-time callback when each tool completes |
+
+### Real-Time Callbacks
+
+#### `onToken` - LLM Streaming
+
+Called for each token as the LLM generates text. Perfect for showing real-time responses to users:
+
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Explain quantum computing",
+    onToken: (token) => {
+      process.stdout.write(token); // Stream to console
+      // Or: websocket.send(token);
+      // Or: res.write(`data: ${token}\n\n`); // SSE
+    }
+  })
+  .run();
+```
+
+**When it fires:** Only when the LLM is generating text (not during tool calls)
+
+#### `onToolCall` - Tool Progress
+
+Called immediately when each tool call completes. Perfect for showing progress during long operations:
+
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Analyze all emails for spam",
+    mcps: [gmail],
+    maxToolIterations: 20,
+    onToolCall: (toolName, args, result) => {
+      // Extract tool name without MCP prefix
+      const name = toolName.split('.').pop();
+      
+      if (name === 'get_message') {
+        const data = JSON.parse(result.content[0].text);
+        console.log(`📧 Analyzing: ${data.subject}`);
+      } else if (name === 'add_label') {
+        console.log(`🏷️  Marked as spam!`);
+      }
+    }
+  })
+  .run();
+```
+
+**When it fires:** Immediately after each tool call completes (real-time progress)
+
+**Use cases:**
+- Show which emails/files/items are being processed
+- Display progress bars or counters
+- Log tool activity for debugging
+- Stream progress updates to users
+
+**Combined usage:**
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Process all items",
+    mcps: [server],
+    onToken: (token) => {
+      // LLM reasoning: "Let me analyze these items..."
+      process.stdout.write(token);
+    },
+    onToolCall: (toolName, args, result) => {
+      // Tool progress: "Processing item 5 of 10..."
+      console.log(`\n✓ ${toolName}(${JSON.stringify(args)})`);
+    }
+  })
+  .run();
+```
 
 ## Step Results
 

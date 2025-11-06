@@ -287,6 +287,100 @@ for await (const step of agent({ llm })
 
 **💡 Precedence:** Step-level `onToken` takes precedence over stream-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and stream-level callback won't receive those tokens.
 
+### Tool Call Progress with `onToolCall`
+
+Show real-time progress as tools are being called. Perfect for long-running operations with many tool calls:
+
+```typescript
+let processedCount = 0;
+
+await agent({ llm })
+  .then({
+    prompt: "Analyze all 50 emails for spam",
+    mcps: [gmail],
+    maxToolIterations: 20,
+    onToolCall: (toolName, args, result) => {
+      const name = toolName.split('.').pop(); // Remove MCP prefix
+      
+      if (name === 'list_all_unread_emails') {
+        const emails = JSON.parse(result.content[0].text);
+        console.log(`📬 Found ${emails.length} unread emails`);
+      } else if (name === 'get_message') {
+        processedCount++;
+        const data = JSON.parse(result.content[0].text);
+        console.log(`📧 [${processedCount}/50] Analyzing: ${data.subject}`);
+      } else if (name === 'add_label') {
+        console.log(`  🏷️  Marked as SPAM!`);
+      }
+    }
+  })
+  .run();
+```
+
+**When it fires:** Immediately after each tool call completes
+
+**Benefits:**
+- See progress in real-time (don't wait for the entire step to finish)
+- Know exactly which items are being processed
+- Debug tool calls as they happen
+- Build better UX with live progress indicators
+
+**Real-world example:**
+
+```typescript
+// Processing Aha ideas with progress tracking
+const ahaMcp = mcpStdio({ 
+  command: "node", 
+  args: ["build/index.js"],
+  env: { AHA_DOMAIN: "...", AHA_API_TOKEN: "..." }
+});
+
+let searchCount = 0;
+let detailsCount = 0;
+
+await agent({ llm })
+  .then({
+    prompt: "List all ideas with full details",
+    mcps: [ahaMcp],
+    maxToolIterations: 100,
+    onToolCall: (toolName, args, result) => {
+      const name = toolName.split('.').pop();
+      
+      if (name === 'search_documents') {
+        searchCount++;
+        const data = JSON.parse(result.content[0].text);
+        console.log(`🔍 Search ${searchCount}: Found ${data.documents?.length || 0} items`);
+      } else if (name === 'get_page') {
+        detailsCount++;
+        const data = JSON.parse(result.content[0].text);
+        console.log(`📄 [${detailsCount}] ${args.reference}: ${data.name}`);
+      }
+    }
+  })
+  .run();
+
+console.log(`\n✅ Processed ${detailsCount} ideas with full details`);
+```
+
+**Combined with `onToken`:**
+
+```typescript
+await agent({ llm })
+  .then({
+    prompt: "Process all items",
+    mcps: [server],
+    onToken: (token) => {
+      // LLM thinking: "I'll process these items..."
+      process.stdout.write(token);
+    },
+    onToolCall: (toolName, args, result) => {
+      // Tool progress: shows immediately when each completes
+      console.log(`\n✓ Completed: ${toolName}`);
+    }
+  })
+  .run();
+```
+
 ## Autonomous Multi-Agent Crews ⭐
 
 Build crews of specialized agents that automatically coordinate with each other—like automatic tool selection, but for agents!

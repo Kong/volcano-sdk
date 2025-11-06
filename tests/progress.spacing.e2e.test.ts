@@ -47,8 +47,8 @@ describe('Progress spacing and clearing (e2e)', () => {
     // Agent header appears
     expect(output).toMatch(/⚡ \w+ →/);
     
-    // Final complete shows totals
-    expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+\.\d+s \| /);
+    // Final complete shows totals (including tool calls)
+    expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+ tool calls? \| \d+\.\d+s \| /);
 
     // Waiting line should not remain once tokens show (renderer strips it)
     expect(output).toContain('💭');
