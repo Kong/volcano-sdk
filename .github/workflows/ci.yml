@@ -20,20 +20,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'yarn'
+
+      - name: Enable Corepack (for yarn)
+        run: corepack enable
 
       - name: Install dependencies
-        run: |
-          rm -rf package-lock.json node_modules
-          npm install
+        run: yarn install --frozen-lockfile
 
       - name: Lint
-        run: npm run lint
+        run: yarn run lint
 
       - name: Build
-        run: npm run build
+        run: yarn run build
 
       - name: Run tests (unit/e2e)
-        run: npm test
+        run: yarn test
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
