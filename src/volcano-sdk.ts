@@ -1042,6 +1042,7 @@ Provide a clear, concise answer based on the execution results above. Be specifi
 export interface AgentBuilder {
   name?: string;
   description?: string;
+  _getSteps?(): Array<any>;  // Internal: for recursive step counting
   resetHistory(): AgentBuilder;
   then(s: Step | StepFactory): AgentBuilder;
   parallel(stepsOrDict: Step[] | Record<string, Step>, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
@@ -1456,7 +1457,8 @@ async function executePatternStep(
   out: StepResult[],
   contextHistory: StepResult[],
   opts: AgentOptions | undefined,
-  planned: any[]
+  planned: any[],
+  totalSteps: number
 ): Promise<{ wasPattern: boolean; results: StepResult[] }> {
   if ((raw as any).__parallel) {
     const hooks = (raw as any).__hooks;
@@ -1545,8 +1547,8 @@ async function executePatternStep(
     const hooks = (raw as any).__hooks;
     safeExecuteHook(hooks?.pre, 'Pre-runAgent');
     
-    // Pass parent's context to subagent
-    const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
+    // Pass parent's context and total step count to subagent
+    const subResults = await executeRunAgent(subAgent, out.length, totalSteps, contextHistory);
     out.push(...subResults);
     contextHistory.push(...subResults);
     
@@ -2174,6 +2176,41 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
 }
 
 /**
+ * Recursively count the total number of steps that will be executed,
+ * including steps within sub-agents called via .runAgent()
+ */
+function countTotalSteps(steps: Array<any>): number {
+  let total = 0;
+  
+  for (const step of steps) {
+    if ((step as any).__runAgent) {
+      // This is a runAgent step - recursively count its sub-agent's steps
+      const subAgent = (step as any).__runAgent.subAgent;
+      const subSteps = (subAgent as any)._getSteps?.() || [];
+      total += countTotalSteps(subSteps);
+    } else if ((step as any).__parallel) {
+      // Parallel steps count as 1 in the display
+      total += 1;
+    } else if ((step as any).__branch || (step as any).__switch) {
+      // Branch/switch counts as 1 (we don't know which branch yet)
+      total += 1;
+    } else if ((step as any).__forEach) {
+      // forEach counts as number of items
+      const items = (step as any).__forEach.items || [];
+      total += items.length;
+    } else if ((step as any).__while || (step as any).__retryUntil) {
+      // Loops/retry count as 1 (unknown iterations)
+      total += 1;
+    } else if (!(step as any).__reset) {
+      // Regular step
+      total += 1;
+    }
+  }
+  
+  return total;
+}
+
+/**
  * Create an AI agent that chains LLM reasoning with MCP tool calls.
  * 
  * @param opts - Optional configuration including LLM provider, instructions, timeout, retry policy, and observability
@@ -2225,6 +2262,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const builder: AgentBuilder = {
     name: agentName,
     description: agentDescription,
+    _getSteps() { return steps; },  // Internal helper for recursive step counting
     resetHistory() { steps.push({ __reset: true }); return builder; },
     then(s: Step | StepFactory) { steps.push(s); return builder; },
     
@@ -2282,7 +2320,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       const parentStepIndex = (builder as any).__parentStepIndex;
       const parentTotalSteps = (builder as any).__parentTotalSteps;
       const parentAgentName = (builder as any).__parentAgentName;
-      const progress = showProgress ? createProgressHandler(steps.length, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
+      
+      // Recursively count total steps (including sub-agent steps)
+      const totalSteps = countTotalSteps(steps);
+      const progress = showProgress ? createProgressHandler(totalSteps, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
       
       // Record agent execution (always, even for anonymous agents)
       if (telemetry) {
@@ -2310,7 +2351,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           if ((raw as any).__reset) { contextHistory = []; continue; }
           
           // Handle advanced pattern steps using shared function
-          const patternResult = await executePatternStep(raw, out, contextHistory, opts, planned);
+          const patternResult = await executePatternStep(raw, out, contextHistory, opts, planned, totalSteps);
           if (patternResult.wasPattern) {
             patternResult.results.forEach((r, i) => {
               log?.(r, out.length - patternResult.results.length + i);

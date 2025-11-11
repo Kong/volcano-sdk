@@ -4,152 +4,210 @@ title: "Examples - Volcano SDK"
 
 # Examples
 
-Ready-to-run examples demonstrating Volcano SDK features. [View all examples on GitHub →](https://github.com/Kong/volcano-sdk/tree/main/examples)
+Learn Volcano SDK through hands-on examples, from simple to advanced. [View all examples on GitHub →](https://github.com/Kong/volcano-sdk/tree/main/examples)
 
-All examples showcase **automatic MCP tool selection** where the LLM intelligently chooses which tools to call based on the prompt.
+Start with the basics, then explore composition, patterns, and production features.
 
-## Basic Examples
+## Basics
 
-### basic.ts
+### 01-hello-world.ts
 
-Simple single-step agent with LLM-only generation.
-
-```bash
-npx tsx examples/basic.ts
-```
-
-**Demonstrates:** Agent creation, basic `.then()` and `.run()`
-
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/basic.ts)
-
-### automatic.ts
-
-Automatic MCP tool selection - let the LLM choose which tools to call based on the prompt.
+Your first agent - multi-step reasoning in ~10 lines.
 
 ```bash
-npx tsx examples/automatic.ts
+npx tsx examples/01-hello-world.ts
 ```
 
-**Demonstrates:** Automatic tool discovery and selection with `mcps: [mcp1, mcp2]`
+**Demonstrates:** Agent creation, basic `.then()` chaining, and `.run()`
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/automatic.ts)
+```typescript
+const results = await agent({ llm })
+  .then({ prompt: "Give me 3 random words" })
+  .then({ prompt: "Write a haiku using those words" })
+  .run();
+```
 
-### providers.ts
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/01-hello-world.ts)
 
-Multi-provider workflow using OpenAI, Anthropic, Mistral, and Llama with automatic MCP tool selection.
+### 02-with-tools.ts
+
+Automatic MCP tool selection - the agent picks the right tools automatically.
 
 ```bash
-npx tsx examples/providers.ts
+npx tsx examples/02-with-tools.ts
 ```
 
-**Demonstrates:** Per-step LLM provider switching, automatic tool selection, context flow between providers
+**Demonstrates:** Automatic tool discovery and selection with `mcps: [...]`
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/providers.ts)
+**Prerequisites:** Start MCP servers first:
+```bash
+tsx examples/mcp/weather/server.ts
+tsx examples/mcp/tasks/server.ts
+```
 
-## Advanced Patterns
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/02-with-tools.ts)
 
-### parallel.ts
+### 02b-with-stdio.ts
 
-Execute multiple steps in parallel with automatic MCP tool selection in each parallel branch.
+Use local tools via stdio transport (not HTTP).
 
 ```bash
-npx tsx examples/parallel.ts
+npx tsx examples/02b-with-stdio.ts
 ```
 
-**Demonstrates:** `.parallel()` with array and dictionary modes, automatic tool selection
+**Demonstrates:** `mcpStdio()` for subprocess-based MCP servers
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/parallel.ts)
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/02b-with-stdio.ts)
 
-### branching.ts & branching-simple.ts
+### 03-streaming.ts
 
-Conditional routing with `.branch()` and `.switch()` using automatic MCP tool selection.
+Stream tokens in real-time as they're generated.
 
 ```bash
-npx tsx examples/branching-simple.ts
-npx tsx examples/branching.ts
+npx tsx examples/03-streaming.ts
 ```
 
-**Demonstrates:** If/else branching and switch/case patterns, LLM-driven tool selection
+**Demonstrates:** Token-level streaming with `onToken` callback
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/branching.ts)
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/03-streaming.ts)
 
-### loops.ts & loops-simple.ts
+### 04-structured-outputs.ts
 
-Iterative workflows with automatic tool selection in each iteration.
+Type-safe JSON extraction with guaranteed schema compliance.
 
 ```bash
-npx tsx examples/loops-simple.ts
-npx tsx examples/loops.ts
+npx tsx examples/04-structured-outputs.ts
 ```
 
-**Demonstrates:** `.while()`, `.forEach()`, `.retryUntil()` with MCP tools
+**Demonstrates:** OpenAI Responses API for structured outputs
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/loops.ts)
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/04-structured-outputs.ts)
 
-### sub-agents.ts & composition.ts
+## Composition
 
-Build reusable sub-agents with automatic MCP tool integration.
+### 05-sub-agents.ts
+
+Build modular, reusable agent components with `.runAgent()`.
 
 ```bash
-npx tsx examples/sub-agents.ts
-npx tsx examples/composition.ts
+npx tsx examples/05-sub-agents.ts
 ```
 
-**Demonstrates:** `.runAgent()` for modular agent design with tool selection
+**Demonstrates:** Explicit agent composition for reusable workflows
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/sub-agents.ts)
+```typescript
+const analyzer = agent({ llm })
+  .then({ prompt: "Analyze sentiment" })
+  .then({ prompt: "Extract topics" });
 
-### advanced-patterns.ts
+await agent({ llm })
+  .then({ prompt: "Customer feedback: ..." })
+  .runAgent(analyzer)  // Compose explicitly
+  .run();
+```
 
-Combine parallel execution, branching, and loops with automatic MCP tool selection throughout.
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/05-sub-agents.ts)
+
+### 06-multi-agent.ts
+
+Coordinator autonomously delegates to specialist agents.
 
 ```bash
-npx tsx examples/advanced-patterns.ts
+npx tsx examples/06-multi-agent.ts
 ```
 
-**Demonstrates:** Complex workflows mixing all control flow patterns with intelligent tool selection
+**Demonstrates:** Autonomous agent delegation based on descriptions
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/advanced-patterns.ts)
+```typescript
+const researcher = agent({ 
+  llm, 
+  name: 'researcher',
+  description: 'Expert at finding facts...'
+}).then({ prompt: "Research: {{task}}" });
 
-## Special Features
+await agent({ llm })
+  .then({
+    prompt: "Create a blog post about JWST discoveries",
+    agents: [researcher, writer, editor],  // Coordinator picks automatically
+    maxAgentIterations: 10
+  })
+  .run();
+```
 
-### streaming.ts
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/06-multi-agent.ts)
 
-Stream step results in real-time with automatic MCP tool selection.
+### 07-patterns.ts
+
+Advanced workflow primitives: parallel, branch, forEach, retryUntil.
 
 ```bash
-npx tsx examples/streaming.ts
+npx tsx examples/07-patterns.ts
 ```
 
-**Demonstrates:** `.run()` method with `onStep` callback for progressive result delivery, tool selection in streaming mode
+**Demonstrates:** All control flow patterns in one example
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/streaming.ts)
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/07-patterns.ts)
 
-### token-streaming.ts
+## Production
 
-Stream individual tokens in real-time as the LLM generates them.
+### 08-context.ts
+
+Manage conversation history across multiple steps.
 
 ```bash
-npx tsx examples/token-streaming.ts
+npx tsx examples/08-context.ts
 ```
 
-**Demonstrates:** Per-step `onToken` callback and run-level token streaming with metadata for SSE endpoints
+**Demonstrates:** Context flow, accessing previous step results
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/token-streaming.ts)
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/08-context.ts)
 
-### multi-agent-crew.ts
+### 09-observability.ts
 
-Multiple specialized agents with distinct roles collaborating sequentially.
+Production monitoring with OpenTelemetry traces and metrics.
 
 ```bash
-npx tsx examples/multi-agent-crew.ts
+npx tsx examples/09-observability.ts
 ```
 
-**Demonstrates:** Multi-agent patterns, specialized instructions, sequential workflow coordination
+**Demonstrates:** Telemetry integration, Jaeger traces, Prometheus metrics
 
-[View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/multi-agent-crew.ts)
+**Prerequisites:** Start observability stack:
+```bash
+cd observability-demo
+docker-compose -f docker-compose.observability.yml up
+```
 
-## Running Examples
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/09-observability.ts)
+
+### 10-providers.ts
+
+Use multiple LLM providers and switch between them.
+
+```bash
+npx tsx examples/10-providers.ts
+```
+
+**Demonstrates:** OpenAI, Anthropic, Mistral, Bedrock, Azure, Vertex integration
+
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/10-providers.ts)
+
+### 11-email-triage.ts
+
+Real-world use case: automatically classify and respond to emails.
+
+```bash
+npx tsx examples/11-email-triage.ts
+```
+
+**Demonstrates:** Complete workflow combining multiple features
+
+**Prerequisites:** Start task server:
+```bash
+tsx examples/mcp/tasks/server.ts
+```
+
+[View source →](https://github.com/Kong/volcano-sdk/blob/main/examples/11-email-triage.ts)
 
 ### Prerequisites
 
@@ -159,54 +217,52 @@ git clone https://github.com/Kong/volcano-sdk.git
 cd volcano-sdk
 
 # Install dependencies
-npm install
+yarn install
 
 # Build the SDK
-npm run build
+yarn build
 ```
 
 ### Set Environment Variables
 
-Most examples require API keys. Set them in your environment:
-
 ```bash
-export OPENAI_API_KEY="your-openai-key"
+export OPENAI_API_KEY="your-key-here"
+```
+
+Optional for multi-provider examples:
+```bash
 export ANTHROPIC_API_KEY="your-anthropic-key"
 export MISTRAL_API_KEY="your-mistral-key"
-
-# For Bedrock examples
-export AWS_REGION="us-east-1"
-export AWS_ACCESS_KEY_ID="your-key"
-export AWS_SECRET_ACCESS_KEY="your-secret"
-
-# For Vertex examples
-export GCP_VERTEX_API_KEY="your-google-key"
-
-# For Azure examples
+export AWS_BEARER_TOKEN_BEDROCK="your-bedrock-token"
+export GCP_VERTEX_API_KEY="your-vertex-key"
 export AZURE_AI_API_KEY="your-azure-key"
-export AZURE_AI_ENDPOINT="https://your-resource.openai.azure.com/openai/responses"
 ```
 
 ### Run an Example
 
 ```bash
-# Run any example with tsx
-npx tsx examples/basic.ts
-npx tsx examples/parallel.ts
-npx tsx examples/streaming.ts
+npx tsx examples/01-hello-world.ts
 ```
 
-**Tip:** Start with `basic.ts` and `automatic.ts` to understand core concepts, then explore advanced patterns.
+**Tip:** Start with 01-04 to learn the basics, then explore 05-07 for composition patterns.
 
-## More Examples
+## MCP Servers
 
-Find more examples in the [GitHub repository](https://github.com/Kong/volcano-sdk/tree/main/examples):
+Some examples need MCP servers. We provide ready-to-use servers in `examples/mcp/`:
 
-- All examples include automatic MCP tool selection
-- Production-ready code you can copy and adapt
-- Comments explaining key concepts
-- Environment variable setup instructions
+```bash
+# HTTP Servers
+tsx examples/mcp/weather/server.ts    # Port 8001
+tsx examples/mcp/tasks/server.ts      # Port 8002
+tsx examples/mcp/notes/server.ts      # Port 8003
+tsx examples/mcp/calculator/server.ts # Port 8004
 
-### Contributing Examples
+# stdio Server (runs as subprocess)
+# Used automatically by examples/02b-with-stdio.ts
+```
 
-Have a great use case? [Submit a PR](https://github.com/Kong/volcano-sdk/pulls) with your example to help other developers!
+See [examples/mcp/README.md](https://github.com/Kong/volcano-sdk/tree/main/examples/mcp) for details.
+
+## Contributing
+
+Have a great use case? [Submit a PR](https://github.com/Kong/volcano-sdk/pulls) with your example!

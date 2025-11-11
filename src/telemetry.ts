@@ -124,7 +124,7 @@ const shutdownManager = {
         console.error('[Volcano] Unhandled rejection at:', promise, 'reason:', reason);
         await this.shutdown();
         process.exit(1);
-      });
+    });
     }
   }
 };
