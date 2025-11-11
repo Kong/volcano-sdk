@@ -45,6 +45,38 @@ function tryLoadOtel() {
   }
 }
 
+// Managed the lifecycle of OpenTelemetry SDK instances to ensure graceful shutdown.
+const shutdownManager = {
+  sdkInstances: [] as any[],
+  isHookRegistered: false,
+  isShuttingDown: false,
+
+  // Registers a new SDK instance to be shutdown on process exit.
+  add(sdk: any) {
+    this.sdkInstances.push(sdk);
+    this.registerHook();
+  },
+  
+  // Register a single, global beforeExit hook to shut down all SDKs.
+  registerHook() {
+    if (this.isHookRegistered) return;
+    this.isHookRegistered = true;
+    process.on('beforeExit', async () => {
+      if (this.isShuttingDown) return;
+      this.isShuttingDown = true;
+      if (this.sdkInstances.length === 0) return;
+      console.log(`[Volcano] Shutting down ${this.sdkInstances.length} OpenTelemetry SDK instance(s)...`);
+      try {
+        // Shut down all SDKs.
+        await Promise.all(this.sdkInstances.map(sdk => sdk.shutdown()));
+        console.log('[Volcano] OpenTelemetry SDKs shut down successfully.');
+      } catch (err) {
+        console.error('[Volcano] Error shutting down OpenTelemetry SDKs:', err);
+      }
+    });
+  }
+};
+
 export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): VolcanoTelemetry {
   const otel = tryLoadOtel();
   if (!otel) {
@@ -95,6 +127,8 @@ export function createVolcanoTelemetry(config: VolcanoTelemetryConfig = {}): Vol
       });
       
       sdk.start();
+      shutdownManager.add(sdk);
+
       console.log(`[Volcano] ✅ OpenTelemetry SDK started`);
       console.log(`[Volcano]    Traces → ${config.endpoint}/v1/traces`);
       console.log(`[Volcano]    Metrics → ${config.endpoint}/v1/metrics (every 5s)`);
