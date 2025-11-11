@@ -1,13 +1,3 @@
-/**
- * Test for Issue #38: OpenTelemetry traces are not exported on short-lived processes
- * 
- * This test verifies that traces are properly exported even when a process
- * exits immediately after the agent workflow completes.
- * 
- * FIXED: The SDK now automatically calls flush() after run() completes and
- * registers shutdown hooks for SIGTERM, SIGINT, and other exit scenarios.
- */
-
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { agent } from '../src/volcano-sdk.js';
 import { createVolcanoTelemetry } from '../src/telemetry.js';
@@ -138,16 +128,12 @@ describe('Telemetry - Short-Lived Process (Issue #38)', () => {
     expect(agentSpan).toBeDefined();
     expect(agentSpan.ended).toBe(true);
     
-    // THE ISSUE: flush() was called after each step, but NOT after the final agent span
-    // In a short-lived process, the agent span might not be exported to the backend
-    // because the process exits before the BatchSpanProcessor flushes.
-    
     // Note: flushCalled is true because flush() is called after each step (line 2169),
     // but there's no guarantee the final agent span was flushed.
     expect(flushCalled).toBe(true); // Called during steps
   });
 
-  it('verifies that flush() is now called after run() completes (FIXED)', async () => {
+  it('verifies that flush() is now called after run() completes', async () => {
     const mock = createTrackingTelemetry();
     const llm = createMockLLM() as any;
     
@@ -176,11 +162,10 @@ describe('Telemetry - Short-Lived Process (Issue #38)', () => {
     // flush() is called after each step (2 times) + after workflow completes (1 time) = 3 total
     expect(flushCallCount).toBe(3);
     
-    // ✅ FIXED: flush() is now called after the agent span is ended
     expect(flushCalledAfterAgentSpan).toBe(true);
   });
 
-  it('demonstrates proper behavior: flush is automatically called after run() (FIXED)', async () => {
+  it('demonstrates proper behavior: flush is automatically called after run()', async () => {
     const mock = createTrackingTelemetry();
     const llm = createMockLLM() as any;
     
@@ -209,7 +194,7 @@ describe('Telemetry - Short-Lived Process (Issue #38)', () => {
     expect(flushCalled).toBe(true);
   });
 
-  it('no longer requires manual flush() - automatically handled (FIXED)', async () => {
+  it('no longer requires manual flush() - automatically handled', async () => {
     const mock = createTrackingTelemetry();
     const llm = createMockLLM() as any;
 
@@ -224,15 +209,12 @@ describe('Telemetry - Short-Lived Process (Issue #38)', () => {
       .then({ prompt: 'Why is it popular?' })
       .run();
 
-    // ✅ FIXED: No manual flush needed! It's automatically called in run()'s finally block
     expect(flushCalled).toBe(true);
     expect(results.length).toBe(2);
     expect(mock.isAgentSpanEnded()).toBe(true);
   });
 
-  it('verifies the fix works with real OTel SDK setup (FIXED)', async () => {
-    // This test uses a real telemetry setup to verify the fix
-    // Skip if OTel packages are not installed
+  it('verifies the fix works with real OTel SDK setup', async () => {
     let telemetry;
     try {
       telemetry = createVolcanoTelemetry({
@@ -255,10 +237,5 @@ describe('Telemetry - Short-Lived Process (Issue #38)', () => {
     })
       .then({ prompt: 'Quick task' })
       .run();
-
-    // ✅ FIXED: flush() is now automatically called in run()'s finally block
-    // Plus, the shutdown manager will handle process exit scenarios (SIGTERM, SIGINT, etc.)
-    // No manual flush or cleanup needed!
   });
 });
-
