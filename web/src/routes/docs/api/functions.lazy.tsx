@@ -201,7 +201,22 @@ function ApiFunctionsPage() {
           <h3>
             <InlineCode>.run()</InlineCode>
           </h3>
-          <p>Executes the workflow and returns all results.</p>
+          <p>Executes the workflow and returns all results. Accepts optional callbacks for real-time updates.</p>
+
+          <h4>Parameters</h4>
+          <p>Can be called with a simple callback or options object:</p>
+          <CodeBlock language="typescript" title="Run Options">
+            {`// Simple callback
+await agent({ llm }).then({ prompt: "..." }).run((step, index) => {
+  console.log(\`Step \${index + 1} done\`);
+});
+
+// Options with onStep and onToken
+await agent({ llm }).then({ prompt: "..." }).run({
+  onStep: (step, index) => console.log(\`Step \${index + 1} complete\`),
+  onToken: (token, meta) => process.stdout.write(token)
+});`}
+          </CodeBlock>
 
           <h4>Returns</h4>
           <p>Array of step results with:</p>
@@ -222,20 +237,6 @@ function ApiFunctionsPage() {
               <InlineCode>duration</InlineCode> - Step execution time
             </li>
           </ul>
-
-          <h3>
-            <InlineCode>.stream()</InlineCode>
-          </h3>
-          <p>
-            Returns an async generator that yields results as they complete.
-          </p>
-
-          <h4>Example</h4>
-          <CodeBlock language="typescript" title="Streaming Results">
-            {`for await (const step of myAgent.stream()) {
-  console.log(\`Step \${step.index + 1}:\`, step.llmOutput);
-}`}
-          </CodeBlock>
 
           <h2>Utility Functions</h2>
 

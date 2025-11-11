@@ -220,27 +220,7 @@ async function main() {
         mcps: [tasksMcp],
         maxToolIterations: 1
       })
-
-      .run((step, index) => {
-        console.log(`\nStep ${index + 1}/${3}`);
-        
-        if (step.prompt) {
-          console.log(`Prompt: ${step.prompt}`);
-        }
-        
-        if (step.toolCalls && step.toolCalls.length > 0) {
-          console.log(`Tools called: ${step.toolCalls.length}`);
-          step.toolCalls.forEach((call, i) => {
-            console.log(`  ${i + 1}. ${call.name}`);
-            console.log(`     Args:`, call.arguments);
-            console.log(`     Result:`, call.result);
-          });
-        }
-        
-        if (step.llmOutput) {
-          console.log(`Response: ${step.llmOutput}`);
-        }
-      });
+      .run();
 
     console.log(`\nComplete! ${results.length} steps, ${results.reduce((acc, r) => acc + (r.toolCalls?.length || 0), 0)} tools used`);
 

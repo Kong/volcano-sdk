@@ -185,7 +185,7 @@ describe('Progress output e2e (live APIs)', () => {
       // (Short responses complete before 10-token threshold)
       
       // CRITICAL: Verify agent completion shows time + tokens
-      expect(output).toMatch(/✅ Complete \| \d+ tokens \| \d+\.\d+s \| /);
+      expect(output).toMatch(/✅ Complete \| \d+ tokens \| \d+ tool calls \| \d+\.\d+s \| /);
       
       // CRITICAL: Verify coordinator decision followed by Complete line
       expect(output).toMatch(/🧠 Coordinator decision: USE \w+\n\s+✅ Complete/);
@@ -196,7 +196,7 @@ describe('Progress output e2e (live APIs)', () => {
       // Verify final completion with totals
       expect(output).toContain('✅ Complete');
       expect(output).toContain('🎉 Agent complete');
-      expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+\.\d+s \| /);
+      expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+ tool calls \| \d+\.\d+s \| /);
       
     } finally {
       console.log = originalLog;

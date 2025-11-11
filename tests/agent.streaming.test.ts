@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { agent } from '../dist/volcano-sdk.js';
 
-describe('agent streaming', () => {
-  it('streams step results as they complete', async () => {
+describe('agent run() with onStep callbacks', () => {
+  it('provides step results via onStep callback as they complete', async () => {
     const stepResults: any[] = [];
     const llm: any = { 
       id: 'mock', 
@@ -13,13 +13,11 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'First step' })
       .then({ prompt: 'Second step' })
       .then({ prompt: 'Third step' })
-      .stream()) {
-      stepResults.push(stepResult);
-    }
+      .run({ onStep: (step) => stepResults.push(step) });
 
     expect(stepResults).toHaveLength(3);
     expect(stepResults[0].prompt).toBe('First step');
@@ -30,7 +28,7 @@ describe('agent streaming', () => {
     expect(stepResults[2].llmOutput).toContain('Third step');
   });
 
-  it('yields results incrementally with timing information', async () => {
+  it('provides results incrementally with timing information via onStep', async () => {
     const stepResults: any[] = [];
     const timestamps: number[] = [];
     const llm: any = { 
@@ -45,23 +43,25 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'Step 1' })
       .then({ prompt: 'Step 2' })
-      .stream()) {
-      timestamps.push(Date.now());
-      stepResults.push(stepResult);
-    }
+      .run({ 
+        onStep: (step) => {
+          timestamps.push(Date.now());
+          stepResults.push(step);
+        }
+      });
 
     expect(stepResults).toHaveLength(2);
     expect(timestamps).toHaveLength(2);
-    // Verify steps are yielded incrementally, not all at once
+    // Verify steps are provided incrementally, not all at once
     expect(timestamps[1] - timestamps[0]).toBeGreaterThan(5);
     expect(stepResults[0].durationMs).toBeGreaterThan(0);
     expect(stepResults[1].durationMs).toBeGreaterThan(0);
   });
 
-  it('streaming supports pre/post hooks', async () => {
+  it('onStep callback supports pre/post hooks', async () => {
     const events: string[] = [];
     const stepResults: any[] = [];
     const llm: any = { 
@@ -73,22 +73,20 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'Test with hooks',
         pre: () => { events.push('pre-executed'); },
         post: () => { events.push('post-executed'); }
       })
-      .stream()) {
-      stepResults.push(stepResult);
-    }
+      .run({ onStep: (step) => stepResults.push(step) });
 
     expect(events).toEqual(['pre-executed', 'post-executed']);
     expect(stepResults).toHaveLength(1);
     expect(stepResults[0].llmOutput).toBe('OK');
   });
 
-  it('streaming works with LLM-only steps', async () => {
+  it('onStep callback works with LLM-only steps', async () => {
     const stepResults: any[] = [];
     const llm: any = { 
       id: 'mock', 
@@ -99,11 +97,9 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'Analyze this data' }) // LLM-only step (no mcps)
-      .stream()) {
-      stepResults.push(stepResult);
-    }
+      .run({ onStep: (step) => stepResults.push(step) });
 
     expect(stepResults).toHaveLength(1);
     expect(stepResults[0].prompt).toBe('Analyze this data');
@@ -111,10 +107,9 @@ describe('agent streaming', () => {
     expect(typeof stepResults[0].durationMs).toBe('number');
   });
 
-  it('streaming calls log callback correctly', async () => {
+  it('run() calls onStep callback correctly with indices', async () => {
     const loggedSteps: any[] = [];
     const loggedIndices: number[] = [];
-    const streamedResults: any[] = [];
     
     const llm: any = { 
       id: 'mock', 
@@ -125,30 +120,33 @@ describe('agent streaming', () => {
       genStream: async function*(){} 
     };
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    const results = await agent({ llm, hideProgress: true })
       .then({ prompt: 'First' })
       .then({ prompt: 'Second' })
-      .stream((step, stepIndex) => {
-        loggedSteps.push(step);
-        loggedIndices.push(stepIndex);
-      })) {
-      streamedResults.push(stepResult);
-    }
+      .run({ 
+        onStep: (step, stepIndex) => {
+          loggedSteps.push(step);
+          loggedIndices.push(stepIndex);
+        }
+      });
 
-    // Verify both streaming and logging work
-    expect(streamedResults).toHaveLength(2);
+    // Verify onStep callback works correctly
+    expect(results).toHaveLength(2);
     expect(loggedSteps).toHaveLength(2);
     expect(loggedIndices).toEqual([0, 1]);
     expect(loggedSteps[0].prompt).toBe('First');
     expect(loggedSteps[1].prompt).toBe('Second');
   });
 
-  it('prevents concurrent streaming like run()', async () => {
+  it('prevents concurrent run() calls', async () => {
     const llm: any = { 
       id: 'mock', 
       model: 'm', 
       client: {}, 
-      gen: async () => 'OK', 
+      gen: async () => { 
+        await new Promise(r => setTimeout(r, 50)); // Delay to allow concurrent attempt
+        return 'OK'; 
+      }, 
       genWithTools: async () => ({ content: '', toolCalls: [] }), 
       genStream: async function*(){} 
     };
@@ -156,33 +154,20 @@ describe('agent streaming', () => {
     const workflow = agent({ llm, hideProgress: true }).then({ prompt: 'test' });
     
     let concurrencyError: any;
-    let stream1Results: any[] = [];
     
+    // Start first run
+    const promise1 = workflow.run();
+    
+    // Try to start second run while first is running
     try {
-      // Start first stream
-      const stream1 = workflow.stream();
-      const firstResult = await stream1.next();
-      stream1Results.push(firstResult.value);
-      
-      // Try to start second stream while first is running
-      try {
-        const stream2 = workflow.stream();
-        await stream2.next();
-      } catch (e) {
-        concurrencyError = e;
-      }
-      
-      // Finish consuming first stream
-      for await (const step of stream1) {
-        stream1Results.push(step);
-      }
-      
+      await workflow.run();
     } catch (e) {
-      // The concurrency error might be thrown here
       concurrencyError = e;
     }
+    
+    // Wait for first run to complete
+    await promise1;
 
     expect(concurrencyError?.name).toBe('AgentConcurrencyError');
-    expect(stream1Results.length).toBeGreaterThan(0);
   });
 });

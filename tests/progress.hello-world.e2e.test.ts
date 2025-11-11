@@ -37,8 +37,8 @@ describe('Hello-world progress formatting', () => {
     expect(output).toContain('🤖 Step 1/2');
     expect(output).toContain('🤖 Step 2/2');
     
-    // CRITICAL: Verify final Agent complete with totals
-    expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+\.\d+s \| /);
+    // CRITICAL: Verify final Agent complete with totals (including tool calls)
+    expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+ tool calls? \| \d+\.\d+s \| /);
   });
 });
 

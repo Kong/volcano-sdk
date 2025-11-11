@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+#### Stdio MCP Transport Support
+- **`mcpStdio()` function**: Connect to local MCP servers via standard input/output (stdin/stdout)
+- **Environment variable injection**: Pass API keys and configuration to child processes via `env` parameter
+- **Automatic process management**: Spawn, pool, and cleanup child processes automatically
+- **Mixed transport support**: Use stdio and HTTP/SSE MCP servers in the same workflow seamlessly
+
+#### Real-Time Callbacks
+- **`onToken(token)`**: Per-token callback for real-time LLM streaming visualization
+- **`onToolCall(toolName, args, result)`**: Per-tool-call callback fired immediately when each MCP tool completes
+- Both callbacks work independently or together
+- Available for all step types (LLM-only, MCP tools, agent crews)
+- Override automatic progress display when custom visualization needed
+
+- **Tool call counts in progress**: Now displayed in real-time and completion messages
+- **Conservative Parallel Tool Execution**: Automatic parallelization of tool calls for 2-10x performance improvements
+  - Tools executed in parallel when safe: same tool, different resource IDs, different arguments
+  - Falls back to sequential execution when dependencies might exist (different tools, duplicate IDs, no IDs)
+  - Zero configuration required - works automatically out of the box
+  - Smart pattern matching: case-insensitive detection of any parameter named `id` or ending with `id` (e.g., `emailId`, `emailid`, `userId`, `customerId`)
+  - Optional `disableParallelToolExecution` flag to force sequential execution for debugging or special cases
+  - Provider agnostic - works with OpenAI, Anthropic, Mistral, Bedrock, Vertex AI, Azure
+  - New telemetry metrics: `volcano.tool.execution.parallel` and `volcano.tool.execution.sequential` with `count` attribute showing batch size
+  - Test measurements show up to 24x speedup for parallel vs sequential execution
+- **Conversational Results API**: Ask natural language questions about agent execution using LLMs
+  - `results.ask(llm, question)` - Ask any question about what the agent accomplished
+  - `results.summary(llm)` - Get intelligent overview of execution
+  - `results.toolsUsed(llm)` - Understand which tools were called and why
+  - `results.errors(llm)` - Check for execution issues with context
+  - Reduces example code by ~50% by replacing manual result parsing with LLM-powered analysis
+  - Use cheap models (gpt-4o-mini) for summaries, expensive models (gpt-5) for actual work
+- **Automatic OAuth Token Refresh**: Long-running workflows with zero token management
+  - New `refreshToken` field in `MCPAuthConfig` for automatic token renewal
+  - Automatic 401 error detection and retry with refreshed tokens
+  - Works with Gmail, Google Drive, Slack, GitHub, and any OAuth 2.0 service
+  - Tokens cached and refreshed transparently without interrupting workflows
+  - Perfect for production deployments that run for hours or days
+- **Type-check Script**: Added `yarn type-check` command for comprehensive TypeScript validation without emitting files
+- **Example Linting**: Examples folder now included in ESLint checks (previously ignored)
+
 ## [1.0.4] - 2025-10-30
 
 ### Fixed

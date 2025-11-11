@@ -29,8 +29,8 @@ import { agent } from '../dist/volcano-sdk.js';
  * 
  * THE FIX:
  * Modified executeRunAgent() to pass parentContext to subagents, and updated
- * the agent's run() and stream() methods to initialize contextHistory with
- * the parent's context when __parentContext is present. Also improved
+ * the agent's run() method to initialize contextHistory with the parent's
+ * context when __parentContext is present. Also improved
  * buildHistoryContextChunked() to include the last 5 steps instead of just 1.
  * 
  * CURRENT BEHAVIOR:

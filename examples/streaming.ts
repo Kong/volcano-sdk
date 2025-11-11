@@ -11,7 +11,7 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
   const startTime = Date.now();
 
   try {
-    for await (const {} of agent({ 
+    await agent({ 
       llm,
       instructions: "You are a helpful assistant. Be concise but friendly."
     })
@@ -35,13 +35,15 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
         pre: () => console.log("📝 Step 4: Rating conversation..."),
         post: () => console.log("✅ Step 4: Rating complete!")
       })
-      .stream((step, stepIndex) => {
-        stepCount++;
-        const progress = Math.round((stepCount / totalSteps) * 100);
-        
-        console.log(`\nStep ${stepIndex + 1} (${progress}%) - ${step.durationMs}ms`);
-        console.log(`Response: ${step.llmOutput}`);
-      })) {}
+      .run({
+        onStep: (step, stepIndex) => {
+          stepCount++;
+          const progress = Math.round((stepCount / totalSteps) * 100);
+          
+          console.log(`\nStep ${stepIndex + 1} (${progress}%) - ${step.durationMs}ms`);
+          console.log(`Response: ${step.llmOutput}`);
+        }
+      });
 
     const totalTime = Date.now() - startTime;
     console.log(`\nComplete! ${totalTime}ms total, ${Math.round(totalTime / totalSteps)}ms avg, ${stepCount}/${totalSteps} steps`);

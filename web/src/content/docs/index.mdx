@@ -36,7 +36,7 @@ Three retry strategies: immediate, delayed, and exponential backoff. Per-step ti
 
 ### Streaming Workflows
 
-Stream step results as they complete using async generators. Perfect for real-time UIs and long-running tasks.
+Use `onStep` and `onToken` callbacks to get real-time updates as steps complete and tokens stream. Perfect for real-time UIs and long-running tasks.
 
 ### MCP Integration
 
@@ -239,16 +239,17 @@ await agent()
 
 ### Multi-Step Research Agent
 
-Use MCP tools to gather data, multiple LLMs for analysis, and streaming for real-time updates.
+Use MCP tools to gather data, multiple LLMs for analysis, and callbacks for real-time updates.
 
 ```typescript
-for await (const step of agent({ llm: gpt4 })
+await agent({ llm: gpt4 })
   .then({ prompt: "Research topic X", mcps: [web, database] })
   .then({ llm: claude, prompt: "Analyze findings" })
   .then({ llm: mistral, prompt: "Write comprehensive report" })
-  .stream()) {
-  updateUI(step); // Real-time progress
-}
+  .run({
+    onStep: (step) => updateUI(step), // Real-time progress
+    onToken: (token) => streamToClient(token) // Token streaming
+  });
 ```
 
 ## Volcano vs Others
@@ -262,7 +263,7 @@ Factual comparison with other AI frameworks:
 | **Multi-Provider Workflows** | Built-in, per-step LLM switching                         | Manual configuration  | Supported via chains  |
 | **Advanced Patterns**        | Parallel, branching, loops, sub-agents                   | Manual implementation | Via agents framework  |
 | **Retry Strategies**         | 3 modes: immediate, delayed, exponential                 | Basic retry           | Via callbacks         |
-| **Streaming**                | `stream()` method (async generator)                      | `streamText()`        | Via callbacks         |
+| **Streaming**                | `run()` with `onStep`/`onToken` callbacks                | `streamText()`        | Via callbacks         |
 | **Type Safety**              | Full TypeScript with inference                           | Full TypeScript       | TypeScript available  |
 | **Error Handling**           | Typed errors with metadata (stepId, provider, retryable) | Standard errors       | Custom error handlers |
 | **Context Management**       | Automatic with tunable limits                            | Manual memory         | Built-in memory       |

@@ -1,11 +1,14 @@
 // src/volcano-sdk.ts
 import { Client as MCPClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { llmOpenAI as llmOpenAIProvider, llmOpenAIResponses as llmOpenAIResponsesProvider } from "./llms/openai.js";
 import { executeParallel, executeBranch, executeSwitch, executeWhile, executeForEach, executeRetryUntil, executeRunAgent } from "./patterns.js";
 import { createHash } from "node:crypto";
 import { recordTokenMetrics, getLLMProviderId } from "./token-utils.js";
 import * as CONSTANTS from "./constants.js";
+import { spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 export { llmAnthropic } from "./llms/anthropic.js";
 export { llmLlama } from "./llms/llama.js";
 export { llmMistral } from "./llms/mistral.js";
@@ -85,6 +88,65 @@ function normalizeError(e: any, kind: 'timeout'|'validation'|'llm'|'mcp-conn'|'m
   return new MCPToolError(e?.message || 'MCP tool error', { ...meta, retryable: false }, { cause: e });
 }
 
+/* ---------- Tool Parallelization ---------- */
+
+/**
+ * Determines if a set of tool calls can be safely executed in parallel.
+ * Conservative approach: only parallelize when it's obviously safe.
+ * 
+ * Safe conditions (ALL must be true):
+ * 1. All calls are to the SAME tool
+ * 2. All calls operate on DIFFERENT resources (different IDs)
+ * 3. All arguments are different (no duplicate operations)
+ */
+function canSafelyParallelize(toolCalls: any[]): boolean {
+  if (toolCalls.length <= 1) return false;
+  
+  // Condition 1: All same tool name
+  const toolNames = toolCalls.map(c => c?.name).filter(Boolean);
+  if (toolNames.length !== toolCalls.length) return false; // Some missing names
+  
+  const uniqueTools = new Set(toolNames);
+  if (uniqueTools.size !== 1) return false; // Different tools
+  
+  // Condition 2: Extract resource IDs using pattern matching
+  const getResourceId = (args: any): string | undefined => {
+    if (!args || typeof args !== 'object') return undefined;
+    
+    // Find any parameter ending with 'id' (case-insensitive) or exactly named 'id'
+    for (const key in args) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === 'id' || lowerKey.endsWith('id')) {
+        const value = args[key];
+        // Return the ID if it's a non-empty string or number
+        if (value !== undefined && value !== null && value !== '') {
+          return String(value);
+        }
+      }
+    }
+    
+    return undefined;
+  };
+  
+  const resourceIds = toolCalls.map(c => getResourceId(c?.arguments));
+  
+  // All must have resource IDs
+  if (!resourceIds.every(id => id !== undefined && id !== null && id !== '')) {
+    return false;
+  }
+  
+  // All must be different (no duplicate resources)
+  const uniqueIds = new Set(resourceIds);
+  if (uniqueIds.size !== resourceIds.length) return false; // Duplicate IDs
+  
+  // Condition 3: All arguments must be different
+  const argStrings = toolCalls.map(c => JSON.stringify(c?.arguments || {}));
+  const uniqueArgs = new Set(argStrings);
+  if (uniqueArgs.size !== argStrings.length) return false; // Duplicate operations
+  
+  return true; // Safe to parallelize
+}
+
 /* ---------- MCP (Streamable HTTP) ---------- */
 export type MCPAuthConfig = {
   type: 'oauth' | 'bearer';
@@ -93,6 +155,7 @@ export type MCPAuthConfig = {
   clientSecret?: string;
   tokenEndpoint?: string;   // OAuth token endpoint (for OAuth)
   scope?: string;           // OAuth scope (optional, some servers require it)
+  refreshToken?: string;    // For OAuth: refresh token to automatically renew expired access tokens
 };
 
 export type MCPHandle = { 
@@ -101,6 +164,16 @@ export type MCPHandle = {
   id: string; 
   url: string; 
   auth?: MCPAuthConfig;
+  transport?: 'http' | 'stdio';
+  process?: ChildProcess;
+  cleanup?: () => Promise<void>;
+};
+
+export type MCPStdioConfig = {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
 };
 
 /**
@@ -138,13 +211,75 @@ export function mcp(url: string, options?: { auth?: MCPAuthConfig }): MCPHandle 
     id, 
     url, 
     auth: options?.auth,
+    transport: 'http',
     listTools: async () => {
-      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.listTools());
+      return withMCP({ id, url, auth: options?.auth, transport: 'http' } as MCPHandle, (c) => c.listTools());
     },
     callTool: async (name, args) => {
-      return withMCP({ id, url, auth: options?.auth } as MCPHandle, (c) => c.callTool({ name, arguments: args }));
+      return withMCP({ id, url, auth: options?.auth, transport: 'http' } as MCPHandle, (c) => c.callTool({ name, arguments: args }));
     }
   };
+}
+
+/**
+ * Connect to an MCP (Model Context Protocol) server via stdio.
+ * Spawns a child process to run the MCP server and communicates via stdin/stdout.
+ * 
+ * @param config - Configuration for the stdio MCP server
+ * @returns MCPHandle for listing and calling tools, plus cleanup function
+ * 
+ * @example
+ * // Basic usage
+ * const aha = mcpStdio({
+ *   command: "node",
+ *   args: ["dist/index.js"],
+ *   cwd: "/path/to/aha-mcp"
+ * });
+ * 
+ * @example
+ * // With environment variables
+ * const aha = mcpStdio({
+ *   command: "npx",
+ *   args: ["-y", "@aha-develop/aha-mcp"],
+ *   env: {
+ *     AHA_DOMAIN: "yourcompany.aha.io",
+ *     AHA_API_KEY: process.env.AHA_API_KEY!
+ *   }
+ * });
+ * 
+ * // Remember to cleanup when done
+ * await aha.cleanup?.();
+ */
+export function mcpStdio(config: MCPStdioConfig): MCPHandle {
+  const hash = createHash('md5')
+    .update(`${config.command}:${config.args?.join(':')}:${config.cwd || ''}`)
+    .digest('hex')
+    .substring(0, 8);
+  const id = `mcp_${hash}`;
+  
+  // Unique identifier for this stdio server
+  const stdioKey = `stdio:${id}`;
+  
+  const handle: MCPHandle = {
+    id,
+    url: stdioKey,
+    transport: 'stdio',
+    listTools: async () => {
+      return withMCPStdio(handle, config, (c) => c.listTools());
+    },
+    callTool: async (name, args) => {
+      return withMCPStdio(handle, config, (c) => c.callTool({ name, arguments: args }));
+    },
+    cleanup: async () => {
+      await cleanupStdioServer(stdioKey);
+      STDIO_CONFIGS.delete(stdioKey);
+    }
+  };
+  
+  // Register the config so discoverTools can use it
+  registerStdioConfig(handle, config);
+  
+  return handle;
 }
 
 // Ajv validator instance
@@ -173,7 +308,17 @@ type MCPPoolEntry = {
   auth?: MCPAuthConfig;
 };
 
+type MCPStdioPoolEntry = {
+  client: MCPClient;
+  transport: StdioClientTransport;
+  process: ChildProcess;
+  lastUsed: number;
+  busyCount: number;
+  config: MCPStdioConfig;
+};
+
 const MCP_POOL = new Map<string, MCPPoolEntry>();
+const MCP_STDIO_POOL = new Map<string, MCPStdioPoolEntry>();
 let MCP_POOL_MAX = CONSTANTS.DEFAULT_MCP_POOL_MAX_SIZE;
 let MCP_POOL_IDLE_MS = CONSTANTS.DEFAULT_MCP_POOL_IDLE_MS;
 
@@ -182,27 +327,38 @@ type TokenCacheEntry = { token: string; expiresAt: number };
 const OAUTH_TOKEN_CACHE = new Map<string, TokenCacheEntry>();
 
 async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<string> {
-  // Check cache first
   const cached = OAUTH_TOKEN_CACHE.get(endpoint);
   if (cached && cached.expiresAt > Date.now() + CONSTANTS.OAUTH_TOKEN_EXPIRY_BUFFER_MS) {
     return cached.token;
   }
   
-  // Acquire new token
-  if (!auth.tokenEndpoint || !auth.clientId || !auth.clientSecret) {
-    throw new Error(`OAuth auth requires tokenEndpoint, clientId, and clientSecret`);
+  if (!auth.tokenEndpoint) {
+    throw new Error(`OAuth auth requires tokenEndpoint`);
   }
   
-  // OAuth 2.0 RFC 6749 requires application/x-www-form-urlencoded for token requests
-  const params = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: auth.clientId,
-    client_secret: auth.clientSecret
-  });
+  let params: URLSearchParams;
   
-  // Add scope if provided (some OAuth servers require it)
-  if (auth.scope) {
-    params.set('scope', auth.scope);
+  if (auth.refreshToken) {
+    params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: auth.refreshToken,
+      client_id: auth.clientId || '',
+      client_secret: auth.clientSecret || ''
+    });
+  } else {
+    if (!auth.clientId || !auth.clientSecret) {
+      throw new Error(`OAuth auth requires clientId and clientSecret`);
+    }
+    
+    params = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: auth.clientId,
+      client_secret: auth.clientSecret
+    });
+    
+    if (auth.scope) {
+      params.set('scope', auth.scope);
+    }
   }
   
   const response = await fetch(auth.tokenEndpoint, {
@@ -212,14 +368,14 @@ async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<str
   });
   
   if (!response.ok) {
-    throw new Error(`OAuth token acquisition failed: ${response.status} ${await response.text()}`);
+    const errorText = await response.text();
+    throw new Error(`OAuth token ${auth.refreshToken ? 'refresh' : 'acquisition'} failed: ${response.status} ${errorText}`);
   }
   
   const data = await response.json();
   const token = data.access_token;
-  const expiresIn = data.expires_in || 3600; // default 1 hour
+  const expiresIn = data.expires_in || 3600;
   
-  // Cache the token
   OAUTH_TOKEN_CACHE.set(endpoint, {
     token,
     expiresAt: Date.now() + (expiresIn * 1000)
@@ -232,50 +388,69 @@ async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<str
 async function getPooledClient(url: string, auth?: MCPAuthConfig): Promise<MCPPoolEntry> {
   const poolKey = auth ? `${url}::auth` : url; // Separate pool entries for auth vs non-auth
   let entry = MCP_POOL.get(poolKey);
-  if (!entry) {
-    // Evict LRU idle if over max
-    if (MCP_POOL.size >= MCP_POOL_MAX) {
-      const idleEntries = Array.from(MCP_POOL.entries()).filter(([, e]) => e.busyCount === 0);
-      idleEntries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-      const toEvict = idleEntries.slice(0, Math.max(0, MCP_POOL.size - MCP_POOL_MAX + 1));
-      for (const [k, e] of toEvict) {
-        try { await e.client.close(); } catch {}
-        MCP_POOL.delete(k);
-      }
-    }
-    
-    // Create transport
-    const transport = new StreamableHTTPClientTransport(new URL(url));
-    
-    const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
-    
-    // Connect with auth if needed
-    if (auth) {
-      await connectWithAuth(transport, client, auth, url);
-    } else {
-      await client.connect(transport);
-    }
-    
-    entry = { client, transport, lastUsed: Date.now(), busyCount: 0, auth };
-    MCP_POOL.set(poolKey, entry);
+  
+  if (entry) {
+    // Reusing existing connection - just update metadata
+    entry.busyCount++;
+    entry.lastUsed = Date.now();
+    return entry;
   }
-  entry.busyCount++;
-  entry.lastUsed = Date.now();
+  
+  // No existing connection - create new one
+  // Evict LRU idle if over max
+  if (MCP_POOL.size >= MCP_POOL_MAX) {
+    const idleEntries = Array.from(MCP_POOL.entries()).filter(([, e]) => e.busyCount === 0);
+    idleEntries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+    const toEvict = idleEntries.slice(0, Math.max(0, MCP_POOL.size - MCP_POOL_MAX + 1));
+    for (const [k, e] of toEvict) {
+      try { 
+        await e.client.close();
+        if (e.transport && typeof e.transport.close === 'function') {
+          await e.transport.close();
+        }
+      } catch {}
+      MCP_POOL.delete(k);
+    }
+  }
+  
+  // Create transport
+  const transport = new StreamableHTTPClientTransport(new URL(url));
+  
+  const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
+  
+  // Connect with auth if needed
+  if (auth) {
+    await connectWithAuth(transport, client, auth, url);
+  } else {
+    await client.connect(transport);
+  }
+  
+  entry = { client, transport, lastUsed: Date.now(), busyCount: 1, auth };
+  MCP_POOL.set(poolKey, entry);
   return entry;
 }
 
 async function connectWithAuth(transport: any, client: MCPClient, auth: MCPAuthConfig, endpoint: string) {
-  // Get auth headers
-  const authHeaders: Record<string, string> = {};
+  const getAuthHeaders = async () => {
+    const headers: Record<string, string> = {};
+    
+    if (auth.type === 'oauth') {
+      const token = await getOAuthToken(auth, endpoint);
+      headers['Authorization'] = `Bearer ${token}`;
+    } else if (auth.type === 'bearer') {
+      if (auth.refreshToken && auth.tokenEndpoint) {
+        const token = await getOAuthToken(auth, endpoint);
+        headers['Authorization'] = `Bearer ${token}`;
+      } else if (auth.token) {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+      }
+    }
+    
+    return headers;
+  };
   
-  if (auth.type === 'oauth') {
-    const token = await getOAuthToken(auth, endpoint);
-    authHeaders['Authorization'] = `Bearer ${token}`;
-  } else if (auth.type === 'bearer' && auth.token) {
-    authHeaders['Authorization'] = `Bearer ${auth.token}`;
-  }
+  const authHeaders = await getAuthHeaders();
   
-  // Wrap fetch globally during connect
   const originalFetch = global.fetch;
   global.fetch = async (url: any, init: any = {}) => {
     let mergedHeaders: any = {};
@@ -312,6 +487,16 @@ async function cleanupIdlePool() {
       MCP_POOL.delete(url);
     }
   }
+  // Also cleanup stdio servers
+  for (const [key, entry] of MCP_STDIO_POOL) {
+    if (entry.busyCount === 0 && now - entry.lastUsed > MCP_POOL_IDLE_MS) {
+      try { 
+        await entry.client.close(); 
+        entry.process.kill();
+      } catch {}
+      MCP_STDIO_POOL.delete(key);
+    }
+  }
 }
 
 // Periodic cleanup
@@ -324,6 +509,120 @@ function ensurePoolSweeper() {
   }
 }
 
+// Stdio MCP server management
+async function getPooledStdioClient(key: string, config: MCPStdioConfig): Promise<MCPStdioPoolEntry> {
+  let entry = MCP_STDIO_POOL.get(key);
+  if (!entry) {
+    // Spawn the process with merged environment variables
+    const env = {
+      ...process.env,
+      ...config.env
+    };
+    
+    const childProcess = spawn(config.command, config.args || [], {
+      cwd: config.cwd,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    // Handle process errors
+    childProcess.on('error', (err) => {
+      console.error(`MCP stdio process error: ${err.message}`);
+    });
+    
+    // Create stdio transport
+    const transport = new StdioClientTransport({
+      command: config.command,
+      args: config.args,
+      env: config.env
+    });
+    
+    const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
+    
+    // Connect to the spawned process
+    await client.connect(transport);
+    
+    entry = { 
+      client, 
+      transport, 
+      process: childProcess, 
+      lastUsed: Date.now(), 
+      busyCount: 0,
+      config 
+    };
+    MCP_STDIO_POOL.set(key, entry);
+  }
+  entry.busyCount++;
+  entry.lastUsed = Date.now();
+  return entry;
+}
+
+async function cleanupStdioServer(key: string) {
+  const entry = MCP_STDIO_POOL.get(key);
+  if (entry) {
+    try {
+      await entry.client.close();
+      entry.process.kill();
+    } catch (err) {
+      console.error(`Error cleaning up stdio server: ${err}`);
+    }
+    MCP_STDIO_POOL.delete(key);
+  }
+}
+
+async function withMCPStdio<T>(h: MCPHandle, config: MCPStdioConfig, fn: (c: MCPClient) => Promise<T>, telemetry?: any, operation?: string): Promise<T> {
+  ensurePoolSweeper();
+  const entry = await getPooledStdioClient(h.url, config);
+  
+  // Start MCP span if telemetry configured
+  const mcpSpan = telemetry && operation ? telemetry.startMCPSpan(null, h, operation) : null;
+  
+  try {
+    const result = await fn(entry.client);
+    
+    telemetry?.endSpan(mcpSpan);
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: false });
+    
+    return result;
+  } catch (error) {
+    telemetry?.endSpan(mcpSpan, undefined, error);
+    telemetry?.recordMetric('mcp.call', 1, { endpoint: h.url, error: true });
+    throw error;
+  } finally {
+    entry.busyCount = Math.max(0, entry.busyCount - 1);
+    entry.lastUsed = Date.now();
+  }
+}
+
+// Store stdio configs for handles that need them
+const STDIO_CONFIGS = new Map<string, MCPStdioConfig>();
+
+function registerStdioConfig(handle: MCPHandle, config: MCPStdioConfig) {
+  STDIO_CONFIGS.set(handle.url, config);
+}
+
+function getStdioConfig(handle: MCPHandle): MCPStdioConfig | undefined {
+  return STDIO_CONFIGS.get(handle.url);
+}
+
+// Helper to route to the correct withMCP variant based on transport
+async function withMCPAny<T>(
+  handle: MCPHandle, 
+  fn: (c: MCPClient) => Promise<T>, 
+  telemetry?: any, 
+  operation?: string
+): Promise<T> {
+  if (handle.transport === 'stdio') {
+    const config = getStdioConfig(handle);
+    if (!config) {
+      throw new Error(`Stdio config not found for handle ${handle.id}`);
+    }
+    return withMCPStdio(handle, config, fn, telemetry, operation);
+  } else {
+    return withMCP(handle, fn, telemetry, operation);
+  }
+}
+
 // Internal test helpers
 export function __internal_getMcpPoolStats() {
   return {
@@ -332,6 +631,22 @@ export function __internal_getMcpPoolStats() {
   };
 }
 export async function __internal_forcePoolCleanup() { await cleanupIdlePool(); }
+export async function __internal_clearAllPools() {
+  // Close all HTTP MCP connections
+  for (const [, entry] of MCP_POOL) {
+    try { await entry.client.close(); } catch {}
+  }
+  MCP_POOL.clear();
+  
+  // Close all stdio MCP connections
+  for (const [, entry] of MCP_STDIO_POOL) {
+    try { 
+      await entry.client.close();
+      entry.process.kill();
+    } catch {}
+  }
+  MCP_STDIO_POOL.clear();
+}
 export function __internal_setPoolConfig(max: number, idleMs: number) { MCP_POOL_MAX = max; MCP_POOL_IDLE_MS = idleMs; }
 export function __internal_clearOAuthTokenCache() { OAUTH_TOKEN_CACHE.clear(); }
 export function __internal_getOAuthTokenCache() { 
@@ -378,17 +693,26 @@ async function withMCP<T>(h: MCPHandle, fn: (c: MCPClient) => Promise<T>, teleme
 }
 
 async function executeWithAuth<T>(auth: MCPAuthConfig, endpoint: string, fn: () => Promise<T>): Promise<T> {
-  // Get auth headers
-  const authHeaders: Record<string, string> = {};
+  const getAuthHeaders = async () => {
+    const headers: Record<string, string> = {};
+    
+    if (auth.type === 'oauth') {
+      const token = await getOAuthToken(auth, endpoint);
+      headers['Authorization'] = `Bearer ${token}`;
+    } else if (auth.type === 'bearer') {
+      if (auth.refreshToken && auth.tokenEndpoint) {
+        const token = await getOAuthToken(auth, endpoint);
+        headers['Authorization'] = `Bearer ${token}`;
+      } else if (auth.token) {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+      }
+    }
+    
+    return headers;
+  };
   
-  if (auth.type === 'oauth') {
-    const token = await getOAuthToken(auth, endpoint);
-    authHeaders['Authorization'] = `Bearer ${token}`;
-  } else if (auth.type === 'bearer' && auth.token) {
-    authHeaders['Authorization'] = `Bearer ${auth.token}`;
-  }
+  let authHeaders = await getAuthHeaders();
   
-  // Wrap fetch
   const originalFetch = global.fetch;
   global.fetch = async (url: any, init: any = {}) => {
     let mergedHeaders: any = {};
@@ -403,10 +727,23 @@ async function executeWithAuth<T>(auth: MCPAuthConfig, endpoint: string, fn: () 
     }
     Object.assign(mergedHeaders, authHeaders);
     
-    return originalFetch(url, {
+    const response = await originalFetch(url, {
       ...init,
       headers: mergedHeaders
     });
+    
+    if (response.status === 401 && auth.refreshToken && auth.tokenEndpoint) {
+      OAUTH_TOKEN_CACHE.delete(endpoint);
+      authHeaders = await getAuthHeaders();
+      
+      Object.assign(mergedHeaders, authHeaders);
+      return await originalFetch(url, {
+        ...init,
+        headers: mergedHeaders
+      });
+    }
+    
+    return response;
   };
   
   try {
@@ -456,7 +793,8 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
         allTools.push(...cached.tools);
         continue;
       }
-      const tools = await withMCP(handle, async (client) => {
+      
+      const fetchFn = async (client: MCPClient) => {
         const result = await client.listTools();
         const mapped = result.tools.map(tool => ({
           name: `${handle.id}.${tool.name}`,
@@ -466,7 +804,19 @@ export async function discoverTools(handles: MCPHandle[]): Promise<ToolDefinitio
         }));
         TOOL_CACHE.set(handle.url, { tools: mapped, ts: Date.now() });
         return mapped;
-      });
+      };
+      
+      let tools: ToolDefinition[];
+      if (handle.transport === 'stdio') {
+        const config = getStdioConfig(handle);
+        if (!config) {
+          throw new Error(`Stdio config not found for handle ${handle.id}`);
+        }
+        tools = await withMCPStdio(handle, config, fetchFn);
+      } else {
+        tools = await withMCP(handle, fetchFn);
+      }
+      
       allTools.push(...tools);
     } catch (error) {
       // Invalidate cache on failure
@@ -502,7 +852,7 @@ async function getToolSchema(handle: MCPHandle, toolName: string): Promise<any |
     return found?.parameters as any;
   }
   try {
-    const tools = await withMCP(handle, async (client) => {
+    const fetchFn = async (client: MCPClient) => {
       const result = await client.listTools();
       const mapped = result.tools.map(tool => ({
         name: `${handle.id}.${tool.name}`,
@@ -512,7 +862,19 @@ async function getToolSchema(handle: MCPHandle, toolName: string): Promise<any |
       }));
       TOOL_CACHE.set(handle.url, { tools: mapped, ts: Date.now() });
       return mapped;
-    });
+    };
+    
+    let tools: ToolDefinition[];
+    if (handle.transport === 'stdio') {
+      const config = getStdioConfig(handle);
+      if (!config) {
+        throw new Error(`Stdio config not found for handle ${handle.id}`);
+      }
+      tools = await withMCPStdio(handle, config, fetchFn);
+    } else {
+      tools = await withMCP(handle, fetchFn);
+    }
+    
     const found = tools.find(t => t.name === `${handle.id}.${toolName}`);
     return found?.parameters as any;
   } catch {
@@ -528,7 +890,7 @@ export type RetryConfig = {
 };
 
 /**
- * Metadata provided to stream-level onToken callback.
+ * Metadata provided to run-level onToken callback.
  * Allows conditional processing based on whether step-level handler already processed the token.
  * 
  * @property stepIndex - Index of the current step (0-based)
@@ -537,7 +899,7 @@ export type RetryConfig = {
  * @property llmProvider - The LLM provider ID (e.g., "OpenAI-gpt-4o-mini", "Anthropic-claude-3")
  * 
  * @example
- * .stream({
+ * .run({
  *   onToken: (token, meta) => {
  *     if (!meta.handledByStep) {
  *       // Only process if step didn't handle it
@@ -556,17 +918,17 @@ export type TokenMetadata = {
 };
 
 /**
- * Options for the stream() method.
+ * Options for the run() method.
  * Supports both token-level and step-level callbacks for maximum flexibility.
  * 
  * @property onToken - Called for each token as it arrives (with metadata). 
  *                     Step-level onToken takes precedence - when a step has its own onToken,
  *                     this callback won't receive tokens from that step (meta.handledByStep will be true).
- * @property onStep - Called when each step completes. Equivalent to the callback in stream(callback).
+ * @property onStep - Called when each step completes. Equivalent to the callback in run(callback).
  * 
  * @example
  * // Both token and step callbacks
- * .stream({
+ * .run({
  *   onToken: (token, meta) => {
  *     console.log(`Token from step ${meta.stepIndex}: ${token}`);
  *   },
@@ -577,7 +939,7 @@ export type TokenMetadata = {
  * 
  * @example
  * // Backward compatible: just a callback
- * .stream((step, index) => {
+ * .run((step, index) => {
  *   console.log(`Step ${index} done`);
  * })
  */
@@ -588,9 +950,9 @@ export type StreamOptions = {
 
 export type Step =
   | { prompt: string; name?: string; llm?: LLMHandle; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
-  | { mcp: MCPHandle; name?: string; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; name?: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void }
-  | { prompt: string; name?: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void }
+  | { mcp: MCPHandle; name?: string; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToolCall?: (toolName: string, args: any, result: any) => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToolCall?: (toolName: string, args: any, result: any) => void }
+  | { prompt: string; name?: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void; onToolCall?: (toolName: string, args: any, result: any) => void }
   | { prompt: string; name?: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
@@ -611,7 +973,70 @@ export type StepResult = {
   totalMcpMs?: number;
 };
 
+export interface AgentResults extends Array<StepResult> {
+  ask(llm: LLMHandle, question: string): Promise<string>;
+  summary(llm: LLMHandle): Promise<string>;
+  toolsUsed(llm: LLMHandle): Promise<string>;
+  errors(llm: LLMHandle): Promise<string>;
+}
+
 type StepFactory = (history: StepResult[]) => Step;
+
+function enhanceResults(results: StepResult[]): AgentResults {
+  const enhanced = results as AgentResults;
+  
+  const buildContext = (results: StepResult[]): string => {
+    const context: string[] = [];
+    
+    results.forEach((step, idx) => {
+      context.push(`Step ${idx + 1}:`);
+      if (step.prompt) context.push(`  Prompt: ${step.prompt}`);
+      if (step.llmOutput) context.push(`  LLM Output: ${step.llmOutput}`);
+      if (step.toolCalls && step.toolCalls.length > 0) {
+        context.push(`  Tools Called (${step.toolCalls.length}):`);
+        step.toolCalls.forEach(tc => {
+          context.push(`    - ${tc.name}: ${JSON.stringify(tc.arguments || {})}`);
+          context.push(`      Result: ${JSON.stringify(tc.result)}`);
+        });
+      }
+      if (step.mcp) {
+        context.push(`  MCP Tool: ${step.mcp.tool}`);
+        context.push(`  Result: ${JSON.stringify(step.mcp.result)}`);
+      }
+      if (step.durationMs) context.push(`  Duration: ${step.durationMs}ms`);
+    });
+    
+    return context.join('\n');
+  };
+  
+  enhanced.ask = async (llm: LLMHandle, question: string): Promise<string> => {
+    const context = buildContext(results);
+    const prompt = `You are analyzing the results of an AI agent workflow.
+
+Agent Execution Results:
+${context}
+
+User Question: ${question}
+
+Provide a clear, concise answer based on the execution results above. Be specific and reference actual data from the results.`;
+
+    return await llm.gen(prompt);
+  };
+  
+  enhanced.summary = async (llm: LLMHandle): Promise<string> => {
+    return await enhanced.ask(llm, "Provide a brief summary of what the agent accomplished. Include key metrics and outcomes.");
+  };
+  
+  enhanced.toolsUsed = async (llm: LLMHandle): Promise<string> => {
+    return await enhanced.ask(llm, "List all the tools that were called and briefly explain what each tool did.");
+  };
+  
+  enhanced.errors = async (llm: LLMHandle): Promise<string> => {
+    return await enhanced.ask(llm, "Were there any errors, failures, or issues? If so, explain them. If not, say 'No errors detected.'");
+  };
+  
+  return enhanced;
+}
 
 // Agent builder interface for type safety
 export interface AgentBuilder {
@@ -626,8 +1051,7 @@ export interface AgentBuilder {
   forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number; pre?: () => void; post?: () => void }): AgentBuilder;
   runAgent(subAgent: AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
-  run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]>;
-  stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown>;
+  run(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): Promise<AgentResults>;
 }
 
 function safeExecuteHook(hook: (() => void) | undefined, hookName: string): void {
@@ -722,12 +1146,16 @@ async function executeLLMWithStreaming(
   prompt: string,
   stepOnToken: ((token: string) => void) | undefined,
   streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined,
-  meta: { stepIndex: number; stepPrompt?: string }
+  meta: { stepIndex: number; stepPrompt?: string },
+  progress?: ReturnType<typeof createProgressHandler> | null,
+  progressTokenCallback?: () => void
 ): Promise<string> {
   const hasStepOnToken = !!stepOnToken;
-  const effectiveOnToken = stepOnToken || streamOnToken;
+  const hasStreamOnToken = !!streamOnToken;
+  const hasUserCallback = hasStepOnToken || hasStreamOnToken;
   
-  if (effectiveOnToken && typeof llm.genStream === 'function') {
+  // Use streaming if we have any callback OR if genStream is available
+  if (typeof llm.genStream === 'function' && (hasUserCallback || progressTokenCallback || progress)) {
     const tokens: string[] = [];
     const tokenMeta: TokenMetadata = {
       stepIndex: meta.stepIndex,
@@ -738,10 +1166,18 @@ async function executeLLMWithStreaming(
     
     for await (const token of llm.genStream(prompt)) {
       tokens.push(token);
+      
+      // Call progress token counter
+      if (progressTokenCallback) {
+        progressTokenCallback();
+      }
+      
+      
+      // Call user callbacks
       try {
         if (hasStepOnToken) {
           stepOnToken!(token);
-        } else {
+        } else if (hasStreamOnToken) {
           streamOnToken!(token, tokenMeta);
         }
       } catch (e) {
@@ -778,10 +1214,11 @@ const createProgressDisplay = (workflowStart: number, isTTY: boolean) => ({
     }
   },
   
-  showComplete: (durationMs: number, tokens: number, provider?: string) => {
+  showComplete: (durationMs: number, tokens: number, provider?: string, toolCalls?: number) => {
     if (isTTY) process.stdout.write('\r\x1b[K');
+    const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
     const providerInfo = provider ? ` | ${provider}` : '';
-    console.log(`   ✅ Complete | ${tokens.toLocaleString()} token${tokens > 1 ? 's' : ''} | ${(durationMs/1000).toFixed(1)}s${providerInfo}\n`);
+    console.log(`   ✅ Complete | ${tokens.toLocaleString()} token${tokens > 1 ? 's' : ''}${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s${providerInfo}\n`);
   }
 });
 
@@ -821,7 +1258,7 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
         }, 100);
       }
     },
-    llmToken: (count: number, provider?: string) => {
+    llmToken: (count: number, provider?: string, toolCalls?: number) => {
       // For agent crews, suppress token progress (parent tracks via onToken callback)
       // For explicit sub-agents, show token progress
       if (isSubAgent && !isExplicitSubAgent) return;
@@ -835,8 +1272,9 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       const elapsed = (Date.now() - operationStart) / 1000;
       const throughput = Math.round(count / Math.max(elapsed, 0.1));
       if (count % 10 === 0 || count === 1) {
+        const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
         const providerInfo = provider ? ` | ${provider}` : '';
-        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s | ${elapsed.toFixed(1)}s${providerInfo}`);
+        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s${toolCallsInfo} | ${elapsed.toFixed(1)}s${providerInfo}`);
       }
     },
     agentStart: (agentName: string, task: string) => {
@@ -852,7 +1290,7 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
         process.stdout.write('   ⏳ Waiting for LLM');
       }
     },
-    agentToken: (count: number, provider?: string) => {
+    agentToken: (count: number, provider?: string, toolCalls?: number) => {
       // Clear waiting interval on first token
       if (count === 1 && waitInterval) {
         clearInterval(waitInterval);
@@ -866,14 +1304,16 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
           // First token - clear the "Waiting..." line
           process.stdout.write('\r\x1b[K');
         }
+        
+        const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
         const providerInfo = provider ? ` | ${provider}` : '';
-        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s | ${elapsed.toFixed(1)}s${providerInfo}`);
+        process.stdout.write(`\r   💭 ${count} tokens | ${throughput} tok/s${toolCallsInfo} | ${elapsed.toFixed(1)}s${providerInfo}`);
       }
     },
-    agentComplete: (agentName: string, tokens: number, durationMs: number, provider?: string) => {
-      display.showComplete(durationMs, tokens, provider);
+    agentComplete: (agentName: string, tokens: number, durationMs: number, provider?: string, toolCalls?: number) => {
+      display.showComplete(durationMs, tokens, provider, toolCalls);
     },
-    stepComplete: (durationMs: number, tokenCount?: number, provider?: string, crewTokens?: number, crewModels?: string[]) => {
+    stepComplete: (durationMs: number, tokenCount?: number, provider?: string, crewTokens?: number, crewModels?: string[], toolCallCount?: number) => {
       // For agent crews, suppress step complete (parent shows completion)
       // For explicit sub-agents, show step complete
       if (isSubAgent && !isExplicitSubAgent) return;
@@ -881,23 +1321,27 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       if (crewTokens && crewModels) {
         // Crew workflow - don't show anything here, workflowEnd will show the final summary
         return;
-      } else if (tokenCount) {
-        display.showComplete(durationMs, tokenCount, provider);
+      } else if (tokenCount !== undefined) {
+        // Always pass toolCallCount (even if 0) to showComplete
+        display.showComplete(durationMs, tokenCount, provider, toolCallCount !== undefined ? toolCallCount : 0);
       } else {
         if (isTTY) process.stdout.write('\r\x1b[K');
-        console.log(`   ✅ Complete | ${(durationMs/1000).toFixed(1)}s\n`);
+        const toolCallsInfo = toolCallCount !== undefined ? ` | ${toolCallCount} tool call${toolCallCount !== 1 ? 's' : ''}` : '';
+        console.log(`   ✅ Complete${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s\n`);
       }
     },
-    workflowEnd: (stepCount: number, totalTokens?: number, totalDuration?: number, models?: string[]) => {
+    workflowEnd: (stepCount: number, totalTokens?: number, totalDuration?: number, models?: string[], totalToolCalls?: number) => {
       if (isSubAgent) return; // Suppress footer for sub-agents
       
       console.log('━'.repeat(50));
       if (totalTokens && models && models.length > 0) {
         const modelsList = models.join(', ');
-        console.log(`🎉 Agent complete | ${totalTokens.toLocaleString()} tokens | ${((totalDuration || 0)/1000).toFixed(1)}s | ${modelsList}`);
+        const toolCallsInfo = totalToolCalls !== undefined ? ` | ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''}` : '';
+        console.log(`🎉 Agent complete | ${totalTokens.toLocaleString()} tokens${toolCallsInfo} | ${((totalDuration || 0)/1000).toFixed(1)}s | ${modelsList}`);
       } else {
         const total = (Date.now() - workflowStart) / 1000;
-        console.log(`🎉 Workflow complete! ${stepCount} step${stepCount > 1 ? 's' : ''} in ${total.toFixed(1)}s`);
+        const toolCallsInfo = totalToolCalls !== undefined ? ` | ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''}` : '';
+        console.log(`🎉 Workflow complete! ${stepCount} step${stepCount > 1 ? 's' : ''} in ${total.toFixed(1)}s${toolCallsInfo}`);
       }
     }
   };
@@ -970,13 +1414,770 @@ type AgentOptions = {
   telemetry?: import('./telemetry.js').VolcanoTelemetry;
   // Maximum tool calling iterations for automatic selection (default 4)
   maxToolIterations?: number;
+  // Disable parallel tool execution (parallel execution is enabled by default for performance)
+  disableParallelToolExecution?: boolean;
 };
+
+/**
+ * Context interface for executeStepCore function
+ */
+interface StepExecutionContext {
+  step: Step;
+  stepIndex: number;
+  defaultLlm?: LLMHandle;
+  globalInstructions?: string;
+  contextHistory: StepResult[];
+  contextMaxToolResults: number;
+  contextMaxChars: number;
+  defaultMaxToolIterations: number;
+  agentName?: string;
+  applyAgentAuth: (handle: MCPHandle) => MCPHandle;
+  telemetry?: import('./telemetry.js').VolcanoTelemetry;
+  agentSpan: any;
+  progress?: ReturnType<typeof createProgressHandler> | null;
+  capturedStreamOnToken?: (token: string, meta: TokenMetadata) => void;
+  onToolCall?: (toolName: string, args: any, result: any) => void;
+  disableParallelToolExecution?: boolean;
+}
+
+/**
+ * Shared pattern step execution logic for run() method.
+ * Handles all 7 pattern types with hooks and proper result management.
+ * 
+ * @param raw - The pattern step definition
+ * @param out - Current step results array (for computing indices)
+ * @param contextHistory - Historical context
+ * @param opts - Agent options for creating sub-agents
+ * @param planned - Total planned steps (for runAgent context)
+ * @returns Object with wasPattern flag and results array (empty if not a pattern)
+ */
+async function executePatternStep(
+  raw: any,
+  out: StepResult[],
+  contextHistory: StepResult[],
+  opts: AgentOptions | undefined,
+  planned: any[]
+): Promise<{ wasPattern: boolean; results: StepResult[] }> {
+  if ((raw as any).__parallel) {
+    const hooks = (raw as any).__hooks;
+    safeExecuteHook(hooks?.pre, 'Pre-parallel');
+    
+    const parallelResult = await executeParallel(
+      (raw as any).__parallel,
+      async (step: any) => {
+        const subAgent = agent(opts).then(step);
+        const results = await subAgent.run();
+        return results[0];
+      }
+    );
+    out.push(parallelResult);
+    contextHistory.push(parallelResult);
+    
+    safeExecuteHook(hooks?.post, 'Post-parallel');
+    return { wasPattern: true, results: [parallelResult] };
+  }
+  
+  if ((raw as any).__branch) {
+    const { condition, branches } = (raw as any).__branch;
+    const hooks = (raw as any).__hooks;
+    safeExecuteHook(hooks?.pre, 'Pre-branch');
+    
+    const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
+    out.push(...branchResults);
+    contextHistory.push(...branchResults);
+    
+    safeExecuteHook(hooks?.post, 'Post-branch');
+    return { wasPattern: true, results: branchResults };
+  }
+  
+  if ((raw as any).__switch) {
+    const { selector, cases } = (raw as any).__switch;
+    const hooks = (raw as any).__hooks;
+    safeExecuteHook(hooks?.pre, 'Pre-switch');
+    
+    const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
+    out.push(...switchResults);
+    contextHistory.push(...switchResults);
+    
+    safeExecuteHook(hooks?.post, 'Post-switch');
+    return { wasPattern: true, results: switchResults };
+  }
+  
+  if ((raw as any).__while) {
+    const { condition, body, opts: whileOpts } = (raw as any).__while;
+    safeExecuteHook(whileOpts?.pre, 'Pre-while');
+    
+    const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
+    out.push(...whileResults);
+    contextHistory.push(...whileResults);
+    
+    safeExecuteHook(whileOpts?.post, 'Post-while');
+    return { wasPattern: true, results: whileResults };
+  }
+  
+  if ((raw as any).__forEach) {
+    const { items, body } = (raw as any).__forEach;
+    const hooks = (raw as any).__hooks;
+    safeExecuteHook(hooks?.pre, 'Pre-forEach');
+    
+    const forEachResults = await executeForEach(items, body, () => agent(opts));
+    out.push(...forEachResults);
+    contextHistory.push(...forEachResults);
+    
+    safeExecuteHook(hooks?.post, 'Post-forEach');
+    return { wasPattern: true, results: forEachResults };
+  }
+  
+  if ((raw as any).__retryUntil) {
+    const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
+    safeExecuteHook(retryOpts?.pre, 'Pre-retryUntil');
+    
+    const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
+    out.push(...retryResults);
+    contextHistory.push(...retryResults);
+    
+    safeExecuteHook(retryOpts?.post, 'Post-retryUntil');
+    return { wasPattern: true, results: retryResults };
+  }
+  
+  if ((raw as any).__runAgent) {
+    const { subAgent } = (raw as any).__runAgent;
+    const hooks = (raw as any).__hooks;
+    safeExecuteHook(hooks?.pre, 'Pre-runAgent');
+    
+    // Pass parent's context to subagent
+    const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
+    out.push(...subResults);
+    contextHistory.push(...subResults);
+    
+    safeExecuteHook(hooks?.post, 'Post-runAgent');
+    return { wasPattern: true, results: subResults };
+  }
+  
+  return { wasPattern: false, results: [] }; // Not a pattern step
+}
+
+/**
+ * Shared retry logic with timeout, error classification, and exponential backoff.
+ * Used by run() method to execute steps with retries.
+ */
+async function executeWithRetry(
+  stepFn: () => Promise<StepResult>,
+  stepId: number,
+  config: {
+    attemptsTotal: number;
+    stepTimeoutMs: number;
+    useDelay?: number;
+    useBackoff?: number;
+  }
+): Promise<StepResult> {
+  let lastError: any;
+  let result: StepResult | undefined;
+  
+  for (let attempt = 1; attempt <= config.attemptsTotal; attempt++) {
+    try {
+      const r = await withTimeout(stepFn(), config.stepTimeoutMs, 'Step');
+      result = r;
+      break;
+    } catch (e) {
+      // classify
+      const meta = { stepId } as VolcanoErrorMeta;
+      let vErr: VolcanoError | undefined;
+      if (e instanceof Error && /timed out/i.test(e.message)) {
+        vErr = normalizeError(e, 'timeout', meta);
+      } else if (e instanceof ValidationError || /failed schema validation/i.test(String((e as any)?.message || ''))) {
+        vErr = normalizeError(e, 'validation', meta);
+      } else {
+        vErr = e as VolcanoError;
+      }
+      lastError = vErr || e;
+      if (lastError instanceof VolcanoError && lastError.meta?.retryable === false) {
+        throw lastError; // abort retries immediately for non-retryable errors
+      }
+      if (attempt >= config.attemptsTotal) break;
+      // schedule wait according to policy
+      if (typeof config.useBackoff === 'number' && config.useBackoff > 0) {
+        const waitMs = CONSTANTS.DEFAULT_RETRY_BACKOFF_BASE_MS * Math.pow(config.useBackoff, attempt - 1);
+        await sleep(waitMs);
+      } else {
+        const waitMs = Math.max(0, (config.useDelay ?? 0) * 1000);
+        if (waitMs > 0) await sleep(waitMs);
+      }
+    }
+  }
+  
+  if (!result) {
+    throw (lastError instanceof VolcanoError ? lastError : new RetryExhaustedError('Retry attempts exhausted', { stepId }, { cause: lastError }));
+  }
+  
+  return result;
+}
+
+/**
+ * Core step execution logic for run() method.
+ * Handles all 4 step types:
+ * 1. Automatic tool selection (mcps + prompt)
+ * 2. Automatic agent delegation (agents + prompt)
+ * 3. LLM-only step (prompt without tools/agents)
+ * 4. Explicit MCP tool call (mcp + tool)
+ */
+async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
+  const { 
+    step: s, 
+    stepIndex,
+    defaultLlm, 
+    globalInstructions, 
+    contextHistory, 
+    contextMaxToolResults,
+    contextMaxChars,
+    defaultMaxToolIterations,
+    agentName,
+    applyAgentAuth,
+    telemetry,
+    agentSpan,
+    progress,
+    capturedStreamOnToken,
+    onToolCall,
+    disableParallelToolExecution
+  } = ctx;
+
+  safeExecuteHook((s as any).pre, 'Pre-step');
+  
+  // Determine step type for telemetry
+  let stepType = 'unknown';
+  if ("agents" in s) stepType = 'agent_crew';
+  else if ("mcps" in s) stepType = 'mcp_auto';
+  else if ("mcp" in s) stepType = 'mcp_explicit';
+  else if ("prompt" in s) stepType = 'llm';
+  
+  // Start step span
+  const stepPrompt = (s as any).prompt;
+  const stepName = (s as any).name;
+  const stepLlm = (s as any).llm || defaultLlm;
+  const stepSpan = telemetry?.startStepSpan(agentSpan, stepIndex, stepType, stepPrompt, stepName, stepLlm) || null;
+  
+  const r: StepResult = {};
+  const stepStart = Date.now();
+  if (progress) progress.stepStart(stepIndex, (s as any).prompt);
+  let llmTotalMs = 0;
+  
+  // ============================================================================
+  // STEP TYPE 1: Automatic Tool Selection (mcps + prompt)
+  // LLM selects and executes MCP tools iteratively
+  // ============================================================================
+  if ("mcps" in s && "prompt" in s) {
+    const usedLlm = (s as any).llm ?? defaultLlm;
+    if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+    const stepInstructions = (s as any).instructions ?? globalInstructions;
+    const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+    const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
+    const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
+    r.prompt = (s as any).prompt;
+    // Apply agent-level auth to all MCP handles
+    const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
+    const availableTools = await discoverTools(mcpsWithAuth);
+    if (availableTools.length === 0) {
+      r.llmOutput = "No tools available for this request.";
+    } else {
+      const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
+      let currentToolCallCount = 0;  // Track tool calls for real-time progress
+      const maxIterations = (s as any).maxToolIterations ?? defaultMaxToolIterations;
+      let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
+      for (let i = 0; i < maxIterations; i++) {
+        const llmStart = Date.now();
+        let toolPlan: LLMToolResult;
+        
+        // Progress updates happen via tool call counter display below
+        
+        try {
+          toolPlan = await usedLlm.genWithTools(workingPrompt, availableTools);
+        } catch (e) {
+          const provider = classifyProviderFromLlm(usedLlm);
+          throw normalizeError(e, 'llm', { stepId: stepIndex, provider });
+        }
+        const llmCallDuration = Date.now() - llmStart;
+        llmTotalMs += llmCallDuration;
+        
+        telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: false });
+        telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: getLLMProviderId(usedLlm), model: usedLlm.model });
+        
+        const usage = (usedLlm as any).getUsage?.();
+        recordTokenMetrics(telemetry, usage, {
+          provider: getLLMProviderId(usedLlm),
+          model: usedLlm.model,
+          agent_name: agentName
+        });
+        
+        // Track tokens for MCP tool steps (from usage)
+        if (usage) {
+          (r as any).__tokenCount = ((r as any).__tokenCount || 0) + (usage.total_tokens || usage.totalTokens || 0);
+          (r as any).__provider = getLLMProviderId(usedLlm);
+        }
+        
+        if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
+          // finish with final content
+          r.llmOutput = toolPlan?.content || r.llmOutput;
+          break;
+        }
+        
+        // Check if we can safely execute tools in parallel
+        const canParallelize = !disableParallelToolExecution && canSafelyParallelize(toolPlan.toolCalls);
+        let toolResultsAppend = "\n\n[Tool results]\n";
+        
+        if (canParallelize) {
+          // PARALLEL EXECUTION: Execute all tools simultaneously
+          telemetry?.recordMetric('tool.execution.parallel', 1, { count: toolPlan.toolCalls.length });
+          
+          const toolPromises = toolPlan.toolCalls.map(async (call) => {
+            const mapped = call;
+            let handle = mapped?.mcpHandle;
+            if (!handle) return null;
+            
+            // Apply agent-level auth
+            handle = applyAgentAuth(handle);
+            
+            // Validate args when schema known
+            try { 
+              validateWithSchema(
+                (availableTools.find(t => t.name === mapped.name) as any)?.parameters, 
+                mapped.arguments, 
+                `Tool ${mapped.name}`
+              ); 
+            } catch (e) { 
+              throw e; 
+            }
+            
+            const idx = mapped.name.indexOf('.');
+            const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
+            const mcpStart = Date.now();
+            
+            try {
+              const result = await withMCPAny(
+                handle, 
+                (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), 
+                telemetry, 
+                'call_tool'
+              );
+              const mcpMs = Date.now() - mcpStart;
+              
+              return {
+                name: mapped.name,
+                arguments: mapped.arguments,
+                endpoint: handle.url,
+                result,
+                ms: mcpMs
+              };
+            } catch (e) {
+              const provider = classifyProviderFromMcp(handle);
+              throw normalizeError(e, 'mcp-tool', { stepId: stepIndex, provider });
+            }
+          });
+          
+          const toolResults = await Promise.all(toolPromises);
+          
+          // Build results in original order
+          for (const toolCall of toolResults) {
+            if (!toolCall) continue;
+            aggregated.push(toolCall);
+            currentToolCallCount++;  // Increment counter
+            
+            // Update progress with same format as LLM steps
+            if (progress && process.stdout?.isTTY) {
+              const elapsed = (Date.now() - stepStart) / 1000;
+              const currentTokens = (r as any).__tokenCount || 0;
+              const throughput = currentTokens > 0 ? Math.round(currentTokens / Math.max(elapsed, 0.1)) : 0;
+              const provider = (r as any).__provider || '';
+              process.stdout.write(`\r   💭 ${currentTokens} tokens | ${throughput} tok/s | ${currentToolCallCount} tool call${currentToolCallCount !== 1 ? 's' : ''} | ${elapsed.toFixed(1)}s | ${provider}`);
+            }
+            
+            toolResultsAppend += `- ${toolCall.name} -> ${typeof toolCall.result === 'string' ? toolCall.result : JSON.stringify(toolCall.result)}\n`;
+            
+            // Call onToolCall callback if provided
+            if (onToolCall) {
+              try {
+                onToolCall(toolCall.name, toolCall.arguments, toolCall.result);
+              } catch (err) {
+                // Don't let callback errors break execution
+                console.error('onToolCall callback error:', err);
+              }
+            }
+          }
+        } else {
+          // SEQUENTIAL EXECUTION: Execute tools one by one (safe default)
+          telemetry?.recordMetric('tool.execution.sequential', 1, { count: toolPlan.toolCalls.length });
+          
+          for (const call of toolPlan.toolCalls) {
+            const mapped = call;
+            let handle = mapped?.mcpHandle;
+            if (!handle) continue;
+            
+            // Apply agent-level auth
+            handle = applyAgentAuth(handle);
+            
+            // Validate args when schema known
+            try { 
+              validateWithSchema(
+                (availableTools.find(t => t.name === mapped.name) as any)?.parameters, 
+                mapped.arguments, 
+                `Tool ${mapped.name}`
+              ); 
+            } catch (e) { 
+              throw e; 
+            }
+            
+            const idx = mapped.name.indexOf('.');
+            const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
+            const mcpStart = Date.now();
+            let result: any;
+            
+            try {
+              result = await withMCPAny(
+                handle, 
+                (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), 
+                telemetry, 
+                'call_tool'
+              );
+            } catch (e) {
+              const provider = classifyProviderFromMcp(handle);
+              throw normalizeError(e, 'mcp-tool', { stepId: stepIndex, provider });
+            }
+            
+            const mcpMs = Date.now() - mcpStart;
+            const toolCall: any = { 
+              name: mapped.name, 
+              arguments: mapped.arguments, 
+              endpoint: handle.url, 
+              result, 
+              ms: mcpMs 
+            };
+            aggregated.push(toolCall);
+            currentToolCallCount++;  // Increment counter
+            
+            // Update progress with same format as LLM steps
+            if (progress && process.stdout?.isTTY) {
+              const elapsed = (Date.now() - stepStart) / 1000;
+              const currentTokens = (r as any).__tokenCount || 0;
+              const throughput = currentTokens > 0 ? Math.round(currentTokens / Math.max(elapsed, 0.1)) : 0;
+              const provider = (r as any).__provider || '';
+              process.stdout.write(`\r   💭 ${currentTokens} tokens | ${throughput} tok/s | ${currentToolCallCount} tool call${currentToolCallCount !== 1 ? 's' : ''} | ${elapsed.toFixed(1)}s | ${provider}`);
+            }
+            
+            toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
+            
+            // Call onToolCall callback if provided
+            if (onToolCall) {
+              try {
+                onToolCall(mapped.name, mapped.arguments, result);
+              } catch (err) {
+                // Don't let callback errors break execution
+                console.error('onToolCall callback error:', err);
+              }
+            }
+          }
+        }
+        
+        if (aggregated.length) r.toolCalls = aggregated;
+        // Prepare next prompt with appended tool results
+        workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + toolResultsAppend;
+        // On next iteration, model can produce final answer or ask for more tools
+      }
+      // Ensure toolCalls is always set for automatic tool selection steps
+      if (!r.toolCalls) r.toolCalls = [];
+    }
+  }
+  // ============================================================================
+  // STEP TYPE 2: Automatic Agent Delegation (agents + prompt)
+  // Coordinator LLM selects and delegates to specialized agents
+  // ============================================================================
+  else if ("agents" in s && "prompt" in s) {
+    const usedLlm = (s as any).llm ?? defaultLlm;
+    if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+    const stepInstructions = (s as any).instructions ?? globalInstructions;
+    const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+    const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
+    const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
+    r.prompt = (s as any).prompt;
+    
+    const availableAgents = (s as any).agents as AgentBuilder[];
+    if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
+      r.llmOutput = "No agents available or agents missing name/description.";
+    } else {
+      const agentContext = buildAgentContext(availableAgents);
+      const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
+      let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
+      const agentCalls: Array<{ name: string; task: string; result: string }> = [];
+      let totalTokens = 0;
+      const modelsUsed = new Set<string>();
+      
+      for (let i = 0; i < maxIterations; i++) {
+        // Show coordinator thinking
+        if (progress) {
+          if (i === 0) {
+            process.stdout.write('\n🧠 Coordinator selecting agents...\n');
+            process.stdout.write("   ⏳ Waiting for LLM..");
+          } else {
+            process.stdout.write('🧠 Coordinator deciding next step...\n');
+            process.stdout.write("   ⏳ Waiting for LLM..");
+          }
+          progress.startLlmOperation();
+        }
+        
+        const llmStart = Date.now();
+        let coordinatorResponse: string;
+        let coordTokenCount = 0;
+        
+        try {
+          // Use streaming for coordinator when progress enabled
+          if (progress && typeof usedLlm.genStream === 'function') {
+            const tokens: string[] = [];
+            for await (const token of usedLlm.genStream(workingPrompt)) {
+              tokens.push(token);
+              coordTokenCount++;
+              progress.llmToken(coordTokenCount, getLLMProviderId(usedLlm), 0);  // Coordinator has 0 tool calls
+            }
+            coordinatorResponse = tokens.join('');
+          } else {
+            coordinatorResponse = await usedLlm.gen(workingPrompt);
+          }
+        } catch (e) {
+          const provider = classifyProviderFromLlm(usedLlm);
+          throw normalizeError(e, 'llm', { stepId: stepIndex, provider });
+        }
+        const coordDuration = Date.now() - llmStart;
+        llmTotalMs += coordDuration;
+        
+        const coordUsage = (usedLlm as any).getUsage?.();
+        recordTokenMetrics(telemetry, coordUsage, {
+          provider: getLLMProviderId(usedLlm),
+          model: usedLlm.model,
+          agent_name: agentName || 'coordinator'
+        });
+        
+        const decision = parseAgentDecision(coordinatorResponse);
+        
+        if (decision.type === 'done') {
+          totalTokens += coordTokenCount;
+          modelsUsed.add(getLLMProviderId(usedLlm));
+          if (progress) {
+          const coordTime = (Date.now() - llmStart) / 1000;
+          // Clear token line and coordinator status line, then print decision
+          process.stdout.write('\r\x1b[K');  // Clear token line
+          process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
+          if (i === 0) {
+            process.stdout.write('🧠 Coordinator: Final answer ready\n');
+          } else {
+            process.stdout.write('🧠 Coordinator: Final answer ready\n');
+          }
+          process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | 0 tool calls | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
+        }
+          r.llmOutput = decision.answer;
+          break;
+        } else if (decision.type === 'use_agent') {
+          totalTokens += coordTokenCount;
+          modelsUsed.add(getLLMProviderId(usedLlm));
+          if (progress) {
+          const coordTime = (Date.now() - llmStart) / 1000;
+          // Clear token line and coordinator status line, then print decision
+          process.stdout.write('\r\x1b[K');  // Clear token line
+          process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
+          if (i === 0) {
+            process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
+          } else {
+            process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
+          }
+          process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | 0 tool calls | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
+        }
+          const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
+          if (!selectedAgent) {
+            workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
+            continue;
+          }
+          
+          if (progress) progress.agentStart(decision.agentName, decision.task);
+          
+          const agentStart = Date.now();
+          let agentResult: StepResult[];
+          let agentTokenCount = 0;
+          
+          try {
+            // Pass onToken to agent for progress tracking AND token preview
+            const agentStep: any = { prompt: decision.task };
+            if (progress) {
+              agentStep.onToken = () => {
+                agentTokenCount++;
+                const toolCallsInAgent = agentResult?.reduce((sum, step) => sum + (step.toolCalls?.length || 0), 0) || 0;
+                progress.agentToken(agentTokenCount, decision.agentName, toolCallsInAgent);
+              };
+            }
+            // Mark delegated agent as sub-agent to suppress its progress banner
+            const delegatedAgent = selectedAgent.then(agentStep);
+            (delegatedAgent as any).__isSubAgent = true;
+            (delegatedAgent as any).__parentAgentName = agentName || 'coordinator';
+            
+            // Record sub-agent relationship
+            if (telemetry) {
+              telemetry.recordMetric('agent.subagent_call', 1, {
+                parent_agent_name: agentName || 'coordinator',
+                agent_name: decision.agentName
+              });
+            }
+            
+            agentResult = await delegatedAgent.run();
+          } catch (e) {
+            workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
+            continue;
+          }
+          const agentMs = Date.now() - agentStart;
+          
+          totalTokens += agentTokenCount;
+          modelsUsed.add(getLLMProviderId(usedLlm));
+          
+          const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
+          const agentToolCalls = agentResult.reduce((sum, step) => sum + (step.toolCalls?.length || 0), 0);
+          agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
+          
+            if (progress) progress.agentComplete(decision.agentName, agentTokenCount, agentMs, getLLMProviderId(usedLlm), agentToolCalls);
+          
+          workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
+        } else {
+          if (i === maxIterations - 1) {
+            r.llmOutput = decision.raw;
+          } else {
+            workingPrompt += `\n\nPlease use the USE or DONE directive.`;
+          }
+        }
+      }
+      
+      if (!r.llmOutput && agentCalls.length > 0) {
+        r.llmOutput = agentCalls[agentCalls.length - 1].result;
+      }
+      
+      if (agentCalls.length > 0) {
+        (r as any).agentCalls = agentCalls;
+        (r as any).__crewTotalTokens = totalTokens;
+        (r as any).__crewModels = Array.from(modelsUsed);
+        telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
+        for (const agentCall of agentCalls) {
+          telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
+        }
+      }
+    }
+  }
+  // ============================================================================
+  // STEP TYPE 3: LLM-Only Step (prompt without tools/agents)
+  // Simple LLM generation with optional streaming
+  // ============================================================================
+  else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
+    const usedLlm = (s as any).llm ?? defaultLlm;
+    if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+    const stepInstructions = (s as any).instructions ?? globalInstructions;
+    const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+    const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
+    const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
+    const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
+    r.prompt = (s as any).prompt;
+    const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
+    
+    // Handle different scenarios for onToken and progress
+    const stepOnToken = (s as any).onToken;
+    const shouldShowProgress = !stepOnToken && !capturedStreamOnToken && progress;
+    
+    if (shouldShowProgress) progress!.startLlmOperation();
+    const llmStart = Date.now();
+    try {
+      let tokenCount = 0;
+      const progressOnToken = shouldShowProgress ? () => {
+        tokenCount++;
+        progress!.llmToken(tokenCount, getLLMProviderId(usedLlm), 0);  // 0 tool calls for LLM-only steps
+      } : undefined;
+      
+      r.llmOutput = await executeLLMWithStreaming(
+        usedLlm,
+        finalPrompt,
+        stepOnToken,
+        capturedStreamOnToken,
+        { stepIndex, stepPrompt: (s as any).prompt },
+        progress,
+        progressOnToken
+      );
+      (r as any).__tokenCount = tokenCount;
+      (r as any).__provider = getLLMProviderId(usedLlm);
+      const llmCallDuration = Date.now() - llmStart;
+      telemetry?.endSpan(llmSpan);
+      telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: false });
+      telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: getLLMProviderId(usedLlm), model: usedLlm.model });
+    
+      const usage = (usedLlm as any).getUsage?.();
+      recordTokenMetrics(telemetry, usage, {
+        provider: getLLMProviderId(usedLlm),
+        model: usedLlm.model,
+        agent_name: agentName
+      });
+    } catch (e) {
+      telemetry?.endSpan(llmSpan, undefined, e);
+      telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: true });
+      telemetry?.recordMetric('error', 1, { type: 'llm', provider: getLLMProviderId(usedLlm) });
+      const provider = classifyProviderFromLlm(usedLlm);
+      throw normalizeError(e, 'llm', { stepId: stepIndex, provider });
+    }
+    llmTotalMs += Date.now() - llmStart;
+  }
+  // ============================================================================
+  // STEP TYPE 4: Explicit MCP Tool Call (mcp + tool)
+  // Direct tool invocation with optional LLM generation first
+  // ============================================================================
+  else if ("mcp" in s && "tool" in s) {
+    // Apply agent-level auth
+    const mcpHandle = applyAgentAuth((s as any).mcp);
+    
+    if ("prompt" in s) {
+      const usedLlm = (s as any).llm ?? defaultLlm;
+      if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
+      const stepInstructions = (s as any).instructions ?? globalInstructions;
+      const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
+      const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
+      const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
+      const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
+      r.prompt = (s as any).prompt;
+      const llmStart = Date.now();
+      r.llmOutput = await usedLlm.gen(finalPrompt);
+      llmTotalMs += Date.now() - llmStart;
+    }
+    // Validate against tool schema if discoverable
+    const schema = await getToolSchema(mcpHandle, (s as any).tool);
+    validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
+    const mcpStart = Date.now();
+    let res: any;
+    try {
+      res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }), telemetry, 'call_tool');
+    } catch (e) {
+      const provider = classifyProviderFromMcp(mcpHandle);
+      throw normalizeError(e, 'mcp-tool', { stepId: stepIndex, provider });
+    }
+    const mcpMs = Date.now() - mcpStart;
+    r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
+  }
+
+  r.llmMs = llmTotalMs;
+  r.durationMs = Date.now() - stepStart;
+  
+  // End step span
+  telemetry?.endSpan(stepSpan, r);
+  telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
+  
+  // Flush telemetry after each step for real-time visibility
+  await telemetry?.flush();
+  
+  safeExecuteHook((s as any).post, 'Post-step');
+  
+  return r;
+}
 
 /**
  * Create an AI agent that chains LLM reasoning with MCP tool calls.
  * 
  * @param opts - Optional configuration including LLM provider, instructions, timeout, retry policy, and observability
- * @returns AgentBuilder for chaining steps with .then(), run(), and stream()
+ * @returns AgentBuilder for chaining steps with .then() and run()
  * 
  * @example
  * // Simple agent
@@ -1066,11 +2267,15 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       return builder;
     },
     
-    async run(log?: (s: StepResult, stepIndex: number) => void): Promise<StepResult[]> {
+    async run(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): Promise<AgentResults> {
       if (isRunning) {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
       isRunning = true;
+      
+      // Handle both old signature (log callback) and new signature (StreamOptions)
+      const log = typeof optionsOrLog === 'function' ? optionsOrLog : optionsOrLog?.onStep;
+      const capturedStreamOnToken = typeof optionsOrLog === 'object' ? optionsOrLog?.onToken : undefined;
       
       const isSubAgent = (builder as any).__isSubAgent || false;
       const isExplicitSubAgent = (builder as any).__isExplicitSubAgent || false;
@@ -1104,107 +2309,12 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         for (const raw of planned) {
           if ((raw as any).__reset) { contextHistory = []; continue; }
           
-          // Handle advanced pattern steps
-          if ((raw as any).__parallel) {
-            const hooks = (raw as any).__hooks;
-            safeExecuteHook(hooks?.pre, 'Pre-parallel');
-            
-            const parallelResult = await executeParallel(
-              (raw as any).__parallel,
-              async (step: any) => {
-                const subAgent = agent(opts).then(step);
-                const results = await subAgent.run();
-                return results[0];
-              }
-            );
-            out.push(parallelResult);
-            contextHistory.push(parallelResult);
-            log?.(parallelResult, out.length - 1);
-            
-            safeExecuteHook(hooks?.post, 'Post-parallel');
-            continue;
-          }
-          
-          if ((raw as any).__branch) {
-            const { condition, branches } = (raw as any).__branch;
-            const hooks = (raw as any).__hooks;
-            safeExecuteHook(hooks?.pre, 'Pre-branch');
-            
-            const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
-            out.push(...branchResults);
-            contextHistory.push(...branchResults);
-            branchResults.forEach((r, i) => log?.(r, out.length - branchResults.length + i));
-            
-            safeExecuteHook(hooks?.post, 'Post-branch');
-            continue;
-          }
-          
-          if ((raw as any).__switch) {
-            const { selector, cases } = (raw as any).__switch;
-            const hooks = (raw as any).__hooks;
-            safeExecuteHook(hooks?.pre, 'Pre-switch');
-            
-            const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
-            out.push(...switchResults);
-            contextHistory.push(...switchResults);
-            switchResults.forEach((r, i) => log?.(r, out.length - switchResults.length + i));
-            
-            safeExecuteHook(hooks?.post, 'Post-switch');
-            continue;
-          }
-          
-          if ((raw as any).__while) {
-            const { condition, body, opts: whileOpts } = (raw as any).__while;
-            safeExecuteHook(whileOpts?.pre, 'Pre-while');
-            
-            const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
-            out.push(...whileResults);
-            contextHistory.push(...whileResults);
-            whileResults.forEach((r, i) => log?.(r, out.length - whileResults.length + i));
-            
-            safeExecuteHook(whileOpts?.post, 'Post-while');
-            continue;
-          }
-          
-          if ((raw as any).__forEach) {
-            const { items, body } = (raw as any).__forEach;
-            const hooks = (raw as any).__hooks;
-            safeExecuteHook(hooks?.pre, 'Pre-forEach');
-            
-            const forEachResults = await executeForEach(items, body, () => agent(opts));
-            out.push(...forEachResults);
-            contextHistory.push(...forEachResults);
-            forEachResults.forEach((r, i) => log?.(r, out.length - forEachResults.length + i));
-            
-            safeExecuteHook(hooks?.post, 'Post-forEach');
-            continue;
-          }
-          
-          if ((raw as any).__retryUntil) {
-            const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
-            safeExecuteHook(retryOpts?.pre, 'Pre-retryUntil');
-            
-            const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
-            out.push(...retryResults);
-            contextHistory.push(...retryResults);
-            retryResults.forEach((r, i) => log?.(r, out.length - retryResults.length + i));
-            
-            safeExecuteHook(retryOpts?.post, 'Post-retryUntil');
-            continue;
-          }
-          
-          if ((raw as any).__runAgent) {
-            const { subAgent } = (raw as any).__runAgent;
-            const hooks = (raw as any).__hooks;
-            safeExecuteHook(hooks?.pre, 'Pre-runAgent');
-            
-            // Pass parent's context to subagent
-            const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
-            out.push(...subResults);
-            contextHistory.push(...subResults);
-            subResults.forEach((r, i) => log?.(r, out.length - subResults.length + i));
-            
-            safeExecuteHook(hooks?.post, 'Post-runAgent');
+          // Handle advanced pattern steps using shared function
+          const patternResult = await executePatternStep(raw, out, contextHistory, opts, planned);
+          if (patternResult.wasPattern) {
+            patternResult.results.forEach((r, i) => {
+              log?.(r, out.length - patternResult.results.length + i);
+            });
             continue;
           }
           
@@ -1217,426 +2327,37 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           if (useDelay && useBackoff) throw new Error('retry: specify either delay or backoff, not both');
   
           const doStep = async (): Promise<StepResult> => {
-            safeExecuteHook((s as any).pre, 'Pre-step');
-            
-            // Determine step type for telemetry
-            let stepType = 'unknown';
-            if ("agents" in s) stepType = 'agent_crew';
-            else if ("mcps" in s) stepType = 'mcp_auto';
-            else if ("mcp" in s) stepType = 'mcp_explicit';
-            else if ("prompt" in s) stepType = 'llm';
-            
-            // Start step span
-            const stepPrompt = (s as any).prompt;
-            const stepName = (s as any).name;
-            const stepLlm = (s as any).llm || defaultLlm;
-            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType, stepPrompt, stepName, stepLlm) || null;
-            
-            const r: StepResult = {};
-            const stepStart = Date.now();
-            if (progress) progress.stepStart(out.length, (s as any).prompt);
-            let llmTotalMs = 0;
-            
-            // Automatic tool selection with iterative tool calls
-            if ("mcps" in s && "prompt" in s) {
-              const usedLlm = (s as any).llm ?? defaultLlm;
-              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-              const stepInstructions = (s as any).instructions ?? globalInstructions;
-              const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-              const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-              r.prompt = (s as any).prompt;
-              // Apply agent-level auth to all MCP handles
-              const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
-              const availableTools = await discoverTools(mcpsWithAuth);
-              if (availableTools.length === 0) {
-                r.llmOutput = "No tools available for this request.";
-              } else {
-                const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
-                const maxIterations = (s as any).maxToolIterations ?? defaultMaxToolIterations;
-                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
-                for (let i = 0; i < maxIterations; i++) {
-                  const llmStart = Date.now();
-                  let toolPlan: LLMToolResult;
-                  try {
-                    toolPlan = await usedLlm.genWithTools(workingPrompt, availableTools);
-                  } catch (e) {
-                    const provider = classifyProviderFromLlm(usedLlm);
-                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
-                  }
-                  const llmCallDuration = Date.now() - llmStart;
-                  llmTotalMs += llmCallDuration;
-                  
-                  telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: false });
-                  telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: getLLMProviderId(usedLlm), model: usedLlm.model });
-                  
-                  const usage = (usedLlm as any).getUsage?.();
-                  recordTokenMetrics(telemetry, usage, {
-                    provider: getLLMProviderId(usedLlm),
-                    model: usedLlm.model,
-                    agent_name: agentName
-                  });
-                  
-                  if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
-                    // finish with final content
-                    r.llmOutput = toolPlan?.content || r.llmOutput;
-                    break;
-                  }
-                  // Execute tools sequentially and append results to prompt for the next iteration
-                  let toolResultsAppend = "\n\n[Tool results]\n";
-                  for (const call of toolPlan.toolCalls) {
-                    const mapped = call;
-                    let handle = mapped?.mcpHandle;
-                    if (!handle) continue;
-                    // Apply agent-level auth
-                    handle = applyAgentAuth(handle);
-                    // Validate args when schema known
-                    try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
-                    const idx = mapped.name.indexOf('.');
-                    const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
-                    const mcpStart = Date.now();
-                    let result: any;
-                    try {
-                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), telemetry, 'call_tool');
-                    } catch (e) {
-                      const provider = classifyProviderFromMcp(handle);
-                      throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
-                    }
-                    const mcpMs = Date.now() - mcpStart;
-                    const toolCall: any = { name: mapped.name, arguments: mapped.arguments, endpoint: handle.url, result, ms: mcpMs };
-                    aggregated.push(toolCall);
-                    toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
-                  }
-                  if (aggregated.length) r.toolCalls = aggregated;
-                  // Prepare next prompt with appended tool results
-                  workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + toolResultsAppend;
-                  // On next iteration, model can produce final answer or ask for more tools
-                }
-                // Ensure toolCalls is always set for automatic tool selection steps
-                if (!r.toolCalls) r.toolCalls = [];
-              }
-            }
-            // ============================================================================
-            // STEP TYPE 2: Automatic Agent Delegation (agents + prompt)
-            // Coordinator LLM selects and delegates to specialized agents
-            // ============================================================================
-            else if ("agents" in s && "prompt" in s) {
-              const usedLlm = (s as any).llm ?? defaultLlm;
-              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-              const stepInstructions = (s as any).instructions ?? globalInstructions;
-              const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-              const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-              r.prompt = (s as any).prompt;
-              
-              const availableAgents = (s as any).agents as AgentBuilder[];
-              if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
-                r.llmOutput = "No agents available or agents missing name/description.";
-              } else {
-                const agentContext = buildAgentContext(availableAgents);
-                const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
-                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
-                const agentCalls: Array<{ name: string; task: string; result: string }> = [];
-                let totalTokens = 0;
-                const modelsUsed = new Set<string>();
-                
-                for (let i = 0; i < maxIterations; i++) {
-                  // Show coordinator thinking
-                  if (progress) {
-                    if (i === 0) {
-                      process.stdout.write('\n🧠 Coordinator selecting agents...\n');
-                      process.stdout.write("   ⏳ Waiting for LLM..");
-                    } else {
-                      process.stdout.write('🧠 Coordinator deciding next step...\n');
-                      process.stdout.write("   ⏳ Waiting for LLM..");
-                    }
-                    progress.startLlmOperation();
-                  }
-                  
-                  const llmStart = Date.now();
-                  let coordinatorResponse: string;
-                  let coordTokenCount = 0;
-                  
-                  try {
-                    // Use streaming for coordinator when progress enabled
-                    if (progress && typeof usedLlm.genStream === 'function') {
-                      const tokens: string[] = [];
-                      for await (const token of usedLlm.genStream(workingPrompt)) {
-                        tokens.push(token);
-                        coordTokenCount++;
-                        progress.llmToken(coordTokenCount, getLLMProviderId(usedLlm));
-                      }
-                      coordinatorResponse = tokens.join('');
-                    } else {
-                      coordinatorResponse = await usedLlm.gen(workingPrompt);
-                    }
-                  } catch (e) {
-                    const provider = classifyProviderFromLlm(usedLlm);
-                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
-                  }
-                  const coordDuration = Date.now() - llmStart;
-                  llmTotalMs += coordDuration;
-                  
-                  const coordUsage = (usedLlm as any).getUsage?.();
-                  recordTokenMetrics(telemetry, coordUsage, {
-                    provider: getLLMProviderId(usedLlm),
-                    model: usedLlm.model,
-                    agent_name: agentName || 'coordinator'
-                  });
-                  
-                  const decision = parseAgentDecision(coordinatorResponse);
-                  
-                  if (decision.type === 'done') {
-                    totalTokens += coordTokenCount;
-                    modelsUsed.add(getLLMProviderId(usedLlm));
-                    if (progress) {
-                    const coordTime = (Date.now() - llmStart) / 1000;
-                    // Clear token line and coordinator status line, then print decision
-                    process.stdout.write('\r\x1b[K');  // Clear token line
-                    process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
-                    if (i === 0) {
-                      process.stdout.write('🧠 Coordinator: Final answer ready\n');
-                    } else {
-                      process.stdout.write('🧠 Coordinator: Final answer ready\n');
-                    }
-                    process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
-                  }
-                    r.llmOutput = decision.answer;
-                    break;
-                  } else if (decision.type === 'use_agent') {
-                    totalTokens += coordTokenCount;
-                    modelsUsed.add(getLLMProviderId(usedLlm));
-                    if (progress) {
-                    const coordTime = (Date.now() - llmStart) / 1000;
-                    // Clear token line and coordinator status line, then print decision
-                    process.stdout.write('\r\x1b[K');  // Clear token line
-                    process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
-                    if (i === 0) {
-                      process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
-                    } else {
-                      process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
-                    }
-                    process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
-                  }
-                    const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
-                    if (!selectedAgent) {
-                      workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
-                      continue;
-                    }
-                    
-                    if (progress) progress.agentStart(decision.agentName, decision.task);
-                    
-                    const agentStart = Date.now();
-                    let agentResult: StepResult[];
-                    let agentTokenCount = 0;
-                    
-                    try {
-                      // Pass onToken to agent for progress tracking
-                      const agentStep: any = { prompt: decision.task };
-                      if (progress) {
-                        agentStep.onToken = () => {
-                          agentTokenCount++;
-                          progress.agentToken(agentTokenCount, decision.agentName);
-                        };
-                      }
-                      // Mark delegated agent as sub-agent to suppress its progress banner
-                      const delegatedAgent = selectedAgent.then(agentStep);
-                      (delegatedAgent as any).__isSubAgent = true;
-                      (delegatedAgent as any).__parentAgentName = agentName || 'coordinator';
-                      
-                      // Record sub-agent relationship
-                      if (telemetry) {
-                        telemetry.recordMetric('agent.subagent_call', 1, {
-                          parent_agent_name: agentName || 'coordinator',
-                          agent_name: decision.agentName
-                        });
-                      }
-                      
-                      agentResult = await delegatedAgent.run();
-                    } catch (e) {
-                      workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
-                      continue;
-                    }
-                    const agentMs = Date.now() - agentStart;
-                    
-                    totalTokens += agentTokenCount;
-                    modelsUsed.add(getLLMProviderId(usedLlm));
-                    
-                    const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
-                    agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
-                    
-                      if (progress) progress.agentComplete(decision.agentName, agentTokenCount, agentMs, getLLMProviderId(usedLlm));
-                    
-                    workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
-                  } else {
-                    if (i === maxIterations - 1) {
-                      r.llmOutput = decision.raw;
-                    } else {
-                      workingPrompt += `\n\nPlease use the USE or DONE directive.`;
-                    }
-                  }
-                }
-                
-                if (!r.llmOutput && agentCalls.length > 0) {
-                  r.llmOutput = agentCalls[agentCalls.length - 1].result;
-                }
-                
-                if (agentCalls.length > 0) {
-                  (r as any).agentCalls = agentCalls;
-                  (r as any).__crewTotalTokens = totalTokens;
-                  (r as any).__crewModels = Array.from(modelsUsed);
-                  telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
-                  for (const agentCall of agentCalls) {
-                    telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
-                  }
-                }
-              }
-            }
-            // ============================================================================
-            // STEP TYPE 3: LLM-Only Step (prompt without tools/agents)
-            // Simple LLM generation with optional streaming
-            // ============================================================================
-            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
-              const usedLlm = (s as any).llm ?? defaultLlm;
-              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-              const stepInstructions = (s as any).instructions ?? globalInstructions;
-              const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-              const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-              const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
-              r.prompt = (s as any).prompt;
-              const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
-              if (progress) progress.startLlmOperation();
-              const llmStart = Date.now();
-              try {
-                let tokenCount = 0;
-                const customOnToken = (s as any).onToken;
-                const progressOnToken = !customOnToken && progress ? () => {
-                  tokenCount++;
-                      progress.llmToken(tokenCount, getLLMProviderId(usedLlm));
-                } : undefined;
-                
-                r.llmOutput = await executeLLMWithStreaming(
-                  usedLlm,
-                  finalPrompt,
-                  customOnToken || progressOnToken,
-                  undefined,
-                  { stepIndex: out.length, stepPrompt: (s as any).prompt }
-                );
-                (r as any).__tokenCount = tokenCount;
-                (r as any).__provider = getLLMProviderId(usedLlm);
-                    const llmCallDuration = Date.now() - llmStart;
-                    telemetry?.endSpan(llmSpan);
-                    telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: false });
-                    telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: getLLMProviderId(usedLlm), model: usedLlm.model });
-                
-                const usage = (usedLlm as any).getUsage?.();
-                recordTokenMetrics(telemetry, usage, {
-                  provider: getLLMProviderId(usedLlm),
-                  model: usedLlm.model,
-                  agent_name: agentName
-                });
-              } catch (e) {
-                telemetry?.endSpan(llmSpan, undefined, e);
-                telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: true });
-                telemetry?.recordMetric('error', 1, { type: 'llm', provider: getLLMProviderId(usedLlm) });
-                const provider = classifyProviderFromLlm(usedLlm);
-                throw normalizeError(e, 'llm', { stepId: out.length, provider });
-              }
-              llmTotalMs += Date.now() - llmStart;
-            }
-            // ============================================================================
-            // STEP TYPE 4: Explicit MCP Tool Call (mcp + tool)
-            // Direct tool invocation with optional LLM generation first
-            // ============================================================================
-            else if ("mcp" in s && "tool" in s) {
-              // Apply agent-level auth
-              const mcpHandle = applyAgentAuth((s as any).mcp);
-              
-              if ("prompt" in s) {
-                const usedLlm = (s as any).llm ?? defaultLlm;
-                if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-                const stepInstructions = (s as any).instructions ?? globalInstructions;
-                const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-                const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-                const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-                const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
-                r.prompt = (s as any).prompt;
-                const llmStart = Date.now();
-                r.llmOutput = await usedLlm.gen(finalPrompt);
-                llmTotalMs += Date.now() - llmStart;
-              }
-              // Validate against tool schema if discoverable
-              const schema = await getToolSchema(mcpHandle, (s as any).tool);
-              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
-              const mcpStart = Date.now();
-              let res: any;
-              try {
-                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }), telemetry, 'call_tool');
-              } catch (e) {
-                const provider = classifyProviderFromMcp(mcpHandle);
-                throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
-              }
-              const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
-            }
-  
-            r.llmMs = llmTotalMs;
-            r.durationMs = Date.now() - stepStart;
-            
-            // End step span
-            telemetry?.endSpan(stepSpan, r);
-            telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
-            
-            // Flush telemetry after each step for real-time visibility
-            await telemetry?.flush();
-            
-            safeExecuteHook((s as any).post, 'Post-step');
-            
-            return r;
+            return executeStepCore({
+              step: s,
+              stepIndex: out.length,
+              defaultLlm,
+              globalInstructions,
+              contextHistory,
+              contextMaxToolResults,
+              contextMaxChars,
+              defaultMaxToolIterations,
+              agentName,
+              applyAgentAuth,
+              telemetry,
+              agentSpan,
+              progress,
+              capturedStreamOnToken,
+              onToolCall: (s as any).onToolCall,
+              disableParallelToolExecution: opts?.disableParallelToolExecution
+            });
           };
-  
-          // Retry loop with per-attempt timeout
-          let lastError: any;
-          let result: StepResult | undefined;
-          for (let attempt = 1; attempt <= attemptsTotal; attempt++) {
-          try {
-            const r = await withTimeout(doStep(), stepTimeoutMs, 'Step');
-            result = r;
-            break;
-          } catch (e) {
-            // classify
-            const meta = { stepId: out.length } as VolcanoErrorMeta;
-            let vErr: VolcanoError | undefined;
-            if (e instanceof Error && /timed out/i.test(e.message)) {
-              vErr = normalizeError(e, 'timeout', meta);
-            } else if (e instanceof ValidationError || /failed schema validation/i.test(String((e as any)?.message || ''))) {
-              vErr = normalizeError(e, 'validation', meta);
-            } else {
-              vErr = e as VolcanoError;
-            }
-            lastError = vErr || e;
-            if (lastError instanceof VolcanoError && lastError.meta?.retryable === false) {
-              throw lastError; // abort retries immediately for non-retryable errors
-            }
-              if (attempt >= attemptsTotal) break;
-              // schedule wait according to policy
-              if (typeof useBackoff === 'number' && useBackoff > 0) {
-                const waitMs = CONSTANTS.DEFAULT_RETRY_BACKOFF_BASE_MS * Math.pow(useBackoff, attempt - 1);
-                await sleep(waitMs);
-              } else {
-                const waitMs = Math.max(0, (useDelay ?? 0) * 1000);
-                if (waitMs > 0) await sleep(waitMs);
-              }
-            }
-          }
-        if (!result) throw (lastError instanceof VolcanoError ? lastError : new RetryExhaustedError('Retry attempts exhausted', { stepId: out.length }, { cause: lastError }));
-  
-          const r = result;
+
+          const r = await executeWithRetry(doStep, out.length, {
+            attemptsTotal,
+            stepTimeoutMs,
+            useDelay,
+            useBackoff
+          });
           if (progress) {
             const crewTokens = (r as any).__crewTotalTokens;
             const crewModels = (r as any).__crewModels;
-            progress.stepComplete(r.durationMs || 0, (r as any).__tokenCount, (r as any).__provider, crewTokens, crewModels);
+            const toolCallCount = r.toolCalls?.length || (r.mcp ? 1 : 0);
+            progress.stepComplete(r.durationMs || 0, (r as any).__tokenCount, (r as any).__provider, crewTokens, crewModels, toolCallCount);
           }
           log?.(r, out.length);
           out.push(r);
@@ -1662,7 +2383,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           telemetry?.recordMetric('agent.duration', totalDuration, { steps: out.length });
           telemetry?.recordMetric('workflow.steps', out.length, { agent_name: agentName || 'anonymous' });
         }
-        return out;
+        return enhanceResults(out);
       } catch (error) {
         // End agent span with error
         telemetry?.endSpan(agentSpan, undefined, error);
@@ -1683,612 +2404,8 @@ export function agent(opts?: AgentOptions): AgentBuilder {
             if (crewModels) crewModels.forEach((m: string) => modelsUsed.add(m));
           });
           const totalDuration = out.reduce((acc, s) => acc + (s.durationMs || 0), 0);
-          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed));
-        }
-        isRunning = false;
-      }
-    },
-    async *stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown> {
-      if (isRunning) {
-        throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
-      }
-      isRunning = true;
-      
-      const isSubAgent = (builder as any).__isSubAgent || false;
-      const isExplicitSubAgent = (builder as any).__isExplicitSubAgent || false;
-      const parentStepIndex = (builder as any).__parentStepIndex;
-      const parentTotalSteps = (builder as any).__parentTotalSteps;
-      const progress = showProgress ? createProgressHandler(steps.length, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
-      
-      // Parse options for backward compatibility
-      let streamOnToken: ((token: string, meta: TokenMetadata) => void) | undefined;
-      let log: ((s: StepResult, stepIndex: number) => void) | undefined;
-      
-      if (typeof optionsOrLog === 'function') {
-        // Old API: stream(callback)
-        log = optionsOrLog;
-      } else if (optionsOrLog) {
-        // New API: stream({ onToken, onStep })
-        streamOnToken = optionsOrLog.onToken;
-        log = optionsOrLog.onStep;
-      }
-      
-      // Start agent span
-      const agentSpan = telemetry?.startAgentSpan(steps.length, agentName) || null;
-      const out: StepResult[] = [];
-      
-      // Inherit parent context if this is a subagent
-      if (!inheritedParentContext && (builder as any).__parentContext) {
-        contextHistory = [...(builder as any).__parentContext];
-        inheritedParentContext = true;
-      }
-      
-      // Capture streamOnToken from stream() context for use in doStep
-      const capturedStreamOnToken = streamOnToken;
-      
-      try {
-        // snapshot steps array to make run isolated from later .then() calls
-        const planned = [...steps];
-        for (const raw of planned) {
-          if ((raw as any).__reset) { contextHistory = []; continue; }
-          
-          // Handle advanced pattern steps (same as run() with hooks)
-          if ((raw as any).__parallel) {
-            const hooks = (raw as any).__hooks;
-            try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for parallel:', e); }
-            
-            const parallelResult = await executeParallel(
-              (raw as any).__parallel,
-              async (step: any) => {
-                const subAgent = agent(opts).then(step);
-                const results = await subAgent.run();
-                return results[0];
-              }
-            );
-            out.push(parallelResult);
-            contextHistory.push(parallelResult);
-            log?.(parallelResult, out.length - 1);
-            yield parallelResult;
-            
-            try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for parallel:', e); }
-            continue;
-          }
-          
-          if ((raw as any).__branch) {
-            const { condition, branches } = (raw as any).__branch;
-            const hooks = (raw as any).__hooks;
-            try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for branch:', e); }
-            
-            const branchResults = await executeBranch(condition, branches, out, () => agent(opts));
-            out.push(...branchResults);
-            contextHistory.push(...branchResults);
-            for (const r of branchResults) {
-              log?.(r, out.length - branchResults.length + branchResults.indexOf(r));
-              yield r;
-            }
-            
-            try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for branch:', e); }
-            continue;
-          }
-          
-          if ((raw as any).__switch) {
-            const { selector, cases } = (raw as any).__switch;
-            const hooks = (raw as any).__hooks;
-            try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for switch:', e); }
-            
-            const switchResults = await executeSwitch(selector, cases, out, () => agent(opts));
-            out.push(...switchResults);
-            contextHistory.push(...switchResults);
-            for (const r of switchResults) {
-              log?.(r, out.length - switchResults.length + switchResults.indexOf(r));
-              yield r;
-            }
-            
-            try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for switch:', e); }
-            continue;
-          }
-          
-          if ((raw as any).__while) {
-            const { condition, body, opts: whileOpts } = (raw as any).__while;
-            try { whileOpts?.pre?.(); } catch (e) { console.warn('Pre-hook failed for while:', e); }
-            
-            const whileResults = await executeWhile(condition, body, out, () => agent(opts), whileOpts);
-            out.push(...whileResults);
-            contextHistory.push(...whileResults);
-            for (const r of whileResults) {
-              log?.(r, out.length - whileResults.length + whileResults.indexOf(r));
-              yield r;
-            }
-            
-            try { whileOpts?.post?.(); } catch (e) { console.warn('Post-hook failed for while:', e); }
-            continue;
-          }
-          
-          if ((raw as any).__forEach) {
-            const { items, body } = (raw as any).__forEach;
-            const hooks = (raw as any).__hooks;
-            try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for forEach:', e); }
-            
-            const forEachResults = await executeForEach(items, body, () => agent(opts));
-            out.push(...forEachResults);
-            contextHistory.push(...forEachResults);
-            for (const r of forEachResults) {
-              log?.(r, out.length - forEachResults.length + forEachResults.indexOf(r));
-              yield r;
-            }
-            
-            try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for forEach:', e); }
-            continue;
-          }
-          
-          if ((raw as any).__retryUntil) {
-            const { body, successCondition, opts: retryOpts } = (raw as any).__retryUntil;
-            try { retryOpts?.pre?.(); } catch (e) { console.warn('Pre-hook failed for retryUntil:', e); }
-            
-            const retryResults = await executeRetryUntil(body, successCondition, () => agent(opts), retryOpts);
-            out.push(...retryResults);
-            contextHistory.push(...retryResults);
-            for (const r of retryResults) {
-              log?.(r, out.length - retryResults.length + retryResults.indexOf(r));
-              yield r;
-            }
-            
-            try { retryOpts?.post?.(); } catch (e) { console.warn('Post-hook failed for retryUntil:', e); }
-            continue;
-          }
-          
-          if ((raw as any).__runAgent) {
-            const { subAgent } = (raw as any).__runAgent;
-            const hooks = (raw as any).__hooks;
-            try { hooks?.pre?.(); } catch (e) { console.warn('Pre-hook failed for runAgent:', e); }
-            
-            // Pass parent's context to subagent
-            const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
-            out.push(...subResults);
-            contextHistory.push(...subResults);
-            for (const r of subResults) {
-              log?.(r, out.length - subResults.length + subResults.indexOf(r));
-              yield r;
-            }
-            
-            try { hooks?.post?.(); } catch (e) { console.warn('Post-hook failed for runAgent:', e); }
-            continue;
-          }
-          
-          const s = typeof raw === 'function' ? (raw as StepFactory)(out) : (raw as Step);
-          const stepTimeoutMs = ((s as any).timeout ?? (defaultTimeoutMs / 1000)) * 1000;
-          const retryCfg: RetryConfig = (s as any).retry ?? defaultRetry;
-          const attemptsTotal = retryCfg.retries ?? defaultRetry.retries ?? CONSTANTS.DEFAULT_RETRY_ATTEMPTS;
-          const useDelay = retryCfg.delay ?? defaultRetry.delay ?? CONSTANTS.DEFAULT_RETRY_DELAY_SECONDS;
-          const useBackoff = retryCfg.backoff;
-          if (useDelay && useBackoff) throw new Error('retry: specify either delay or backoff, not both');
-  
-          const doStep = async (): Promise<StepResult> => {
-            safeExecuteHook((s as any).pre, 'Pre-step');
-            
-            // Determine step type for telemetry
-            let stepType = 'unknown';
-            if ("agents" in s) stepType = 'agent_crew';
-            else if ("mcps" in s) stepType = 'mcp_auto';
-            else if ("mcp" in s) stepType = 'mcp_explicit';
-            else if ("prompt" in s) stepType = 'llm';
-            
-            // Start step span
-            const stepPrompt = (s as any).prompt;
-            const stepName = (s as any).name;
-            const stepLlm = (s as any).llm || defaultLlm;
-            const stepSpan = telemetry?.startStepSpan(agentSpan, out.length, stepType, stepPrompt, stepName, stepLlm) || null;
-            
-            const r: StepResult = {};
-            const stepStart = Date.now();
-            let llmTotalMs = 0;
-            
-            // ============================================================================
-            // STEP TYPE 1: Automatic Tool Selection (mcps + prompt)
-            // Iteratively calls LLM with tools until it returns a final answer
-            // ============================================================================
-            if ("mcps" in s && "prompt" in s) {
-              const usedLlm = (s as any).llm ?? defaultLlm;
-              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-              const stepInstructions = (s as any).instructions ?? globalInstructions;
-              const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-              const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-              r.prompt = (s as any).prompt;
-              // Apply agent-level auth to all MCP handles
-              const mcpsWithAuth = ((s as any).mcps as MCPHandle[]).map(applyAgentAuth);
-              const availableTools = await discoverTools(mcpsWithAuth);
-              if (availableTools.length === 0) {
-                r.llmOutput = "No tools available for this request.";
-              } else {
-                const aggregated: Array<{ name: string; endpoint: string; result: any; ms?: number }> = [];
-                const maxIterations = (s as any).maxToolIterations ?? defaultMaxToolIterations;
-                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
-                for (let i = 0; i < maxIterations; i++) {
-                  const llmStart = Date.now();
-                  let toolPlan: LLMToolResult;
-                  try {
-                    toolPlan = await usedLlm.genWithTools(workingPrompt, availableTools);
-                  } catch (e) {
-                    const provider = classifyProviderFromLlm(usedLlm);
-                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
-                  }
-                  const llmCallDuration = Date.now() - llmStart;
-                  llmTotalMs += llmCallDuration;
-                  
-                  telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: false });
-                  telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: getLLMProviderId(usedLlm), model: usedLlm.model });
-                  
-                  const usage = (usedLlm as any).getUsage?.();
-                  recordTokenMetrics(telemetry, usage, {
-                    provider: getLLMProviderId(usedLlm),
-                    model: usedLlm.model,
-                    agent_name: agentName
-                  });
-                  
-                  if (!toolPlan || !Array.isArray(toolPlan.toolCalls) || toolPlan.toolCalls.length === 0) {
-                    // finish with final content
-                    r.llmOutput = toolPlan?.content || r.llmOutput;
-                    break;
-                  }
-                  // Execute tools sequentially and append results to prompt for the next iteration
-                  let toolResultsAppend = "\n\n[Tool results]\n";
-                  for (const call of toolPlan.toolCalls) {
-                    const mapped = call;
-                    let handle = mapped?.mcpHandle;
-                    if (!handle) continue;
-                    // Apply agent-level auth
-                    handle = applyAgentAuth(handle);
-                    // Validate args when schema known
-                    try { validateWithSchema((availableTools.find(t => t.name === mapped.name) as any)?.parameters, mapped.arguments, `Tool ${mapped.name}`); } catch (e) { throw e; }
-                    const idx = mapped.name.indexOf('.');
-                    const actualToolName = idx >= 0 ? mapped.name.slice(idx + 1) : mapped.name;
-                    const mcpStart = Date.now();
-                    let result: any;
-                    try {
-                      result = await withMCP(handle, (c) => c.callTool({ name: actualToolName, arguments: mapped.arguments || {} }), telemetry, 'call_tool');
-                    } catch (e) {
-                      const provider = classifyProviderFromMcp(handle);
-                      throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
-                    }
-                    const mcpMs = Date.now() - mcpStart;
-                    const toolCall: any = { name: mapped.name, arguments: mapped.arguments, endpoint: handle.url, result, ms: mcpMs };
-                    aggregated.push(toolCall);
-                    toolResultsAppend += `- ${mapped.name} -> ${typeof result === 'string' ? result : JSON.stringify(result)}\n`;
-                  }
-                  if (aggregated.length) r.toolCalls = aggregated;
-                  // Prepare next prompt with appended tool results
-                  workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + toolResultsAppend;
-                  // On next iteration, model can produce final answer or ask for more tools
-                }
-                // Ensure toolCalls is always set for automatic tool selection steps
-                if (!r.toolCalls) r.toolCalls = [];
-              }
-            }
-            // ============================================================================
-            // STEP TYPE 2: Automatic Agent Delegation (agents + prompt)
-            // Coordinator LLM selects and delegates to specialized agents
-            // ============================================================================
-            else if ("agents" in s && "prompt" in s) {
-              const usedLlm = (s as any).llm ?? defaultLlm;
-              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-              const stepInstructions = (s as any).instructions ?? globalInstructions;
-              const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-              const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-              r.prompt = (s as any).prompt;
-              
-              const availableAgents = (s as any).agents as AgentBuilder[];
-              if (availableAgents.length === 0 || !availableAgents.some(a => a.name && a.description)) {
-                r.llmOutput = "No agents available or agents missing name/description.";
-              } else {
-                const agentContext = buildAgentContext(availableAgents);
-                const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
-                let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
-                const agentCalls: Array<{ name: string; task: string; result: string }> = [];
-                let totalTokens = 0;
-                const modelsUsed = new Set<string>();
-                
-                for (let i = 0; i < maxIterations; i++) {
-                  // Show coordinator thinking
-                  if (progress) {
-                    if (i === 0) {
-                      process.stdout.write('\n🧠 Coordinator selecting agents...\n');
-                      process.stdout.write("   ⏳ Waiting for LLM..");
-                    } else {
-                      process.stdout.write('🧠 Coordinator deciding next step...\n');
-                      process.stdout.write("   ⏳ Waiting for LLM..");
-                    }
-                    progress.startLlmOperation();
-                  }
-                  
-                  const llmStart = Date.now();
-                  let coordinatorResponse: string;
-                  let coordTokenCount = 0;
-                  
-                  try {
-                    // Use streaming for coordinator when progress enabled
-                    if (progress && typeof usedLlm.genStream === 'function') {
-                      const tokens: string[] = [];
-                      for await (const token of usedLlm.genStream(workingPrompt)) {
-                        tokens.push(token);
-                        coordTokenCount++;
-                        progress.llmToken(coordTokenCount, getLLMProviderId(usedLlm));
-                      }
-                      coordinatorResponse = tokens.join('');
-                    } else {
-                      coordinatorResponse = await usedLlm.gen(workingPrompt);
-                    }
-                  } catch (e) {
-                    const provider = classifyProviderFromLlm(usedLlm);
-                    throw normalizeError(e, 'llm', { stepId: out.length, provider });
-                  }
-                  const coordDuration = Date.now() - llmStart;
-                  llmTotalMs += coordDuration;
-                  
-                  const coordUsage = (usedLlm as any).getUsage?.();
-                  recordTokenMetrics(telemetry, coordUsage, {
-                    provider: getLLMProviderId(usedLlm),
-                    model: usedLlm.model,
-                    agent_name: agentName || 'coordinator'
-                  });
-                  
-                  const decision = parseAgentDecision(coordinatorResponse);
-                  
-                  if (decision.type === 'done') {
-                    totalTokens += coordTokenCount;
-                    modelsUsed.add(getLLMProviderId(usedLlm));
-                    if (progress) {
-                    const coordTime = (Date.now() - llmStart) / 1000;
-                    // Clear token line and coordinator status line, then print decision
-                    process.stdout.write('\r\x1b[K');  // Clear token line
-                    process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
-                    if (i === 0) {
-                      process.stdout.write('🧠 Coordinator: Final answer ready\n');
-                    } else {
-                      process.stdout.write('🧠 Coordinator: Final answer ready\n');
-                    }
-                    process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
-                  }
-                    r.llmOutput = decision.answer;
-                    break;
-                  } else if (decision.type === 'use_agent') {
-                    totalTokens += coordTokenCount;
-                    modelsUsed.add(getLLMProviderId(usedLlm));
-                    if (progress) {
-                    const coordTime = (Date.now() - llmStart) / 1000;
-                    // Clear token line and coordinator status line, then print decision
-                    process.stdout.write('\r\x1b[K');  // Clear token line
-                    process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
-                    if (i === 0) {
-                      process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
-                    } else {
-                      process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
-                    }
-                    process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
-                  }
-                    const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
-                    if (!selectedAgent) {
-                      workingPrompt += `\n\nError: Agent '${decision.agentName}' not found. Available: ${availableAgents.map(a => a.name).join(', ')}`;
-                      continue;
-                    }
-                    
-                    if (progress) progress.agentStart(decision.agentName, decision.task);
-                    
-                    const agentStart = Date.now();
-                    let agentResult: StepResult[];
-                    let agentTokenCount = 0;
-                    
-                    try {
-                      // Pass onToken to agent for progress tracking
-                      const agentStep: any = { prompt: decision.task };
-                      if (progress) {
-                        agentStep.onToken = () => {
-                          agentTokenCount++;
-                          progress.agentToken(agentTokenCount, decision.agentName);
-                        };
-                      }
-                      // Mark delegated agent as sub-agent to suppress its progress banner
-                      const delegatedAgent = selectedAgent.then(agentStep);
-                      (delegatedAgent as any).__isSubAgent = true;
-                      (delegatedAgent as any).__parentAgentName = agentName || 'coordinator';
-                      
-                      // Record sub-agent relationship
-                      if (telemetry) {
-                        telemetry.recordMetric('agent.subagent_call', 1, {
-                          parent_agent_name: agentName || 'coordinator',
-                          agent_name: decision.agentName
-                        });
-                      }
-                      
-                      agentResult = await delegatedAgent.run();
-                    } catch (e) {
-                      workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
-                      continue;
-                    }
-                    const agentMs = Date.now() - agentStart;
-                    
-                    totalTokens += agentTokenCount;
-                    modelsUsed.add(getLLMProviderId(usedLlm));
-                    
-                    const agentOutput = agentResult[agentResult.length - 1]?.llmOutput || '[no output]';
-                    agentCalls.push({ name: decision.agentName, task: decision.task, result: agentOutput });
-                    
-                      if (progress) progress.agentComplete(decision.agentName, agentTokenCount, agentMs, getLLMProviderId(usedLlm));
-                    
-                    workingPrompt += `\n\nAgent '${decision.agentName}' completed (${agentMs}ms):\n${agentOutput}\n\nWhat's next?`;
-                  } else {
-                    if (i === maxIterations - 1) {
-                      r.llmOutput = decision.raw;
-                    } else {
-                      workingPrompt += `\n\nPlease use the USE or DONE directive.`;
-                    }
-                  }
-                }
-                
-                if (!r.llmOutput && agentCalls.length > 0) {
-                  r.llmOutput = agentCalls[agentCalls.length - 1].result;
-                }
-                
-                if (agentCalls.length > 0) {
-                  (r as any).agentCalls = agentCalls;
-                  (r as any).__crewTotalTokens = totalTokens;
-                  (r as any).__crewModels = Array.from(modelsUsed);
-                  telemetry?.recordMetric('agent.delegation', agentCalls.length, { agents: agentCalls.map(c => c.name).join(',') });
-                  for (const agentCall of agentCalls) {
-                    telemetry?.recordMetric('agent.call', 1, { agentName: agentCall.name });
-                  }
-                }
-              }
-            }
-            // ============================================================================
-            // STEP TYPE 3: LLM-Only Step (prompt without tools/agents)
-            // Simple LLM generation with optional streaming
-            // ============================================================================
-            else if ("prompt" in s && !("mcp" in s) && !("mcps" in s) && !("agents" in s)) {
-              const usedLlm = (s as any).llm ?? defaultLlm;
-              if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-              const stepInstructions = (s as any).instructions ?? globalInstructions;
-              const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-              const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-              const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-              const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
-              r.prompt = (s as any).prompt;
-              const llmSpan = telemetry?.startLLMSpan(stepSpan, usedLlm, finalPrompt) || null;
-              const llmStart = Date.now();
-              try {
-                r.llmOutput = await executeLLMWithStreaming(
-                  usedLlm,
-                  finalPrompt,
-                  (s as any).onToken,
-                  capturedStreamOnToken,
-                  { stepIndex: out.length, stepPrompt: (s as any).prompt }
-                );
-                    const llmCallDuration = Date.now() - llmStart;
-                    telemetry?.endSpan(llmSpan);
-                    telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: false });
-                    telemetry?.recordMetric('llm.duration', llmCallDuration, { provider: getLLMProviderId(usedLlm), model: usedLlm.model });
-              } catch (e) {
-                telemetry?.endSpan(llmSpan, undefined, e);
-                telemetry?.recordMetric('llm.call', 1, { provider: getLLMProviderId(usedLlm), error: true });
-                telemetry?.recordMetric('error', 1, { type: 'llm', provider: getLLMProviderId(usedLlm) });
-                const provider = classifyProviderFromLlm(usedLlm);
-                throw normalizeError(e, 'llm', { stepId: out.length, provider });
-              }
-              llmTotalMs += Date.now() - llmStart;
-            }
-            // ============================================================================
-            // STEP TYPE 4: Explicit MCP Tool Call (mcp + tool)
-            // Direct tool invocation with optional LLM generation first
-            // ============================================================================
-            else if ("mcp" in s && "tool" in s) {
-              // Apply agent-level auth
-              const mcpHandle = applyAgentAuth((s as any).mcp);
-              
-              if ("prompt" in s) {
-                const usedLlm = (s as any).llm ?? defaultLlm;
-                if (!usedLlm) throw new Error("No LLM provided. Pass { llm } to agent(...) or specify per-step.");
-                const stepInstructions = (s as any).instructions ?? globalInstructions;
-                const maxToolResults = (s as any).contextMaxToolResults ?? contextMaxToolResults;
-                const maxContextChars = (s as any).contextMaxChars ?? contextMaxChars;
-                const promptWithHistory = (s as any).prompt + buildHistoryContextChunked(contextHistory, maxToolResults, maxContextChars);
-                const finalPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory;
-                r.prompt = (s as any).prompt;
-                const llmStart = Date.now();
-                r.llmOutput = await usedLlm.gen(finalPrompt);
-                llmTotalMs += Date.now() - llmStart;
-              }
-              // Validate against tool schema if discoverable
-              const schema = await getToolSchema(mcpHandle, (s as any).tool);
-              validateWithSchema(schema, (s as any).args ?? {}, `Tool ${mcpHandle.id}.${(s as any).tool}`);
-              const mcpStart = Date.now();
-              let res: any;
-              try {
-                res = await withMCP(mcpHandle, (c) => c.callTool({ name: (s as any).tool, arguments: (s as any).args ?? {} }), telemetry, 'call_tool');
-              } catch (e) {
-                const provider = classifyProviderFromMcp(mcpHandle);
-                throw normalizeError(e, 'mcp-tool', { stepId: out.length, provider });
-              }
-              const mcpMs = Date.now() - mcpStart;
-              r.mcp = { endpoint: mcpHandle.url, tool: (s as any).tool, result: res, ms: mcpMs };
-            }
-  
-            r.llmMs = llmTotalMs;
-            r.durationMs = Date.now() - stepStart;
-            
-            // End step span
-            telemetry?.endSpan(stepSpan, r);
-            telemetry?.recordMetric('step.duration', r.durationMs, { type: stepType });
-            
-            // Flush telemetry after each step for real-time visibility
-            await telemetry?.flush();
-            
-            safeExecuteHook((s as any).post, 'Post-step');
-            
-            return r;
-          };
-  
-          // Retry loop with per-attempt timeout
-          let lastError: any;
-          let result: StepResult | undefined;
-          for (let attempt = 1; attempt <= attemptsTotal; attempt++) {
-          try {
-            const r = await withTimeout(doStep(), stepTimeoutMs, 'Step');
-            result = r;
-            break;
-          } catch (e) {
-            // classify
-            const meta = { stepId: out.length } as VolcanoErrorMeta;
-            let vErr: VolcanoError | undefined;
-            if (e instanceof Error && /timed out/i.test(e.message)) {
-              vErr = normalizeError(e, 'timeout', meta);
-            } else if (e instanceof ValidationError || /failed schema validation/i.test(String((e as any)?.message || ''))) {
-              vErr = normalizeError(e, 'validation', meta);
-            } else {
-              vErr = e as VolcanoError;
-            }
-            lastError = vErr || e;
-            if (lastError instanceof VolcanoError && lastError.meta?.retryable === false) {
-              throw lastError; // abort retries immediately for non-retryable errors
-            }
-              if (attempt >= attemptsTotal) break;
-              // schedule wait according to policy
-              if (typeof useBackoff === 'number' && useBackoff > 0) {
-                const waitMs = CONSTANTS.DEFAULT_RETRY_BACKOFF_BASE_MS * Math.pow(useBackoff, attempt - 1);
-                await sleep(waitMs);
-              } else {
-                const waitMs = Math.max(0, (useDelay ?? 0) * 1000);
-                if (waitMs > 0) await sleep(waitMs);
-              }
-            }
-          }
-        if (!result) throw (lastError instanceof VolcanoError ? lastError : new RetryExhaustedError('Retry attempts exhausted', { stepId: out.length }, { cause: lastError }));
-  
-          const r = result;
-          log?.(r, out.length);
-          out.push(r);
-          contextHistory.push(r);
-          
-          // Yield the step result for streaming
-          yield r;
-        }
-        // Note: We don't populate aggregated totals for streaming since it's incremental
-      } finally {
-        if (progress) {
-          // Calculate totals for workflow end
-          const totalTokens = out.reduce((acc, s) => {
-            const stepTokens = (s as any).__tokenCount || (s as any).__crewTotalTokens || 0;
-            return acc + stepTokens;
-          }, 0);
-          const modelsUsed = new Set<string>();
-          out.forEach(s => {
-            const provider = (s as any).__provider;
-            const crewModels = (s as any).__crewModels;
-            if (provider) modelsUsed.add(provider);
-            if (crewModels) crewModels.forEach((m: string) => modelsUsed.add(m));
-          });
-          const totalDuration = out.reduce((acc, s) => acc + (s.durationMs || 0), 0);
-          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed));
+          const totalToolCalls = out.reduce((acc, s) => acc + (s.toolCalls?.length || 0) + (s.mcp ? 1 : 0), 0);
+          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed), totalToolCalls);
         }
         isRunning = false;
       }

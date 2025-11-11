@@ -191,7 +191,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
     expect(results[0].llmOutput).toBe('Task completed.');
   });
 
-  it('works with stream() method', async () => {
+  it('works with run() and onStep callback', async () => {
     const agentsCalled: string[] = [];
     
     const coordinatorLLM: LLMHandle = {
@@ -224,14 +224,12 @@ describe('Multi-agent crews (automatic agent selection)', () => {
     });
 
     const results: any[] = [];
-    for await (const step of agent({ llm: coordinatorLLM , hideProgress: true })
+    await agent({ llm: coordinatorLLM , hideProgress: true })
       .then({
         prompt: 'Test',
         agents: [researcher]
       })
-      .stream()) {
-      results.push(step);
-    }
+      .run({ onStep: (step) => results.push(step) });
 
     expect(agentsCalled).toContain('researcher');
     expect(results[0].llmOutput).toBe('Complete.');

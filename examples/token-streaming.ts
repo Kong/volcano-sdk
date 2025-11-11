@@ -21,20 +21,18 @@ import { agent, llmOpenAI } from "../dist/volcano-sdk.js";
 
   console.log(`\n\nReceived ${tokenCount} tokens\n`);
 
-  console.log("Stream-Level Token Streaming:\n");
+  console.log("Run-Level Token Streaming:\n");
 
-  for await (const step of agent({ llm })
+  await agent({ llm })
     .then({ prompt: "Name 3 programming languages" })
     .then({ prompt: "Pick one and explain why it's popular" })
-    .stream({
+    .run({
       onToken: (token) => {
         process.stdout.write(token);
       },
       onStep: (_step, index) => {
         console.log(`\n✓ Step ${index + 1} done`);
       }
-    })) {
-    void step;
-  }
+    });
 })();
 

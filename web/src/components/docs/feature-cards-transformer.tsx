@@ -10,7 +10,7 @@ const featureLinkMap: Record<string, string> = {
   "TypeScript-First": "/docs/api#type-reference",
   "Advanced Patterns": "/docs/patterns",
   "Retries & Timeouts": "/docs/features#retries-timeouts",
-  "Streaming Workflows": "/docs/features#stream-method",
+  "Streaming Workflows": "/docs/features#token-level-streaming",
   "MCP Integration": "/docs/mcp-tools",
   "Sub-Agent Composition": "/docs/patterns#sub-agent-composition",
   "OpenTelemetry Observability": "/docs/observability",

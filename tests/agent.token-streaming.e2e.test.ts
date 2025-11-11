@@ -34,7 +34,7 @@ describe('Token streaming e2e (live APIs)', () => {
     expect(results[0].llmOutput).toContain('World');
   });
 
-  it('validates stream-level onToken with metadata using live OpenAI', async () => {
+  it('validates run-level onToken with metadata using live OpenAI', async () => {
     const tokens: string[] = [];
     const metadata: TokenMetadata[] = [];
 
@@ -43,17 +43,14 @@ describe('Token streaming e2e (live APIs)', () => {
       model: 'gpt-4o-mini'
     });
 
-    const results: any[] = [];
-    for await (const step of agent({ llm, hideProgress: true })
+    const results = await agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 3.' })
-      .stream({
+      .run({
         onToken: (token, meta) => {
           tokens.push(token);
           metadata.push({ ...meta });
         }
-      })) {
-      results.push(step);
-    }
+      });
 
     // Verify tokens were received
     expect(tokens.length).toBeGreaterThan(0);
@@ -87,8 +84,7 @@ describe('Token streaming e2e (live APIs)', () => {
       token: process.env.AWS_BEARER_TOKEN_BEDROCK!
     });
 
-    const results: any[] = [];
-    for await (const step of agent()
+    const results = await agent()
       .then({
         llm: openai,
         prompt: 'Say "OpenAI" exactly.',
@@ -100,23 +96,21 @@ describe('Token streaming e2e (live APIs)', () => {
       .then({
         llm: bedrock,
         prompt: 'Say "Bedrock" exactly.',
-        // No step-level onToken, so stream-level will handle it
+        // No step-level onToken, so run-level will handle it
       })
-      .stream({
+      .run({
         onToken: (token, meta) => {
-          // Stream-level handler
+          // Run-level handler
           streamTokens.push(token);
           streamMetadata.push({ ...meta });
         }
-      })) {
-      results.push(step);
-    }
+      });
 
     // Verify step 1 used step-level onToken
     expect(step1Tokens.length).toBeGreaterThan(0);
     expect(step1Tokens.join('')).toBe(results[0].llmOutput);
     
-    // Verify step 2 used stream-level onToken
+    // Verify step 2 used run-level onToken
     expect(streamTokens.length).toBeGreaterThan(0);
     expect(streamTokens.join('')).toBe(results[1].llmOutput);
     
@@ -144,11 +138,10 @@ describe('Token streaming e2e (live APIs)', () => {
       model: 'gpt-4o-mini'
     });
 
-    const results: any[] = [];
-    for await (const step of agent({ llm, hideProgress: true })
+    const results = await agent({ llm, hideProgress: true })
       .then({ 
         prompt: 'Say "Step1".',
-        // No step-level onToken - uses stream-level
+        // No step-level onToken - uses run-level
       })
       .then({ 
         prompt: 'Say "Step2".',
@@ -159,30 +152,28 @@ describe('Token streaming e2e (live APIs)', () => {
       })
       .then({ 
         prompt: 'Say "Step3".',
-        // No step-level onToken - uses stream-level
+        // No step-level onToken - uses run-level
       })
-      .stream({
+      .run({
         onToken: (token, meta) => {
           allMetadata.push({ ...meta });
         }
-      })) {
-      results.push(step);
-    }
+      });
 
-    // Stream-level should only receive tokens from steps 0 and 2 (not step 1)
+    // Run-level should only receive tokens from steps 0 and 2 (not step 1)
     const step0Metadata = allMetadata.filter(m => m.stepIndex === 0);
     const step1Metadata = allMetadata.filter(m => m.stepIndex === 1);
     const step2Metadata = allMetadata.filter(m => m.stepIndex === 2);
 
-    // Step 0: stream-level handled it
+    // Step 0: run-level handled it
     expect(step0Metadata.length).toBeGreaterThan(0);
     expect(step0Metadata.every(m => m.handledByStep === false)).toBe(true);
     expect(step0Metadata.every(m => m.stepPrompt === 'Say "Step1".')).toBe(true);
 
-    // Step 1: step-level handled it, so NO metadata in stream-level
+    // Step 1: step-level handled it, so NO metadata in run-level
     expect(step1Metadata.length).toBe(0);
 
-    // Step 2: stream-level handled it
+    // Step 2: run-level handled it
     expect(step2Metadata.length).toBeGreaterThan(0);
     expect(step2Metadata.every(m => m.handledByStep === false)).toBe(true);
     expect(step2Metadata.every(m => m.stepPrompt === 'Say "Step3".')).toBe(true);
@@ -208,20 +199,17 @@ describe('Token streaming e2e (live APIs)', () => {
       model: 'gpt-4o-mini'
     });
 
-    const results: any[] = [];
-    for await (const step of agent({ llm, hideProgress: true })
+    const results = await agent({ llm, hideProgress: true })
       .then({ prompt: 'Say "One".' })
       .then({ prompt: 'Say "Two".' })
-      .stream({
+      .run({
         onToken: (token) => {
           tokens.push(token);
         },
         onStep: (step, index) => {
           completedSteps.push({ index, duration: step.durationMs });
         }
-      })) {
-      results.push(step);
-    }
+      });
 
     // Verify both callbacks fired
     expect(tokens.length).toBeGreaterThan(0);
@@ -239,7 +227,7 @@ describe('Token streaming e2e (live APIs)', () => {
     expect(results).toHaveLength(2);
   });
 
-  it('validates backward compatibility with old stream(callback) API', async () => {
+  it('validates backward compatibility with old run(callback) API', async () => {
     const completedSteps: any[] = [];
 
     const llm = llmOpenAI({
@@ -247,15 +235,12 @@ describe('Token streaming e2e (live APIs)', () => {
       model: 'gpt-4o-mini'
     });
 
-    const results: any[] = [];
     // Old API: pass callback directly (no object)
-    for await (const step of agent({ llm, hideProgress: true })
+    const results = await agent({ llm, hideProgress: true })
       .then({ prompt: 'Say "Test".' })
-      .stream((step, stepIndex) => {
+      .run((step, stepIndex) => {
         completedSteps.push({ stepIndex, output: step.llmOutput });
-      })) {
-      results.push(step);
-    }
+      });
 
     // Old API should still work
     expect(completedSteps).toHaveLength(1);

@@ -121,7 +121,7 @@ Stream step results in real-time with automatic MCP tool selection.
 npx tsx examples/streaming.ts
 ```
 
-**Demonstrates:** `.stream()` method for progressive result delivery, tool selection in streaming mode
+**Demonstrates:** `.run()` method with `onStep` callback for progressive result delivery, tool selection in streaming mode
 
 [View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/streaming.ts)
 
@@ -133,7 +133,7 @@ Stream individual tokens in real-time as the LLM generates them.
 npx tsx examples/token-streaming.ts
 ```
 
-**Demonstrates:** Per-step `onToken` callback and stream-level token streaming with metadata for SSE endpoints
+**Demonstrates:** Per-step `onToken` callback and run-level token streaming with metadata for SSE endpoints
 
 [View source on GitHub →](https://github.com/Kong/volcano-sdk/blob/main/examples/token-streaming.ts)
 

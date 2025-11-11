@@ -188,15 +188,17 @@ function AnalysisDashboard() {
       .then({ prompt: "Create executive summary with key takeaways" });
     
     try {
-      for await (const step of myAgent.stream()) {
-        setSteps(prev => [...prev, {
-          id: step.index,
-          title: \`Step \${step.index + 1}\`,
-          content: step.llmOutput,
-          duration: step.duration,
-          status: 'completed'
-        }]);
-      }
+      await myAgent.run({
+        onStep: (step, index) => {
+          setSteps(prev => [...prev, {
+            id: index,
+            title: \`Step \${index + 1}\`,
+            content: step.llmOutput,
+            duration: step.durationMs,
+            status: 'completed'
+          }]);
+        }
+      });
     } catch (error) {
       console.error("Analysis failed:", error);
     } finally {

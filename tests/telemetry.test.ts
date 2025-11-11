@@ -272,22 +272,20 @@ describe('Volcano SDK Observability', () => {
     }, 20000);
   });
   
-  describe('telemetry with streaming', () => {
-    it('creates spans for streaming workflows', async () => {
+  describe('telemetry with run() and onStep', () => {
+    it('creates spans for workflows with onStep callback', async () => {
       const telemetry = createVolcanoTelemetry({
         serviceName: 'test-streaming'
       });
       
       const results: any[] = [];
-      for await (const step of agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
+      await agent({ llm: makeMockLLM(), telemetry , hideProgress: true })
         .then({ prompt: "Stream step 1" })
         .then({ prompt: "Stream step 2" })
-        .stream()) {
-        results.push(step);
-      }
+        .run({ onStep: (step) => results.push(step) });
       
       expect(results.length).toBe(2);
-      // Streaming spans should be created
+      // Spans should be created for onStep callbacks
     }, 20000);
   });
   

@@ -85,7 +85,7 @@ describe('Multi-agent crews e2e (live APIs)', () => {
     }
   });
 
-  it('validates agent crews work with stream()', { timeout: 30000 }, async () => {
+  it('validates agent crews work with run() and onStep', { timeout: 30000 }, async () => {
 
     const llm = llmOpenAI({
       apiKey: process.env.OPENAI_API_KEY!,
@@ -100,15 +100,13 @@ describe('Multi-agent crews e2e (live APIs)', () => {
     });
 
     const results: any[] = [];
-    for await (const step of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({
         prompt: 'Verify: The Earth orbits the Sun',
         agents: [factChecker],
         maxAgentIterations: 3
       })
-      .stream()) {
-      results.push(step);
-    }
+      .run({ onStep: (step) => results.push(step) });
 
     expect(results).toHaveLength(1);
     expect(results[0].llmOutput).toBeTruthy();
