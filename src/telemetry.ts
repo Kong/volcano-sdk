@@ -83,38 +83,49 @@ const shutdownManager = {
     if (this.isHookRegistered) return;
     this.isHookRegistered = true;
     
+    // Skip aggressive handlers in test environments to avoid interfering with test frameworks
+    const isTestEnv = process.env.NODE_ENV === 'test' || 
+                      process.env.VITEST === 'true' || 
+                      process.env.JEST_WORKER_ID !== undefined ||
+                      typeof (globalThis as any).it === 'function'; // vitest/jest detected
+    
     // Handle normal process exit (event loop becomes empty)
+    // Safe in test environments - doesn't call process.exit()
     process.on('beforeExit', async () => {
       await this.shutdown();
     });
     
-    // Handle SIGTERM (e.g., from docker stop, kubernetes)
-    process.on('SIGTERM', async () => {
-      console.log('[Volcano] Received SIGTERM signal');
-      await this.shutdown();
-      process.exit(0);
-    });
-    
-    // Handle SIGINT (e.g., Ctrl+C)
-    process.on('SIGINT', async () => {
-      console.log('[Volcano] Received SIGINT signal');
-      await this.shutdown();
-      process.exit(0);
-    });
-    
-    // Handle uncaught exceptions
-    process.on('uncaughtException', async (err) => {
-      console.error('[Volcano] Uncaught exception:', err);
-      await this.shutdown();
-      process.exit(1);
-    });
-    
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', async (reason, promise) => {
-      console.error('[Volcano] Unhandled rejection at:', promise, 'reason:', reason);
-      await this.shutdown();
-      process.exit(1);
-    });
+    // Only register signal and error handlers in production environments
+    // These handlers call process.exit() which interferes with test execution
+    if (!isTestEnv) {
+      // Handle SIGTERM (e.g., from docker stop, kubernetes)
+      process.on('SIGTERM', async () => {
+        console.log('[Volcano] Received SIGTERM signal');
+        await this.shutdown();
+        process.exit(0);
+      });
+      
+      // Handle SIGINT (e.g., Ctrl+C)
+      process.on('SIGINT', async () => {
+        console.log('[Volcano] Received SIGINT signal');
+        await this.shutdown();
+        process.exit(0);
+      });
+      
+      // Handle uncaught exceptions
+      process.on('uncaughtException', async (err) => {
+        console.error('[Volcano] Uncaught exception:', err);
+        await this.shutdown();
+        process.exit(1);
+      });
+      
+      // Handle unhandled promise rejections
+      process.on('unhandledRejection', async (reason, promise) => {
+        console.error('[Volcano] Unhandled rejection at:', promise, 'reason:', reason);
+        await this.shutdown();
+        process.exit(1);
+      });
+    }
   }
 };
 
