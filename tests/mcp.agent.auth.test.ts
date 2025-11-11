@@ -287,12 +287,12 @@ describe('Agent-Level MCP Authentication', () => {
     }, 20000);
   });
   
-  describe('agent-level auth with streaming', () => {
-    it('applies auth in streaming workflows', async () => {
+  describe('agent-level auth with run() and onStep', () => {
+    it('applies auth in workflows with onStep callback', async () => {
       const authMcp = mcp('http://localhost:3702/mcp');
       
       const streamed: any[] = [];
-      for await (const step of agent({ 
+      await agent({ 
         llm: makeMockLLM(),
         hideProgress: true,
         mcpAuth: {
@@ -306,9 +306,7 @@ describe('Agent-Level MCP Authentication', () => {
       })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Prague' } })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Vienna' } })
-        .stream()) {
-        streamed.push(step);
-      }
+        .run({ onStep: (step) => streamed.push(step) });
       
       expect(streamed.length).toBe(2);
       streamed.forEach(s => {

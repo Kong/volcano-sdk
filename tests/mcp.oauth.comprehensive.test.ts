@@ -490,12 +490,10 @@ describe('MCP OAuth Comprehensive Tests', () => {
       });
       
       const streamed: any[] = [];
-      for await (const step of agent({ llm: makeMockLLM() , hideProgress: true })
+      await agent({ llm: makeMockLLM() , hideProgress: true })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Athens' } })
         .then({ mcp: authMcp, tool: 'get_weather', args: { city: 'Cairo' } })
-        .stream()) {
-        streamed.push(step);
-      }
+        .run({ onStep: (step) => streamed.push(step) });
       
       expect(streamed.length).toBe(2);
       streamed.forEach(s => {

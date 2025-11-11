@@ -247,32 +247,29 @@ function Demo1() {
               </div>
             </a>
 
-            <a href="/docs/features#stream-method" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
+            <a href="/docs/features#token-level-streaming" className="group flex flex-col border-1 border-black hover:outline-[3px] hover:outline-offset-[-3px] hover:outline-black">
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <Radio className="text-color-primary h-8 w-8" />
                   <code className="text-base font-semibold sm:text-lg">
-                    .stream()
+                    .run(callbacks)
                   </code>
                 </div>
                 <p className="text-sm text-slate-600 sm:text-base">
-                  Get real-time results as each step completes in the workflow
+                  Get real-time updates with step and token callbacks
                 </p>
               </div>
               <div className="h-full bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-600">
-                <span className="text-purple-600">for await</span> (
-                <span className="text-purple-600">const</span> step{" "}
-                <span className="text-purple-600">of</span>
+                <span className="text-blue-600">agent</span>(
+                {"{ llm }"}).<span className="text-blue-600">then</span>(...)
                 <br />
-                &nbsp;&nbsp;<span className="text-blue-600">agent</span>(
-                {"{ llm }"}).<span className="text-blue-600">then</span>(...).
-                <span className="text-blue-600">stream</span>()
-                <br />) {"{"}
+                &nbsp;&nbsp;.<span className="text-blue-600">run</span>({"{"}
                 <br />
-                &nbsp;&nbsp;console.<span className="text-blue-600">log</span>
-                (step)
+                &nbsp;&nbsp;&nbsp;&nbsp;onStep: (step) {" => ..."}
                 <br />
-                {"}"}
+                &nbsp;&nbsp;&nbsp;&nbsp;onToken: (token) {" => ..."}
+                <br />
+                &nbsp;&nbsp;{"}"});
               </div>
             </a>
           </div>

@@ -17,7 +17,7 @@ Volcano SDK is a TypeScript framework for building AI agents that:
 - **Chainable API**: Build multi-step workflows with intuitive `.then()` chaining and Promise-like syntax
 - **MCP Tool Integration**: Native Model Context Protocol support with automatic tool discovery, connection pooling, and OAuth authentication
 - **Multi-Provider Support**: Switch between 100+ LLMs per-step or globally without code changes
-- **Streaming & Batch**: Choose `stream()` for real-time updates or `run()` for complete results
+- **Streaming & Callbacks**: Use `run()` with `onStep` and `onToken` callbacks for real-time updates
 - **Built-in Observability**: OpenTelemetry integration for distributed tracing and metrics (Jaeger, Prometheus, DataDog, NewRelic)
 - **Type-Safe**: Full TypeScript support with comprehensive type definitions and IntelliSense
 - **Retries & Timeouts**: Three retry strategies (immediate, delayed, exponential backoff) with per-step configuration
@@ -68,7 +68,7 @@ Main documentation: https://volcano.dev/docs
 
 ### Features
 - run() Method: https://volcano.dev/docs/features#run-method
-- stream() Method: https://volcano.dev/docs/features#stream-method
+- Token-Level Streaming: https://volcano.dev/docs/features#token-level-streaming
 - Retries & Timeouts: https://volcano.dev/docs/features#retries-timeouts
 - Step Hooks: https://volcano.dev/docs/features#step-hooks
 - Error Handling: https://volcano.dev/docs/features#error-handling

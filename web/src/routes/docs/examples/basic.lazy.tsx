@@ -182,21 +182,23 @@ console.log("Weather report:", results[0].llmOutput);`}
           <h2>Streaming Results</h2>
           <p>Get results as they complete for real-time updates:</p>
 
-          <CodeBlock language="typescript" title="Streaming Results">
+          <CodeBlock language="typescript" title="Progressive Results">
             {`const myAgent = agent({ llm })
   .then({ prompt: "Step 1: Research the topic" })
   .then({ prompt: "Step 2: Outline the content" })
   .then({ prompt: "Step 3: Write the final draft" });
 
-// Stream results as each step completes
-for await (const step of myAgent.stream()) {
-  console.log(\`Step \${step.index + 1} completed:\`);
-  console.log(step.llmOutput);
-  console.log(\`Took \${step.duration}ms\`);
-  
-  // Update your UI here
-  updateProgressBar(step.index + 1, 3);
-}`}
+// Get results as each step completes
+await myAgent.run({
+  onStep: (step, index) => {
+    console.log(\`Step \${index + 1} completed:\`);
+    console.log(step.llmOutput);
+    console.log(\`Took \${step.durationMs}ms\`);
+    
+    // Update your UI here
+    updateProgressBar(index + 1, 3);
+  }
+});`}
           </CodeBlock>
         </div>
       </DocsLayout>

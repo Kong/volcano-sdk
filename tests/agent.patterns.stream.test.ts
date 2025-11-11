@@ -18,8 +18,8 @@ const mockLlm = {
   }
 };
 
-describe('Pattern handling in stream()', () => {
-  it('parallel() pattern works with stream()', async () => {
+describe('Pattern handling in run() with onStep', () => {
+  it('parallel() pattern works with run() and onStep callback', async () => {
     const results: any[] = [];
     
     const workflow = agent({ llm: mockLlm })
@@ -28,16 +28,14 @@ describe('Pattern handling in stream()', () => {
         { prompt: 'parallel-b task' }
       ]);
     
-    for await (const step of workflow.stream()) {
-      results.push(step);
-    }
+    await workflow.run({ onStep: (step) => results.push(step) });
     
     expect(results.length).toBe(1);
     expect(results[0].parallelResults).toBeDefined();
     expect(results[0].parallelResults?.length).toBe(2);
   });
 
-  it('branch() pattern works with stream()', async () => {
+  it('branch() pattern works with run() and onStep callback', async () => {
     const results: any[] = [];
     
     const workflow = agent({ llm: mockLlm })
@@ -49,31 +47,27 @@ describe('Pattern handling in stream()', () => {
         }
       );
     
-    for await (const step of workflow.stream()) {
-      results.push(step);
-    }
+    await workflow.run({ onStep: (step) => results.push(step) });
     
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].llmOutput).toContain('True branch result');
   });
 
-  it('forEach() pattern works with stream()', async () => {
+  it('forEach() pattern works with run() and onStep callback', async () => {
     const results: any[] = [];
     const items = ['item 1', 'item 2'];
     
     const workflow = agent({ llm: mockLlm })
       .forEach(items, (item, a) => a.then({ prompt: `Process ${item}` }));
     
-    for await (const step of workflow.stream()) {
-      results.push(step);
-    }
+    await workflow.run({ onStep: (step) => results.push(step) });
     
     expect(results.length).toBe(2);
     expect(results[0].llmOutput).toContain('item 1');
     expect(results[1].llmOutput).toContain('item 2');
   });
 
-  it('runAgent() pattern works with stream()', async () => {
+  it('runAgent() pattern works with run() and onStep callback', async () => {
     const results: any[] = [];
     
     const subAgent = agent({ llm: mockLlm })
@@ -82,15 +76,13 @@ describe('Pattern handling in stream()', () => {
     const workflow = agent({ llm: mockLlm })
       .runAgent(subAgent);
     
-    for await (const step of workflow.stream()) {
-      results.push(step);
-    }
+    await workflow.run({ onStep: (step) => results.push(step) });
     
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].llmOutput).toBeDefined();
   });
 
-  it('combined patterns work with stream()', async () => {
+  it('combined patterns work with run() and onStep callback', async () => {
     const results: any[] = [];
     
     const workflow = agent({ llm: mockLlm })
@@ -101,9 +93,7 @@ describe('Pattern handling in stream()', () => {
       ])
       .then({ prompt: 'Step 2' });
     
-    for await (const step of workflow.stream()) {
-      results.push(step);
-    }
+    await workflow.run({ onStep: (step) => results.push(step) });
     
     expect(results.length).toBe(3);
     expect(results[0].llmOutput).toContain('step 1');

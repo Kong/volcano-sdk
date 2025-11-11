@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { agent, llmOpenAI, llmVertexStudio } from '../dist/volcano-sdk.js';
 
-describe('agent streaming (live APIs)', () => {
-  it('streams OpenAI workflow results in real-time', async () => {
+describe('agent run() with onStep callback (live APIs)', () => {
+  it('provides OpenAI workflow results in real-time via onStep', async () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
@@ -11,15 +11,16 @@ describe('agent streaming (live APIs)', () => {
     const stepResults: any[] = [];
     const timestamps: number[] = [];
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'Say "Step 1 complete"' })
       .then({ prompt: 'Say "Step 2 complete"' })
-      .stream((step, stepIndex) => {
-        console.log(`Live streaming - Step ${stepIndex + 1}: ${step.llmOutput}`);
-      })) {
-      timestamps.push(Date.now());
-      stepResults.push(stepResult);
-    }
+      .run({ 
+        onStep: (step, stepIndex) => {
+          console.log(`Live onStep - Step ${stepIndex + 1}: ${step.llmOutput}`);
+          timestamps.push(Date.now());
+          stepResults.push(step);
+        }
+      });
 
     expect(stepResults).toHaveLength(2);
     expect(stepResults[0].llmOutput).toContain('Step 1');
@@ -27,7 +28,7 @@ describe('agent streaming (live APIs)', () => {
     expect(timestamps[1] - timestamps[0]).toBeGreaterThan(100); // Real delay between steps
   }, 30000);
 
-  it('streams Vertex Studio workflow results', async () => {
+  it('provides Vertex Studio workflow results via onStep', async () => {
     if (!process.env.GCP_VERTEX_API_KEY) {
       throw new Error('GCP_VERTEX_API_KEY is required for this test');
     }
@@ -38,20 +39,22 @@ describe('agent streaming (live APIs)', () => {
     });
     const stepResults: any[] = [];
 
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'Reply with: VERTEX_STREAM_1' })
       .then({ prompt: 'Reply with: VERTEX_STREAM_2' })
-      .stream()) {
-      stepResults.push(stepResult);
-      console.log(`Vertex streaming result: ${stepResult.llmOutput}`);
-    }
+      .run({ 
+        onStep: (step) => {
+          stepResults.push(step);
+          console.log(`Vertex onStep result: ${step.llmOutput}`);
+        }
+      });
 
     expect(stepResults).toHaveLength(2);
     expect(stepResults[0].llmOutput).toContain('VERTEX_STREAM_1');
     expect(stepResults[1].llmOutput).toContain('VERTEX_STREAM_2');
   }, 30000);
 
-  it('compares streaming vs run() for same workflow', async () => {
+  it('compares run() with and without onStep callback for same workflow', async () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is required for this test');
     }
@@ -63,20 +66,20 @@ describe('agent streaming (live APIs)', () => {
       .then({ prompt: 'Say done' })
       .run();
 
-    const streamResults: any[] = [];
-    for await (const stepResult of agent({ llm, hideProgress: true })
+    const callbackResults: any[] = [];
+    await agent({ llm, hideProgress: true })
       .then({ prompt: 'Count to 2' })
       .then({ prompt: 'Say done' })
-      .stream()) {
-      streamResults.push(stepResult);
-    }
+      .run({ 
+        onStep: (step) => callbackResults.push(step)
+      });
 
     // Both should produce equivalent results
-    expect(streamResults).toHaveLength(runResults.length);
-    expect(streamResults[0].prompt).toBe(runResults[0].prompt);
-    expect(streamResults[1].prompt).toBe(runResults[1].prompt);
+    expect(callbackResults).toHaveLength(runResults.length);
+    expect(callbackResults[0].prompt).toBe(runResults[0].prompt);
+    expect(callbackResults[1].prompt).toBe(runResults[1].prompt);
     // Content may vary slightly due to LLM non-determinism, so just check structure
-    expect(typeof streamResults[0].llmOutput).toBe('string');
-    expect(typeof streamResults[1].llmOutput).toBe('string');
+    expect(typeof callbackResults[0].llmOutput).toBe('string');
+    expect(typeof callbackResults[1].llmOutput).toBe('string');
   }, 30000);
 });

@@ -24,11 +24,12 @@ console.log(results[1].llmOutput); // Second step output
 console.log(results.at(-1).totalDurationMs); // Total time
 ```
 
-### With Logging Callback
+### With Step and Token Callbacks
 
-Pass a callback function to log each step as it completes:
+Pass callbacks to get real-time feedback as steps complete and tokens stream:
 
 ```typescript
+// Simple callback syntax
 const results = await agent({ llm })
   .then({ prompt: "Step 1" })
   .then({ prompt: "Step 2" })
@@ -39,7 +40,22 @@ const results = await agent({ llm })
     console.log(`Output: ${stepResult.llmOutput}`);
   });
 
-// Callback is called for each step as it completes
+// Options syntax with onStep and onToken
+const results = await agent({ llm })
+  .then({ prompt: "Step 1" })
+  .then({ prompt: "Step 2" })
+  .run({
+    onStep: (stepResult, stepIndex) => {
+      console.log(`✓ Step ${stepIndex + 1} done`);
+    },
+    onToken: (token, meta) => {
+      // Stream tokens in real-time with metadata
+      process.stdout.write(token);
+      // meta includes: stepIndex, handledByStep, stepPrompt, llmProvider
+    }
+  });
+
+// Callbacks are called as each step/token completes
 // Final results array is returned when all steps finish
 ```
 
@@ -187,72 +203,13 @@ When you call `results.ask()` or `results.summary()`:
 
 The LLM sees the complete execution history and can provide intelligent, contextual answers about what happened.
 
-## stream() Method
-
-Stream step results in real-time as they complete using the `stream()` method.
-
-```typescript
-for await (const stepResult of agent({ llm })
-  .then({ prompt: "Analyze user data", mcps: [analytics] })
-  .then({ prompt: "Generate insights" })
-  .then({ prompt: "Create recommendations" })
-  .stream()) {
-  console.log(`Step completed: ${stepResult.prompt}`);
-  console.log(`Duration: ${stepResult.durationMs}ms`);
-
-  if (stepResult.llmOutput) {
-    console.log(`Result: ${stepResult.llmOutput}`);
-  }
-}
-```
-
-### Streaming with Progress Tracking
-
-```typescript
-let completedSteps = 0;
-const totalSteps = 3;
-
-for await (const stepResult of workflow.stream((step, stepIndex) => {
-  completedSteps++;
-  console.log(`Progress: ${completedSteps}/${totalSteps}`);
-})) {
-  updateProgressBar(completedSteps / totalSteps);
-  displayStepResult(stepResult);
-}
-```
-
-### When to Use Streaming
-
-#### Use `stream()` for:
-
-- Interactive applications needing live updates
-- Long-running workflows (>5 seconds)
-- Real-time dashboards
-- WebSocket/SSE applications
-- Memory-sensitive environments
-- Early termination scenarios
-
-#### Use `run()` for:
-
-- Batch processing
-- Simple scripts
-- Analysis workflows
-- APIs returning complete responses
-- Testing and debugging
-- When you need aggregated metrics
-
-### Characteristics
-
-- **Immediate feedback:** First result available when first step completes
-- **Memory efficient:** Results can be processed and discarded incrementally
-- **Progressive display:** Results appear as they complete
-- **Same execution model:** Retries, timeouts, and validation work identically to `run()`
-
-### Token-Level Streaming
+## Token-Level Streaming
 
 Stream individual tokens as they arrive from the LLM for real-time chat interfaces.
 
-#### Per-Step Token Streaming
+### Per-Step Token Streaming
+
+Stream tokens for a specific step:
 
 ```typescript
 await agent({ llm })
@@ -266,13 +223,15 @@ await agent({ llm })
   .run();
 ```
 
-#### Stream-Level Token Streaming with Metadata
+### Run-Level Token Streaming with Metadata
+
+Stream tokens across all steps with rich metadata:
 
 ```typescript
-for await (const step of agent({ llm })
+await agent({ llm })
   .then({ prompt: "Analyze data" })
   .then({ prompt: "Generate report" })
-  .stream({
+  .run({
     onToken: (token, meta) => {
       // meta.stepIndex, meta.handledByStep, meta.stepPrompt, meta.llmProvider
       res.write(`data: ${JSON.stringify({ token, step: meta.stepIndex })}\n\n`);
@@ -280,12 +239,10 @@ for await (const step of agent({ llm })
     onStep: (step, index) => {
       console.log(`Step ${index} complete`);
     },
-  })) {
-  // Step results yield here
-}
+  });
 ```
 
-**💡 Precedence:** Step-level `onToken` takes precedence over stream-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and stream-level callback won't receive those tokens.
+**💡 Precedence:** Step-level `onToken` takes precedence over run-level. If a step defines `onToken`, `meta.handledByStep` will be `true` and run-level callback won't receive those tokens.
 
 ### Tool Call Progress with `onToolCall`
 

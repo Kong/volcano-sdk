@@ -388,35 +388,45 @@ async function getOAuthToken(auth: MCPAuthConfig, endpoint: string): Promise<str
 async function getPooledClient(url: string, auth?: MCPAuthConfig): Promise<MCPPoolEntry> {
   const poolKey = auth ? `${url}::auth` : url; // Separate pool entries for auth vs non-auth
   let entry = MCP_POOL.get(poolKey);
-  if (!entry) {
-    // Evict LRU idle if over max
-    if (MCP_POOL.size >= MCP_POOL_MAX) {
-      const idleEntries = Array.from(MCP_POOL.entries()).filter(([, e]) => e.busyCount === 0);
-      idleEntries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-      const toEvict = idleEntries.slice(0, Math.max(0, MCP_POOL.size - MCP_POOL_MAX + 1));
-      for (const [k, e] of toEvict) {
-        try { await e.client.close(); } catch {}
-        MCP_POOL.delete(k);
-      }
-    }
-    
-    // Create transport
-    const transport = new StreamableHTTPClientTransport(new URL(url));
-    
-    const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
-    
-    // Connect with auth if needed
-    if (auth) {
-      await connectWithAuth(transport, client, auth, url);
-    } else {
-      await client.connect(transport);
-    }
-    
-    entry = { client, transport, lastUsed: Date.now(), busyCount: 0, auth };
-    MCP_POOL.set(poolKey, entry);
+  
+  if (entry) {
+    // Reusing existing connection - just update metadata
+    entry.busyCount++;
+    entry.lastUsed = Date.now();
+    return entry;
   }
-  entry.busyCount++;
-  entry.lastUsed = Date.now();
+  
+  // No existing connection - create new one
+  // Evict LRU idle if over max
+  if (MCP_POOL.size >= MCP_POOL_MAX) {
+    const idleEntries = Array.from(MCP_POOL.entries()).filter(([, e]) => e.busyCount === 0);
+    idleEntries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+    const toEvict = idleEntries.slice(0, Math.max(0, MCP_POOL.size - MCP_POOL_MAX + 1));
+    for (const [k, e] of toEvict) {
+      try { 
+        await e.client.close();
+        if (e.transport && typeof e.transport.close === 'function') {
+          await e.transport.close();
+        }
+      } catch {}
+      MCP_POOL.delete(k);
+    }
+  }
+  
+  // Create transport
+  const transport = new StreamableHTTPClientTransport(new URL(url));
+  
+  const client = new MCPClient({ name: "volcano-sdk", version: "0.0.1" });
+  
+  // Connect with auth if needed
+  if (auth) {
+    await connectWithAuth(transport, client, auth, url);
+  } else {
+    await client.connect(transport);
+  }
+  
+  entry = { client, transport, lastUsed: Date.now(), busyCount: 1, auth };
+  MCP_POOL.set(poolKey, entry);
   return entry;
 }
 
@@ -621,6 +631,22 @@ export function __internal_getMcpPoolStats() {
   };
 }
 export async function __internal_forcePoolCleanup() { await cleanupIdlePool(); }
+export async function __internal_clearAllPools() {
+  // Close all HTTP MCP connections
+  for (const [, entry] of MCP_POOL) {
+    try { await entry.client.close(); } catch {}
+  }
+  MCP_POOL.clear();
+  
+  // Close all stdio MCP connections
+  for (const [, entry] of MCP_STDIO_POOL) {
+    try { 
+      await entry.client.close();
+      entry.process.kill();
+    } catch {}
+  }
+  MCP_STDIO_POOL.clear();
+}
 export function __internal_setPoolConfig(max: number, idleMs: number) { MCP_POOL_MAX = max; MCP_POOL_IDLE_MS = idleMs; }
 export function __internal_clearOAuthTokenCache() { OAUTH_TOKEN_CACHE.clear(); }
 export function __internal_getOAuthTokenCache() { 
@@ -864,7 +890,7 @@ export type RetryConfig = {
 };
 
 /**
- * Metadata provided to stream-level onToken callback.
+ * Metadata provided to run-level onToken callback.
  * Allows conditional processing based on whether step-level handler already processed the token.
  * 
  * @property stepIndex - Index of the current step (0-based)
@@ -873,7 +899,7 @@ export type RetryConfig = {
  * @property llmProvider - The LLM provider ID (e.g., "OpenAI-gpt-4o-mini", "Anthropic-claude-3")
  * 
  * @example
- * .stream({
+ * .run({
  *   onToken: (token, meta) => {
  *     if (!meta.handledByStep) {
  *       // Only process if step didn't handle it
@@ -892,17 +918,17 @@ export type TokenMetadata = {
 };
 
 /**
- * Options for the stream() method.
+ * Options for the run() method.
  * Supports both token-level and step-level callbacks for maximum flexibility.
  * 
  * @property onToken - Called for each token as it arrives (with metadata). 
  *                     Step-level onToken takes precedence - when a step has its own onToken,
  *                     this callback won't receive tokens from that step (meta.handledByStep will be true).
- * @property onStep - Called when each step completes. Equivalent to the callback in stream(callback).
+ * @property onStep - Called when each step completes. Equivalent to the callback in run(callback).
  * 
  * @example
  * // Both token and step callbacks
- * .stream({
+ * .run({
  *   onToken: (token, meta) => {
  *     console.log(`Token from step ${meta.stepIndex}: ${token}`);
  *   },
@@ -913,7 +939,7 @@ export type TokenMetadata = {
  * 
  * @example
  * // Backward compatible: just a callback
- * .stream((step, index) => {
+ * .run((step, index) => {
  *   console.log(`Step ${index} done`);
  * })
  */
@@ -1025,8 +1051,7 @@ export interface AgentBuilder {
   forEach<T>(items: T[], body: (item: T, agent: AgentBuilder) => AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
   retryUntil(body: (agent: AgentBuilder) => AgentBuilder, successCondition: (result: StepResult) => boolean, opts?: { maxAttempts?: number; backoff?: number; pre?: () => void; post?: () => void }): AgentBuilder;
   runAgent(subAgent: AgentBuilder, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
-  run(log?: (s: StepResult, stepIndex: number) => void): Promise<AgentResults>;
-  stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown>;
+  run(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): Promise<AgentResults>;
 }
 
 function safeExecuteHook(hook: (() => void) | undefined, hookName: string): void {
@@ -1416,7 +1441,7 @@ interface StepExecutionContext {
 }
 
 /**
- * Shared pattern step execution logic for both run() and stream() methods.
+ * Shared pattern step execution logic for run() method.
  * Handles all 7 pattern types with hooks and proper result management.
  * 
  * @param raw - The pattern step definition
@@ -1534,7 +1559,7 @@ async function executePatternStep(
 
 /**
  * Shared retry logic with timeout, error classification, and exponential backoff.
- * Used by both run() and stream() methods to execute steps with retries.
+ * Used by run() method to execute steps with retries.
  */
 async function executeWithRetry(
   stepFn: () => Promise<StepResult>,
@@ -1589,7 +1614,7 @@ async function executeWithRetry(
 }
 
 /**
- * Core step execution logic shared between run() and stream() methods.
+ * Core step execution logic for run() method.
  * Handles all 4 step types:
  * 1. Automatic tool selection (mcps + prompt)
  * 2. Automatic agent delegation (agents + prompt)
@@ -2152,7 +2177,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
  * Create an AI agent that chains LLM reasoning with MCP tool calls.
  * 
  * @param opts - Optional configuration including LLM provider, instructions, timeout, retry policy, and observability
- * @returns AgentBuilder for chaining steps with .then(), run(), and stream()
+ * @returns AgentBuilder for chaining steps with .then() and run()
  * 
  * @example
  * // Simple agent
@@ -2242,11 +2267,15 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       return builder;
     },
     
-    async run(log?: (s: StepResult, stepIndex: number) => void): Promise<AgentResults> {
+    async run(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): Promise<AgentResults> {
       if (isRunning) {
         throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
       }
       isRunning = true;
+      
+      // Handle both old signature (log callback) and new signature (StreamOptions)
+      const log = typeof optionsOrLog === 'function' ? optionsOrLog : optionsOrLog?.onStep;
+      const capturedStreamOnToken = typeof optionsOrLog === 'object' ? optionsOrLog?.onToken : undefined;
       
       const isSubAgent = (builder as any).__isSubAgent || false;
       const isExplicitSubAgent = (builder as any).__isExplicitSubAgent || false;
@@ -2312,7 +2341,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
               telemetry,
               agentSpan,
               progress,
-              capturedStreamOnToken: undefined,
+              capturedStreamOnToken,
               onToolCall: (s as any).onToolCall,
               disableParallelToolExecution: opts?.disableParallelToolExecution
             });
@@ -2360,123 +2389,6 @@ export function agent(opts?: AgentOptions): AgentBuilder {
         telemetry?.endSpan(agentSpan, undefined, error);
         telemetry?.recordMetric('error', 1, { type: 'agent', level: 'workflow' });
         throw error;
-      } finally {
-        if (progress) {
-          // Calculate totals for workflow end
-          const totalTokens = out.reduce((acc, s) => {
-            const stepTokens = (s as any).__tokenCount || (s as any).__crewTotalTokens || 0;
-            return acc + stepTokens;
-          }, 0);
-          const modelsUsed = new Set<string>();
-          out.forEach(s => {
-            const provider = (s as any).__provider;
-            const crewModels = (s as any).__crewModels;
-            if (provider) modelsUsed.add(provider);
-            if (crewModels) crewModels.forEach((m: string) => modelsUsed.add(m));
-          });
-          const totalDuration = out.reduce((acc, s) => acc + (s.durationMs || 0), 0);
-          const totalToolCalls = out.reduce((acc, s) => acc + (s.toolCalls?.length || 0) + (s.mcp ? 1 : 0), 0);
-          progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed), totalToolCalls);
-        }
-        isRunning = false;
-      }
-    },
-    async *stream(optionsOrLog?: StreamOptions | ((s: StepResult, stepIndex: number) => void)): AsyncGenerator<StepResult, void, unknown> {
-      if (isRunning) {
-        throw new AgentConcurrencyError('This agent is already running. Create a new agent() instance for concurrent runs.');
-      }
-      isRunning = true;
-      
-      // Handle both old signature (log callback) and new signature (StreamOptions)
-      const log = typeof optionsOrLog === 'function' ? optionsOrLog : optionsOrLog?.onStep;
-      const capturedStreamOnToken = typeof optionsOrLog === 'object' ? optionsOrLog?.onToken : undefined;
-      
-      const isSubAgent = (builder as any).__isSubAgent || false;
-      const isExplicitSubAgent = (builder as any).__isExplicitSubAgent || false;
-      const parentStepIndex = (builder as any).__parentStepIndex;
-      const parentTotalSteps = (builder as any).__parentTotalSteps;
-      const parentAgentName = (builder as any).__parentAgentName;
-      const progress = showProgress ? createProgressHandler(steps.length, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
-      
-      // Record agent execution (always, even for anonymous agents)
-      if (telemetry) {
-        telemetry.recordMetric('agent.execution', 1, {
-          agent_name: agentName || 'anonymous',
-          parent_agent: parentAgentName || 'none',
-          is_subagent: isSubAgent.toString()
-        });
-      }
-      
-      // Start agent span
-      const agentSpan = telemetry?.startAgentSpan(steps.length, agentName) || null;
-      const out: StepResult[] = [];
-      
-      // Inherit parent context if this is a subagent
-      if (!inheritedParentContext && (builder as any).__parentContext) {
-        contextHistory = [...(builder as any).__parentContext];
-        inheritedParentContext = true;
-      }
-      
-      try {
-        // snapshot steps array to make stream isolated from later .then() calls
-        const planned = [...steps];
-        for (const raw of planned) {
-          if ((raw as any).__reset) { contextHistory = []; continue; }
-          
-          // Handle advanced pattern steps using shared function
-          const patternResult = await executePatternStep(raw, out, contextHistory, opts, planned);
-          if (patternResult.wasPattern) {
-            for (const r of patternResult.results) {
-              const index = out.length - patternResult.results.length + patternResult.results.indexOf(r);
-              log?.(r, index);
-              yield r;
-            }
-            continue;
-          }
-          
-          const s = typeof raw === 'function' ? (raw as StepFactory)(out) : (raw as Step);
-          const stepTimeoutMs = ((s as any).timeout ?? (defaultTimeoutMs / 1000)) * 1000;
-          const retryCfg: RetryConfig = (s as any).retry ?? defaultRetry;
-          const attemptsTotal = retryCfg.retries ?? defaultRetry.retries ?? CONSTANTS.DEFAULT_RETRY_ATTEMPTS;
-          const useDelay = retryCfg.delay ?? defaultRetry.delay ?? CONSTANTS.DEFAULT_RETRY_DELAY_SECONDS;
-          const useBackoff = retryCfg.backoff;
-          if (useDelay && useBackoff) throw new Error('retry: specify either delay or backoff, not both');
-  
-          const doStep = async (): Promise<StepResult> => {
-            return executeStepCore({
-              step: s,
-              stepIndex: out.length,
-              defaultLlm,
-              globalInstructions,
-              contextHistory,
-              contextMaxToolResults,
-              contextMaxChars,
-              defaultMaxToolIterations,
-              agentName,
-              applyAgentAuth,
-              telemetry,
-              agentSpan,
-              progress,
-              capturedStreamOnToken,
-              onToolCall: (s as any).onToolCall,
-              disableParallelToolExecution: opts?.disableParallelToolExecution
-            });
-          };
-
-          const r = await executeWithRetry(doStep, out.length, {
-            attemptsTotal,
-            stepTimeoutMs,
-            useDelay,
-            useBackoff
-          });
-          log?.(r, out.length);
-          out.push(r);
-          contextHistory.push(r);
-          
-          // Yield the step result for streaming
-          yield r;
-        }
-        // Note: We don't populate aggregated totals for streaming since it's incremental
       } finally {
         if (progress) {
           // Calculate totals for workflow end

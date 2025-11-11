@@ -137,9 +137,9 @@ describe('Token-level streaming', () => {
     });
   });
 
-  // Stream-level onToken tests
-  describe('stream-level onToken with metadata', () => {
-    it('calls stream-level onToken with metadata when no step-level onToken', async () => {
+  // Run-level onToken tests
+  describe('run-level onToken with metadata', () => {
+    it('calls run-level onToken with metadata when no step-level onToken', async () => {
       const tokens: string[] = [];
       const metadataReceived: TokenMetadata[] = [];
       
@@ -156,17 +156,14 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results: any[] = [];
-      for await (const step of agent({ llm: mockLLM , hideProgress: true })
+      const results = await agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'Test prompt' })
-        .stream({
+        .run({
           onToken: (token, meta) => {
             tokens.push(token);
             metadataReceived.push({ ...meta });
           }
-        })) {
-        results.push(step);
-      }
+        });
 
       expect(tokens).toEqual(['A', 'B', 'C']);
       expect(metadataReceived).toHaveLength(3);
@@ -179,8 +176,8 @@ describe('Token-level streaming', () => {
       expect(results[0].llmOutput).toBe('ABC');
     });
 
-    it('step-level onToken takes precedence over stream-level', async () => {
-      const streamTokens: string[] = [];
+    it('step-level onToken takes precedence over run-level', async () => {
+      const runTokens: string[] = [];
       const stepTokens: string[] = [];
       
       const mockLLM: LLMHandle = {
@@ -195,24 +192,21 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results: any[] = [];
-      for await (const step of agent({ llm: mockLLM , hideProgress: true })
+      const results = await agent({ llm: mockLLM , hideProgress: true })
         .then({
           prompt: 'Test',
           onToken: (token) => {
             stepTokens.push(token);
           }
         })
-        .stream({
+        .run({
           onToken: (token, meta) => {
-            streamTokens.push(token);
+            runTokens.push(token);
           }
-        })) {
-        results.push(step);
-      }
+        });
 
       expect(stepTokens).toEqual(['tok', 'en']);
-      expect(streamTokens).toEqual([]); // Should NOT be called
+      expect(runTokens).toEqual([]); // Should NOT be called
       expect(results[0].llmOutput).toBe('token');
     });
 
@@ -241,17 +235,14 @@ describe('Token-level streaming', () => {
         },
       };
 
-      const results: any[] = [];
-      for await (const step of agent()
+      await agent()
         .then({ llm: mockLLM1, prompt: 'Use GPT' })
         .then({ llm: mockLLM2, prompt: 'Use Claude' })
-        .stream({
+        .run({
           onToken: (token, meta) => {
             allMetadata.push({ ...meta });
           }
-        })) {
-        results.push(step);
-      }
+        });
 
       expect(allMetadata).toHaveLength(2);
       expect(allMetadata[0]).toMatchObject({
@@ -282,17 +273,15 @@ describe('Token-level streaming', () => {
         },
       };
 
-      for await (const step of agent({ llm: mockLLM , hideProgress: true })
+      await agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'No step handler' })
         .then({ prompt: 'Has step handler', onToken: () => {} })
         .then({ prompt: 'No step handler again' })
-        .stream({
+        .run({
           onToken: (token, meta) => {
             allMetadata.push({ ...meta });
           }
-        })) {
-        // Process steps
-      }
+        });
 
       // Should only receive tokens from steps 0 and 2 (not step 1 with handler)
       expect(allMetadata).toHaveLength(2);
@@ -316,16 +305,14 @@ describe('Token-level streaming', () => {
         },
       };
 
-      for await (const step of agent({ llm: mockLLM , hideProgress: true })
+      await agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'First' })
         .then({ prompt: 'Second' })
-        .stream({
+        .run({
           onStep: (step, stepIndex) => {
             completedSteps.push({ stepIndex, output: step.llmOutput });
           }
-        })) {
-        // Process steps
-      }
+        });
 
       expect(completedSteps).toEqual([
         { stepIndex: 0, output: 'Test' },
@@ -333,7 +320,7 @@ describe('Token-level streaming', () => {
       ]);
     });
 
-    it('maintains backward compatibility with stream(callback)', async () => {
+    it('maintains backward compatibility with run(callback)', async () => {
       const completedSteps: any[] = [];
       
       const mockLLM: LLMHandle = {
@@ -347,13 +334,11 @@ describe('Token-level streaming', () => {
         },
       };
 
-      for await (const step of agent({ llm: mockLLM , hideProgress: true })
+      await agent({ llm: mockLLM , hideProgress: true })
         .then({ prompt: 'Test' })
-        .stream((step, stepIndex) => {
+        .run((step, stepIndex) => {
           completedSteps.push({ stepIndex, output: step.llmOutput });
-        })) {
-        // Process
-      }
+        });
 
       expect(completedSteps).toEqual([{ stepIndex: 0, output: 'Test' }]);
     });

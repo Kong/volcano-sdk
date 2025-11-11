@@ -45,12 +45,11 @@ const myAgent = agent({
 
 #### Basic Methods
 
-| Method            | Description                                      |
-| ----------------- | ------------------------------------------------ |
-| `.then(step)`     | Add a sequential step to the workflow            |
-| `.resetHistory()` | Clear context/history for subsequent steps       |
-| `.run(log?)`      | Execute workflow and return all results          |
-| `.stream(log?)`   | Execute workflow and yield results incrementally |
+| Method                 | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| `.then(step)`          | Add a sequential step to the workflow                          |
+| `.resetHistory()`      | Clear context/history for subsequent steps                     |
+| `.run(options?)`       | Execute workflow and return all results (supports onStep, onToken callbacks) |
 
 #### Advanced Pattern Methods
 

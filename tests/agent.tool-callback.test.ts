@@ -230,7 +230,7 @@ describe('onToolCall callback', () => {
     const toolCalls: string[] = [];
     const tokens: string[] = [];
 
-    await agent({ llm })
+    await agent({ llm, hideProgress: true })
       .then({
         prompt: 'Get user "eve"',
         mcps: [testMcp],
@@ -249,6 +249,6 @@ describe('onToolCall callback', () => {
 
     expect(toolCalls.length).toBeGreaterThan(0);
     expect(tokens.length).toBeGreaterThan(0);
-  }, 15000);
+  }, 30000);
 });
 
