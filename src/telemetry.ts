@@ -57,22 +57,63 @@ const shutdownManager = {
     this.registerHook();
   },
   
-  // Register a single, global beforeExit hook to shut down all SDKs.
+  // Perform graceful shutdown of all SDK instances
+  async shutdown(): Promise<void> {
+    if (this.isShuttingDown) return;
+    this.isShuttingDown = true;
+    if (this.sdkInstances.length === 0) return;
+    
+    console.log(`[Volcano] Shutting down ${this.sdkInstances.length} OpenTelemetry SDK instance(s)...`);
+    try {
+      // Shut down all SDKs with a timeout to prevent hanging
+      await Promise.race([
+        Promise.all(this.sdkInstances.map(sdk => sdk.shutdown())),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Shutdown timeout')), 5000)
+        )
+      ]);
+      console.log('[Volcano] OpenTelemetry SDKs shut down successfully.');
+    } catch (err) {
+      console.error('[Volcano] Error shutting down OpenTelemetry SDKs:', err);
+    }
+  },
+  
+  // Register hooks for various process exit scenarios
   registerHook() {
     if (this.isHookRegistered) return;
     this.isHookRegistered = true;
+    
+    // Handle normal process exit (event loop becomes empty)
     process.on('beforeExit', async () => {
-      if (this.isShuttingDown) return;
-      this.isShuttingDown = true;
-      if (this.sdkInstances.length === 0) return;
-      console.log(`[Volcano] Shutting down ${this.sdkInstances.length} OpenTelemetry SDK instance(s)...`);
-      try {
-        // Shut down all SDKs.
-        await Promise.all(this.sdkInstances.map(sdk => sdk.shutdown()));
-        console.log('[Volcano] OpenTelemetry SDKs shut down successfully.');
-      } catch (err) {
-        console.error('[Volcano] Error shutting down OpenTelemetry SDKs:', err);
-      }
+      await this.shutdown();
+    });
+    
+    // Handle SIGTERM (e.g., from docker stop, kubernetes)
+    process.on('SIGTERM', async () => {
+      console.log('[Volcano] Received SIGTERM signal');
+      await this.shutdown();
+      process.exit(0);
+    });
+    
+    // Handle SIGINT (e.g., Ctrl+C)
+    process.on('SIGINT', async () => {
+      console.log('[Volcano] Received SIGINT signal');
+      await this.shutdown();
+      process.exit(0);
+    });
+    
+    // Handle uncaught exceptions
+    process.on('uncaughtException', async (err) => {
+      console.error('[Volcano] Uncaught exception:', err);
+      await this.shutdown();
+      process.exit(1);
+    });
+    
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', async (reason, promise) => {
+      console.error('[Volcano] Unhandled rejection at:', promise, 'reason:', reason);
+      await this.shutdown();
+      process.exit(1);
     });
   }
 };

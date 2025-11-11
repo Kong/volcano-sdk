@@ -2407,6 +2407,11 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           const totalToolCalls = out.reduce((acc, s) => acc + (s.toolCalls?.length || 0) + (s.mcp ? 1 : 0), 0);
           progress.workflowEnd(steps.length, totalTokens, totalDuration, Array.from(modelsUsed), totalToolCalls);
         }
+        
+        // Flush telemetry after workflow completes to ensure all traces/metrics are exported
+        // This is especially important for short-lived processes that exit immediately
+        await telemetry?.flush();
+        
         isRunning = false;
       }
     },
