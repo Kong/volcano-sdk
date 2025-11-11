@@ -40,6 +40,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          LLAMA_BASE_URL: http://127.0.0.1:11434
+          LLAMA_MODEL: llama3.2:3b
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           GCP_VERTEX_API_KEY: ${{ secrets.GCP_VERTEX_API_KEY }}
           AZURE_AI_API_KEY: ${{ secrets.AZURE_AI_API_KEY }}
