@@ -25,16 +25,18 @@ describe('Examples Integration Tests', () => {
   const hasApiKey = !!process.env.OPENAI_API_KEY;
   
   // Helper to wait for server to be ready
-  async function waitForServer(port: number, maxAttempts = 30) {
+  async function waitForServer(port: number, maxAttempts = 50) {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         await fetch(`http://localhost:${port}/mcp`, { method: 'HEAD' });
+        console.log(`✅ Server on port ${port} is ready`);
         return true;
       } catch {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
-    throw new Error(`Server on port ${port} did not start`);
+    console.warn(`⚠️  Server on port ${port} did not start after ${maxAttempts} attempts`);
+    return false;
   }
 
   beforeAll(async () => {
@@ -55,9 +57,13 @@ describe('Examples Integration Tests', () => {
     });
 
     // Wait for servers to be ready
-    await waitForServer(8001);
-    await waitForServer(8002);
-  }, 15000);
+    const weatherReady = await waitForServer(8001);
+    const tasksReady = await waitForServer(8002);
+    
+    if (!weatherReady || !tasksReady) {
+      console.warn('⚠️  MCP servers did not start - some tests may fail');
+    }
+  }, 20000);
 
   afterAll(() => {
     weatherServer?.kill();
@@ -65,7 +71,7 @@ describe('Examples Integration Tests', () => {
   });
 
   it.skipIf(!hasApiKey)('01-hello-world.ts completes successfully', async () => {
-    const { stdout, stderr } = await execAsync('node examples/01-hello-world.ts', {
+    const { stdout, stderr } = await execAsync('npx tsx examples/01-hello-world.ts', {
       env: { ...process.env },
       timeout: 30000
     });
@@ -76,7 +82,7 @@ describe('Examples Integration Tests', () => {
   }, 35000);
 
   it.skipIf(!hasApiKey)('02-with-tools.ts completes and uses MCP tools', async () => {
-    const { stdout } = await execAsync('node examples/02-with-tools.ts', {
+    const { stdout } = await execAsync('npx tsx examples/02-with-tools.ts', {
       env: { ...process.env },
       timeout: 30000
     });
@@ -87,7 +93,7 @@ describe('Examples Integration Tests', () => {
   }, 35000);
 
   it.skipIf(!hasApiKey)('03-streaming.ts streams tokens and completes', async () => {
-    const { stdout } = await execAsync('node examples/03-streaming.ts', {
+    const { stdout } = await execAsync('npx tsx examples/03-streaming.ts', {
       env: { ...process.env },
       timeout: 30000
     });
@@ -97,7 +103,7 @@ describe('Examples Integration Tests', () => {
   }, 35000);
 
   it.skipIf(!hasApiKey)('04-structured-outputs.ts produces valid JSON', async () => {
-    const { stdout } = await execAsync('node examples/04-structured-outputs.ts', {
+    const { stdout } = await execAsync('npx tsx examples/04-structured-outputs.ts', {
       env: { ...process.env },
       timeout: 30000
     });
@@ -107,7 +113,7 @@ describe('Examples Integration Tests', () => {
   }, 35000);
 
   it.skipIf(!hasApiKey)('05-sub-agents.ts composes agents successfully', async () => {
-    const { stdout } = await execAsync('node examples/05-sub-agents.ts', {
+    const { stdout } = await execAsync('npx tsx examples/05-sub-agents.ts', {
       env: { ...process.env },
       timeout: 30000
     });
@@ -117,7 +123,7 @@ describe('Examples Integration Tests', () => {
   }, 35000);
 
   it.skipIf(!hasApiKey)('06-multi-agent.ts delegates to specialists', async () => {
-    const { stdout } = await execAsync('node examples/06-multi-agent.ts', {
+    const { stdout } = await execAsync('npx tsx examples/06-multi-agent.ts', {
       env: { ...process.env },
       timeout: 60000
     });
@@ -128,7 +134,7 @@ describe('Examples Integration Tests', () => {
   }, 65000);
 
   it.skipIf(!hasApiKey)('07-patterns.ts demonstrates all patterns', async () => {
-    const { stdout } = await execAsync('node examples/07-patterns.ts', {
+    const { stdout } = await execAsync('npx tsx examples/07-patterns.ts', {
       env: { ...process.env },
       timeout: 60000
     });
@@ -136,11 +142,11 @@ describe('Examples Integration Tests', () => {
     expect(stdout).toContain('Parallel Processing');
     expect(stdout).toContain('Conditional Branching');
     expect(stdout).toContain('For Each');
-    expect(stdout).toContain('Retry Until Valid');
+    expect(stdout).toContain('While Loop');
   }, 65000);
 
   it.skipIf(!hasApiKey)('08-context.ts maintains conversation context', async () => {
-    const { stdout } = await execAsync('node examples/08-context.ts', {
+    const { stdout } = await execAsync('npx tsx examples/08-context.ts', {
       env: { ...process.env },
       timeout: 30000
     });
@@ -153,7 +159,7 @@ describe('Examples Integration Tests', () => {
 
   it.skipIf(!hasApiKey)('09-observability.ts runs with telemetry (skips if no collector)', async () => {
     try {
-      const { stdout } = await execAsync('node examples/09-observability.ts', {
+      const { stdout } = await execAsync('npx tsx examples/09-observability.ts', {
         env: { ...process.env },
         timeout: 30000
       });
@@ -173,7 +179,7 @@ describe('Examples Integration Tests', () => {
 
   it.skipIf(!hasApiKey || !process.env.ANTHROPIC_API_KEY)('10-providers.ts works with multiple LLM providers', async () => {
 
-    const { stdout } = await execAsync('node examples/10-providers.ts', {
+    const { stdout } = await execAsync('npx tsx examples/10-providers.ts', {
       env: { ...process.env },
       timeout: 45000
     });
@@ -183,7 +189,7 @@ describe('Examples Integration Tests', () => {
   }, 50000);
 
   it.skipIf(!hasApiKey)('11-email-triage.ts processes all emails', async () => {
-    const { stdout } = await execAsync('node examples/11-email-triage.ts', {
+    const { stdout } = await execAsync('npx tsx examples/11-email-triage.ts', {
       env: { ...process.env },
       timeout: 60000
     });

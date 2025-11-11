@@ -53,20 +53,25 @@ forEachResults.forEach((step, i) => {
   console.log(`${topics[i]}: ${step.llmOutput}`);
 });
 
-// Pattern 4: Retry until valid
-console.log("\n=== Retry Until Valid ===\n");
+// Pattern 4: While loop
+console.log("\n=== While Loop ===\n");
 
-const validResult = await agent({ llm })
-  .retryUntil(
-    (a) => a.then({ prompt: 'Say exactly "READY" - nothing else' }),
-    (result) => {
-      const output = (result[result.length - 1]?.llmOutput || "").trim();
-      console.log(`  Attempt: "${output}" -> ${output === "READY" ? "✓" : "✗"}`);
-      return output === "READY";
+let counter = 0;
+const whileResults = await agent({ llm })
+  .while(
+    () => {
+      counter++;
+      return counter < 3;  // Loop 2 times
     },
-    { maxAttempts: 3 }
+    (a) => a.then({ prompt: `Generate a random word (iteration ${counter})` }),
+    { maxIterations: 5 }
   )
   .run();
 
-console.log(`Success! Got: ${validResult[validResult.length - 1]?.llmOutput}`);
+console.log(`Generated ${whileResults.length} words:`);
+whileResults.forEach((step, i) => {
+  console.log(`  ${i + 1}. ${step.llmOutput}`);
+});
+
+process.exit(0);
 

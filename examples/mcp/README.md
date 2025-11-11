@@ -17,8 +17,11 @@ Or run multiple servers in separate terminals:
 # Terminal 1
 tsx examples/mcp/weather/server.ts
 
-# Terminal 2  
+# Terminal 2
 tsx examples/mcp/tasks/server.ts
+
+# Terminal 3 (run an example)
+tsx examples/02-with-tools.ts
 ```
 
 ## Available Servers
@@ -31,16 +34,6 @@ tsx examples/mcp/tasks/server.ts
 - `create_task(title, priority?)` - Add a task
 - `list_tasks(filter?)` - Show tasks
 - `complete_task(taskId)` - Mark as done
-
-### Notes (Port 8003)
-- `create_note(title, content, tags?)` - Create a note
-- `search_notes(query)` - Search by keyword
-- `get_note(noteId)` - Get specific note
-- `list_all_notes()` - List all notes
-
-### Calculator (Port 8004)
-- `calculate(expression)` - Evaluate math expressions
-- `convert_units(value, from, to)` - Unit conversion
 
 ### Filesystem (stdio)
 - `list_directory(path, pattern?)` - List files

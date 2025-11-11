@@ -40,3 +40,5 @@ const agentsUsed = await results.ask(llm, "Which agents were used and what did e
 console.log("\n" + blogPost);
 console.log("\n" + agentsUsed);
 
+process.exit(0);
+

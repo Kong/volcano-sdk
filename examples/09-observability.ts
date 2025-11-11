@@ -4,7 +4,7 @@ import { agent, llmOpenAI, createVolcanoTelemetry } from "../dist/volcano-sdk.js
 // cd observability-demo && docker-compose -f docker-compose.observability.yml up
 
 const telemetry = createVolcanoTelemetry({
-  serviceName: 'my-app',
+  serviceName: 'my-agent',
   endpoint: 'http://localhost:4318'
 });
 

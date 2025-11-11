@@ -25,3 +25,5 @@ const results = await agent({ llm })
 const email = await results.ask(llm, "Show me the final email reply");
 console.log("\n" + email);
 
+process.exit(0);
+

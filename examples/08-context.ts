@@ -32,3 +32,5 @@ results.forEach((step, i) => {
 console.log("\n=== Final Budget Estimate ===");
 console.log(results.at(-1)?.llmOutput);
 
+process.exit(0);
+
