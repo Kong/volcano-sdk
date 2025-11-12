@@ -24,6 +24,8 @@ export type { MistralConfig, MistralOptions } from "./llms/mistral.js";
 export type { BedrockConfig, BedrockOptions } from "./llms/bedrock.js";
 export type { VertexStudioConfig, VertexStudioOptions } from "./llms/vertex-studio.js";
 export type { AzureConfig, AzureOptions } from "./llms/azure.js";
+export { MCPRegistry, mcpRegistry, loadMCPConfig, createMCPRegistry } from "./mcp-registry.js";
+export type { MCPServerConfig, RegisteredMCP } from "./mcp-registry.js";
 import type { LLMHandle, ToolDefinition, LLMToolResult } from "./llms/types.js";
 import Ajv from "ajv";
 
