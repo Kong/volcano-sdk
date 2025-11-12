@@ -244,7 +244,6 @@ describe('Telemetry E2E - All Providers with Live Observability', () => {
       .then({
         prompt: 'Research AI and then write a brief explanation',
         agents: [researcher, writer],
-        maxAgentIterations: 3
       })
       .run();
     

@@ -122,14 +122,20 @@ npx tsx examples/06-multi-agent.ts
 const researcher = agent({ 
   llm, 
   name: 'researcher',
-  description: 'Expert at finding facts...'
-}).then({ prompt: "Research: {{task}}" });
+  description: 'Expert at finding facts and data. Use for information gathering.'
+}).then({ prompt: "Research the topic." })
+  .then({ prompt: "Summarize the research." });
+
+const writer = agent({ 
+  llm, 
+  name: 'writer',
+  description: 'Creates engaging content. Use for writing tasks.'
+}).then({ prompt: "Write content." });
 
 await agent({ llm })
   .then({
     prompt: "Create a blog post about JWST discoveries",
-    agents: [researcher, writer, editor],  // Coordinator picks automatically
-    maxAgentIterations: 10
+    agents: [researcher, writer]  // Coordinator decides which to use and when
   })
   .run();
 ```

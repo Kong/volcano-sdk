@@ -10,5 +10,5 @@ const results = await agent({ llm })
   .then({ prompt: "Write a haiku using those words" })
   .run();
 
-console.log(results[results.length - 1]?.llmOutput);
+console.log('\n' + (results[results.length - 1]?.llmOutput || ''));
 

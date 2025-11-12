@@ -56,7 +56,13 @@ function createTaskServer() {
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: '*', exposedHeaders: ['Mcp-Session-Id'] }));
+// Note: This is a local development example server
+// In production, configure CORS to only allow specific origins
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+app.use(cors({ 
+  origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
+  exposedHeaders: ['Mcp-Session-Id'] 
+}));
 
 const transports = new Map();
 

@@ -446,7 +446,6 @@ describe('Telemetry - Comprehensive Coverage', () => {
         .then({
           prompt: 'Delegate this task',
           agents: [agent1],
-          maxAgentIterations: 2
         })
         .run();
       

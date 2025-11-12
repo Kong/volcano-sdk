@@ -203,7 +203,7 @@ describe('volcano-sdk flow (automatic tool selection) across providers', () => {
           const step2Names = (step2.toolCalls || []).map(c => c.name);
           expect(step2Names.some(n => n.endsWith('.get_preferences'))).toBe(true);
         }
-      }, p.name === 'Llama' ? 240000 : 120000); // Llama needs 4 minutes in CI
+      }, p.name === 'Llama' || p.name === 'Bedrock' ? 300000 : 120000); // Llama/Bedrock need 5 minutes
 
       it('runs a one-step automatic flow using both MCP servers (one-liner)', async () => {
         if (p.requireEnv) for (const k of p.requireEnv) { if (!process.env[k]) throw new Error(`${k} is required for this test`); }

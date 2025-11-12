@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { agent, llmOpenAI, mcp } from '../src/volcano-sdk.js';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { agent, llmOpenAI, mcp, _clearMCPPool } from '../src/volcano-sdk.js';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
  * with real MCP servers and measures performance improvements.
  */
 
-describe('Parallel Tool Execution E2E', () => {
+describe.sequential('Parallel Tool Execution E2E', () => {
   let testServer: ChildProcess;
   const TEST_PORT = 3899;
 
@@ -41,8 +41,17 @@ describe('Parallel Tool Execution E2E', () => {
     });
   }, 15000);
 
-  afterAll(() => {
+  afterAll(async () => {
     testServer?.kill();
+    await _clearMCPPool();
+  });
+
+  beforeEach(async () => {
+    // Clear MCP pool before each test
+    // Server will handle session cleanup on reinitialize
+    await _clearMCPPool();
+    // Small delay to ensure connections are fully closed
+    await new Promise(resolve => setTimeout(resolve, 50));
   });
 
   describe('Parallelization Detection', () => {
@@ -83,7 +92,7 @@ describe('Parallel Tool Execution E2E', () => {
       const itemIds = processItemCalls.map(c => c.arguments?.itemId).filter(Boolean);
       const uniqueIds = new Set(itemIds);
       expect(uniqueIds.size).toBeGreaterThanOrEqual(3); // At least 3 different items
-    }, 30000);
+    }, 60000);  // Increased timeout for server restart overhead + LLM iterations
 
     it('should execute different tools sequentially', async () => {
       if (!process.env.OPENAI_API_KEY) {
@@ -112,7 +121,7 @@ describe('Parallel Tool Execution E2E', () => {
       const uniqueTools = new Set(toolNames.map(name => name.split('.').pop()));
       
       expect(uniqueTools.size).toBeGreaterThan(1);
-    }, 30000);
+    }, 60000);  // Increased timeout for server restart overhead + LLM iterations
   });
 
   describe('Performance Validation', () => {
@@ -146,7 +155,7 @@ describe('Parallel Tool Execution E2E', () => {
       const uniqueIds = new Set(itemIds);
       // Verify at least 3 different items (LLM might call some multiple times)
       expect(uniqueIds.size).toBeGreaterThanOrEqual(3);
-    }, 30000);
+    }, 90000);
 
     it('should measure actual timing difference', async () => {
       if (!process.env.OPENAI_API_KEY) {
@@ -171,13 +180,13 @@ describe('Parallel Tool Execution E2E', () => {
       const calls = step.toolCalls?.filter(c => c.name.includes('process_item')) || [];
       
       if (calls.length >= 3) {
-        const timings = calls.map(c => c.ms).filter(Boolean);
+        const timings = calls.map(c => c.ms).filter((t): t is number => typeof t === 'number');
         if (timings.length > 0) {
           const avgTiming = timings.reduce((a, b) => a + b, 0) / timings.length;
           console.log(`Average tool execution time: ${avgTiming}ms`);
         }
       }
-    }, 30000);
+    }, 120000);  // 2 min timeout - completes faster normally, protects against hangs
   });
 
   describe('Safety Guarantees', () => {
@@ -201,7 +210,7 @@ describe('Parallel Tool Execution E2E', () => {
         .run();
 
       expect(results.length).toBe(1);
-    }, 30000);
+    }, 120000);
 
     it('should handle mixed tool calls correctly', async () => {
       if (!process.env.OPENAI_API_KEY) {
@@ -226,7 +235,7 @@ describe('Parallel Tool Execution E2E', () => {
       const step = results[0];
       expect(step.toolCalls).toBeDefined();
       expect(step.toolCalls!.length).toBeGreaterThan(0);
-    }, 30000);
+    }, 60000);  // Increased timeout for server restart overhead + LLM iterations
   });
 
   describe('disableParallelToolExecution option', () => {
@@ -262,7 +271,7 @@ describe('Parallel Tool Execution E2E', () => {
       expect(processItemCalls.length).toBeGreaterThanOrEqual(2);
       
       console.log(`With disableParallelToolExecution: ${processItemCalls.length} calls executed sequentially`);
-    }, 30000);
+    }, 60000);  // Increased timeout for server restart overhead + LLM iterations
 
     it('should enable parallel execution by default (flag not set)', async () => {
       if (!process.env.OPENAI_API_KEY) {
@@ -293,7 +302,7 @@ describe('Parallel Tool Execution E2E', () => {
       expect(step.toolCalls).toBeDefined();
       
       console.log(`Default behavior: parallel execution enabled`);
-    }, 30000);
+    }, 90000);
 
     it('should enable parallel execution when flag is explicitly false', async () => {
       if (!process.env.OPENAI_API_KEY) {
@@ -320,7 +329,7 @@ describe('Parallel Tool Execution E2E', () => {
 
       expect(results.length).toBe(1);
       console.log(`Explicit false: parallel execution enabled`);
-    }, 30000);
+    }, 60000);  // Increased timeout for server restart overhead + LLM iterations
   });
 });
 

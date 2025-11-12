@@ -71,7 +71,7 @@ describe('Agent Step Counting', () => {
     expect(steps.length).toBe(4); // 4 step definitions (1 + runAgent + runAgent + 1)
   });
 
-  it('verifies progress shows correct step count with runAgent', async () => {
+  it('verifies progress shows correct step numbers with runAgent', async () => {
     const llm = createMockLLM(['response1', 'response2', 'response3', 'response4', 'response5', 'response6']);
     
     const outputs: string[] = [];
@@ -81,11 +81,11 @@ describe('Agent Step Counting', () => {
       originalLog(...args);
     }) as any;
     
-    const analyzer = agent({ llm })
+    const analyzer = agent({ llm, name: 'analyzer' })
       .then({ prompt: 'Analyze' })
       .then({ prompt: 'Extract' });
     
-    const responder = agent({ llm })
+    const responder = agent({ llm, name: 'responder' })
       .then({ prompt: 'Write' })
       .then({ prompt: 'Polish' });
     
@@ -102,14 +102,23 @@ describe('Agent Step Counting', () => {
       
       const combined = outputs.join('\n');
       
-      // Should show Step N/6 (not Step N/4)
-      expect(combined).toContain('Step 1/6');
-      expect(combined).toContain('Step 2/6');
-      expect(combined).toContain('Step 3/6');
-      expect(combined).toContain('Step 4/6');
-      expect(combined).toContain('Step 5/6');
-      expect(combined).toContain('Step 6/6');
-      expect(combined).not.toContain('/4');
+      // With structured logs, the main agent executes its steps and sub-agents show their own steps
+      // Main agent step 1
+      expect(combined).toMatch(/agent="untitled" step=1 status=init.*Input/);
+      
+      // Analyzer sub-agent steps (shows as its own agent with step=1 and step=2)
+      expect(combined).toMatch(/agent="analyzer" step=1 status=init.*Analyze/);
+      expect(combined).toMatch(/agent="analyzer" step=2 status=init.*Extract/);
+      
+      // Responder sub-agent steps (shows as its own agent with step=1 and step=2)
+      expect(combined).toMatch(/agent="responder" step=1 status=init.*Write/);
+      expect(combined).toMatch(/agent="responder" step=2 status=init.*Polish/);
+      
+      // Final main agent step (step=6 because it counts all steps including sub-agent steps)
+      expect(combined).toMatch(/agent="untitled" step=6 status=init.*Final/);
+      
+      // Verify the agent complete shows 6 total tokens
+      expect(combined).toMatch(/agent complete.*6 tokens/);
     } finally {
       console.log = originalLog;
     }

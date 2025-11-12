@@ -5,31 +5,33 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-// Define specialized agents - just stubs, coordinator will delegate tasks to them
+// Define specialized agents
 const researcher = agent({
   llm,
   name: "researcher",
   description: "Expert at finding facts, data, and research. Use for information gathering."
-}).then({ prompt: "Research the topic: {{task}}" });
+}).then({ prompt: "Research the topic." }).then({ prompt: "Summarize the research." });
 
 const writer = agent({
   llm,
   name: "writer", 
   description: "Creative writer who crafts engaging narratives. Use for content creation."
-}).then({ prompt: "Write content: {{task}}" });
+}).then({ prompt: "Write content." });
 
 const editor = agent({
   llm,
   name: "editor",
   description: "Polishes content for clarity and grammar. Use for final review."
-}).then({ prompt: "Review and polish: {{task}}" });
+}).then({ prompt: "Review and polish." });
 
-// Coordinator autonomously delegates to the right specialists
-const results = await agent({ llm })
+// Coordinator autonomously delegates to specialists
+const results = await agent({ 
+  llm,
+  timeout: 300  // 5 minutes timeout for multi-agent coordination
+})
   .then({
     prompt: "Create a blog post about the James Webb Space Telescope's latest discoveries",
-    agents: [researcher, writer, editor],  // agents goes in the step!
-    maxAgentIterations: 10
+    agents: [researcher, writer, editor]
   })
   .run();
 

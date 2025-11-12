@@ -24,7 +24,6 @@ describe('Progress spacing and clearing (e2e)', () => {
         .then({
           prompt: 'Pick an agent then finalize in one sentence.',
           agents: [researcher, writer],
-          maxAgentIterations: 2
         })
         .run();
     } finally {
@@ -38,20 +37,20 @@ describe('Progress spacing and clearing (e2e)', () => {
     // No duplicate blank lines between coordinator/agent sections
     expect(output).not.toMatch(/\n\n\n/);
 
-    // Coordinator decision lines must exist (new format: decision on one line)
-    expect(output).toMatch(/🧠 Coordinator decision: USE \w+/);
-
-    // Coordinator decision followed by Complete line
-    expect(output).toMatch(/🧠 Coordinator decision: USE \w+\n\s+✅ Complete/);
+    // Check for structured log format with timestamps
+    expect(output).toMatch(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z agent="untitled" status=init\] 🌋 running Volcano agent/);
     
-    // Agent header appears
-    expect(output).toMatch(/⚡ \w+ →/);
+    // Coordinator selecting agents
+    expect(output).toMatch(/\[.*agent="untitled" status=init\] 🧠 selecting agents/);
     
-    // Final complete shows totals (including tool calls)
-    expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+ tool calls? \| \d+\.\d+s \| /);
-
-    // Waiting line should not remain once tokens show (renderer strips it)
-    expect(output).toContain('💭');
+    // Coordinator completion with agent selection
+    expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🧠 use "(researcher|writer)" agent/);
+    
+    // Agent execution (delegated agents don't have pre-defined steps)
+    expect(output).toMatch(/\[.*agent="(researcher|writer)".*status=complete\] ✔ Complete/);
+    
+    // Final workflow completion
+    expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🎉 agent complete/);
   });
 });
 

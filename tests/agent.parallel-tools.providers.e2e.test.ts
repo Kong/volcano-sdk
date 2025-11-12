@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { agent, mcp, llmOpenAI, llmAnthropic, llmMistral, llmBedrock, llmVertexStudio, llmAzure } from '../src/volcano-sdk.js';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { agent, mcp, llmOpenAI, llmAnthropic, llmMistral, llmBedrock, llmVertexStudio, llmAzure, _clearMCPPool } from '../src/volcano-sdk.js';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
  * E2E tests for parallel tool execution across ALL providers
  */
 
-describe('Parallel Tool Execution - All Providers', () => {
+describe.sequential('Parallel Tool Execution - All Providers', () => {
   let testServer: ChildProcess;
   const TEST_PORT = 3898;
 
@@ -33,8 +33,17 @@ describe('Parallel Tool Execution - All Providers', () => {
     });
   }, 15000);
 
-  afterAll(() => {
+  afterAll(async () => {
     testServer?.kill();
+    await _clearMCPPool();
+  });
+
+  beforeEach(async () => {
+    // Clear MCP pool before each test
+    // Server will handle session cleanup on reinitialize
+    await _clearMCPPool();
+    // Small delay to ensure connections are fully closed
+    await new Promise(resolve => setTimeout(resolve, 50));
   });
 
   const providers = [
@@ -133,7 +142,7 @@ describe('Parallel Tool Execution - All Providers', () => {
         expect(uniqueIds.size).toBeGreaterThanOrEqual(1);
         
         console.log(`[${provider.name}] Executed ${markItemCalls.length} tool calls with ${uniqueIds.size} unique IDs`);
-      }, 60000);
+      }, 120000);
 
       it('should NOT parallelize different tools', async () => {
         if (provider.requireEnv) {
@@ -159,7 +168,7 @@ describe('Parallel Tool Execution - All Providers', () => {
         expect(results[0].toolCalls).toBeDefined();
         
         console.log(`[${provider.name}] Sequential execution works`);
-      }, 60000);
+      }, 90000);
 
       it('should handle edge cases safely', async () => {
         if (provider.requireEnv) {
@@ -185,7 +194,7 @@ describe('Parallel Tool Execution - All Providers', () => {
         expect(results[0].toolCalls).toBeDefined();
         
         console.log(`[${provider.name}] Edge cases handled`);
-      }, 60000);
+      }, 90000);
     });
   }
 
@@ -217,7 +226,7 @@ describe('Parallel Tool Execution - All Providers', () => {
         
         console.log(`[${provider.name}] ✓ Consistent behavior`);
       }
-    }, 120000);
+    }, 180000);
   });
 });
 

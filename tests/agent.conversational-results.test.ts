@@ -12,8 +12,7 @@ function makeMockLLM(responses: string[]) {
       callCount++;
       return response;
     },
-    genWithTools: async () => ({ content: '', toolCalls: [] }),
-    genStream: async function*() {}
+    genWithTools: async () => ({ content: '', toolCalls: [] })
   } as any;
 }
 
@@ -83,8 +82,7 @@ describe('Conversational Results API', () => {
         capturedPrompt = prompt;
         return 'Context validated';
       },
-      genWithTools: async () => ({ content: '', toolCalls: [] }),
-      genStream: async function*() {}
+      genWithTools: async () => ({ content: '', toolCalls: [] })
     } as any;
 
     const results = await agent({ llm: workflowLlm, hideProgress: true })

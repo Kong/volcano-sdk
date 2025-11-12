@@ -202,7 +202,50 @@ Call a specific tool directly:
   contextMaxToolResults?: number;
   pre?: () => void;
   post?: () => void;
+  onToolCall?: (toolName: string, args: any, result: any) => void;
 }
+```
+
+### Multi-Agent Coordination
+
+Let a coordinator LLM autonomously delegate to specialized agents:
+
+```typescript
+{
+  prompt: string;
+  agents: AgentBuilder[];  // Array of specialized agents
+  llm?: LLMHandle;
+  instructions?: string;
+  timeout?: number;
+  retry?: RetryConfig;
+  contextMaxChars?: number;
+  contextMaxToolResults?: number;
+  pre?: () => void;
+  post?: () => void;
+}
+```
+
+**How it works:**
+- The coordinator LLM reads agent `name` and `description` fields
+- Autonomously decides which agent to delegate to based on the task
+- Continues delegating until the overall task is complete
+- Context flows between coordinator and delegated agents
+
+**Example:**
+```typescript
+const researcher = agent({ llm, name: 'researcher', description: 'Expert researcher' })
+  .then({ prompt: "Research the topic." });
+
+const writer = agent({ llm, name: 'writer', description: 'Content creator' })
+  .then({ prompt: "Write content." });
+
+await agent({ llm })
+  .then({
+    prompt: "Create a blog post about AI",
+    agents: [researcher, writer]
+  })
+  .run();
+// Coordinator autonomously uses researcher, then writer, then finalizes
 ```
 
 ### Common Step Fields

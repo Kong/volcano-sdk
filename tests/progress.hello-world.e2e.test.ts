@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { agent, llmOpenAI } from '../src/volcano-sdk.js';
 import { renderAnsi } from './progress.renderer.test.js';
 
-describe('Hello-world progress formatting', () => {
+describe('Hello-world progress formatting (structured logs)', () => {
   it('shows a blank line after each step Complete', { timeout: 30000 }, async () => {
     if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required');
 
@@ -27,18 +27,18 @@ describe('Hello-world progress formatting', () => {
 
     const output = renderAnsi(logs.join(''));
 
-    // Verify Complete appears for both steps
-    expect(output.includes('✅ Complete')).toBe(true);
+    // Verify Complete appears for both steps with new format
+    expect(output).toMatch(/\[.*status=complete\] ✔ Complete/);
     
     // CRITICAL: Verify no triple newlines anywhere
     expect(output).not.toMatch(/\n\n\n/);
     
-    // CRITICAL: Verify both steps appear
-    expect(output).toContain('🤖 Step 1/2');
-    expect(output).toContain('🤖 Step 2/2');
+    // CRITICAL: Verify both steps appear with structured logs
+    expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Generate 3 random positive words/);
+    expect(output).toMatch(/\[.*agent="untitled" step=2 status=init\] Create 10 motivational quotes/);
     
-    // CRITICAL: Verify final Agent complete with totals (including tool calls)
-    expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+ tool calls? \| \d+\.\d+s \| /);
+    // CRITICAL: Verify final Agent complete with structured log format
+    expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🎉 agent complete \| \d+ tokens \| \d+ tool calls? \| \d+\.\d+s/);
   });
 });
 

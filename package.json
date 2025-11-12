@@ -106,6 +106,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
     "ajv": "^8.17.1",
-    "openai": "^6.7.0"
+    "openai": "^6.7.0",
+    "ora": "^8.1.1"
   }
 }
