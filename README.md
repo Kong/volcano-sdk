@@ -106,6 +106,9 @@ Ask questions about agent execution in natural language. Use an LLM to analyze r
 </td>
 <td width="33%">
 
+### 🗂️ MCP Registry
+Modular MCP server management with centralized registration, tagging, filtering, and lifecycle control. Perfect for managing multiple custom MCP servers.
+
 </td>
 <td width="33%">
 
