@@ -135,8 +135,7 @@ const writer = agent({ llm, name: 'writer', description: 'Creates content' })
 const results = await agent({ llm })
   .then({
     prompt: "Write a blog post about quantum computing",
-    agents: [researcher, writer],
-    maxAgentIterations: 5
+    agents: [researcher, writer]  // Coordinator decides when done
   })
   .run();
 

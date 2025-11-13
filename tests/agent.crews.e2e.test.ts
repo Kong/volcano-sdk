@@ -29,7 +29,6 @@ describe('Multi-agent crews e2e (live APIs)', () => {
       .then({
         prompt: 'Create a short 2-sentence description of why TypeScript is popular',
         agents: [researcher, writer],
-        maxAgentIterations: 5
       })
       .run();
 
@@ -72,7 +71,6 @@ describe('Multi-agent crews e2e (live APIs)', () => {
       .then({
         prompt: 'Analyze this text and summarize it: "Artificial intelligence is transforming industries through automation and intelligent decision making."',
         agents: [analyzer, summarizer],
-        maxAgentIterations: 5
       })
       .run();
 

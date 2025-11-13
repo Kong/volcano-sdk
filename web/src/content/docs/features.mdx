@@ -368,8 +368,7 @@ const writer = agent({
 const results = await agent({ llm })
   .then({
     prompt: 'Create a comprehensive blog post about AI safety',
-    agents: [researcher, writer],
-    maxAgentIterations: 5  // Allow multiple agent calls
+    agents: [researcher, writer]  // Coordinator decides when complete
   })
   .run();
 
@@ -415,8 +414,7 @@ const documentor = agent({
 await agent({ llm })
   .then({
     prompt: 'Analyze our user data from Q4 and create a comprehensive report with recommendations',
-    agents: [dataAnalyst, codeReviewer, documentor],
-    maxAgentIterations: 10
+    agents: [dataAnalyst, codeReviewer, documentor]
   })
   .run();
 

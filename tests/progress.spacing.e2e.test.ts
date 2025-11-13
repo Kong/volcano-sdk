@@ -24,7 +24,6 @@ describe('Progress spacing and clearing (e2e)', () => {
         .then({
           prompt: 'Pick an agent then finalize in one sentence.',
           agents: [researcher, writer],
-          maxAgentIterations: 2
         })
         .run();
     } finally {

@@ -28,8 +28,7 @@ const editor = agent({
 const results = await agent({ llm })
   .then({
     prompt: "Create a blog post about the James Webb Space Telescope's latest discoveries",
-    agents: [researcher, writer, editor],  // agents goes in the step!
-    maxAgentIterations: 10
+    agents: [researcher, writer, editor]
   })
   .run();
 

@@ -128,8 +128,7 @@ const researcher = agent({
 await agent({ llm })
   .then({
     prompt: "Create a blog post about JWST discoveries",
-    agents: [researcher, writer, editor],  // Coordinator picks automatically
-    maxAgentIterations: 10
+    agents: [researcher, writer, editor]  // Coordinator decides when done
   })
   .run();
 ```
