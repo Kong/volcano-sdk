@@ -953,7 +953,7 @@ export type Step =
   | { mcp: MCPHandle; name?: string; tool: string; args?: Record<string, any>; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToolCall?: (toolName: string, args: any, result: any) => void }
   | { prompt: string; name?: string; llm?: LLMHandle; mcp: MCPHandle; tool: string; args?: Record<string, any>; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void; onToolCall?: (toolName: string, args: any, result: any) => void }
   | { prompt: string; name?: string; llm?: LLMHandle; mcps: MCPHandle[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxToolIterations?: number; pre?: () => void; post?: () => void; onToken?: (token: string) => void; onToolCall?: (toolName: string, args: any, result: any) => void }
-  | { prompt: string; name?: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; maxAgentIterations?: number; pre?: () => void; post?: () => void };
+  | { prompt: string; name?: string; llm?: LLMHandle; agents: AgentBuilder[]; instructions?: string; timeout?: number; retry?: RetryConfig; contextMaxChars?: number; contextMaxToolResults?: number; pre?: () => void; post?: () => void };
 
 export type StepResult = {
   prompt?: string;
@@ -982,7 +982,7 @@ export interface AgentResults extends Array<StepResult> {
 
 type StepFactory = (history: StepResult[]) => Step;
 
-function enhanceResults(results: StepResult[]): AgentResults {
+function enhanceResults(results: StepResult[], hideProgress: boolean = false): AgentResults {
   const enhanced = results as AgentResults;
   
   const buildContext = (results: StepResult[]): string => {
@@ -1020,7 +1020,12 @@ User Question: ${question}
 
 Provide a clear, concise answer based on the execution results above. Be specific and reference actual data from the results.`;
 
-    return await llm.gen(prompt);
+    // Use agent() to get progress display, respecting the original hideProgress setting
+    const analysisResults = await agent({ llm, hideProgress })
+      .then({ prompt })
+      .run();
+    
+    return analysisResults[0]?.llmOutput || '';
   };
   
   enhanced.summary = async (llm: LLMHandle): Promise<string> => {
@@ -1042,6 +1047,7 @@ Provide a clear, concise answer based on the execution results above. Be specifi
 export interface AgentBuilder {
   name?: string;
   description?: string;
+  _getSteps?(): Array<any>;  // Internal: for recursive step counting
   resetHistory(): AgentBuilder;
   then(s: Step | StepFactory): AgentBuilder;
   parallel(stepsOrDict: Step[] | Record<string, Step>, hooks?: { pre?: () => void; post?: () => void }): AgentBuilder;
@@ -1218,7 +1224,7 @@ const createProgressDisplay = (workflowStart: number, isTTY: boolean) => ({
     if (isTTY) process.stdout.write('\r\x1b[K');
     const toolCallsInfo = toolCalls !== undefined ? ` | ${toolCalls} tool call${toolCalls !== 1 ? 's' : ''}` : '';
     const providerInfo = provider ? ` | ${provider}` : '';
-    console.log(`   ✅ Complete | ${tokens.toLocaleString()} token${tokens > 1 ? 's' : ''}${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s${providerInfo}\n`);
+    console.log(`   ✅ Complete | ${tokens.toLocaleString()} token${tokens > 1 ? 's' : ''}${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s${providerInfo}`);
   }
 });
 
@@ -1267,6 +1273,8 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       if (count === 1 && waitInterval) {
         clearInterval(waitInterval);
         waitInterval = null;
+        // Clear the "Waiting for LLM" line before showing tokens
+        if (isTTY) process.stdout.write('\r\x1b[K');
       }
       
       const elapsed = (Date.now() - operationStart) / 1000;
@@ -1278,7 +1286,8 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       }
     },
     agentStart: (agentName: string, task: string) => {
-      console.log(`\n⚡ ${agentName} → ${task.substring(0, 50)}...`);
+      console.log('');  // Blank line before agent delegation
+      console.log(`⚡ ${agentName} → ${task.substring(0, 50)}...`);
       operationStart = Date.now();
       // Show elapsed time while waiting for first token
       if (isTTY) {
@@ -1295,6 +1304,8 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       if (count === 1 && waitInterval) {
         clearInterval(waitInterval);
         waitInterval = null;
+        // Clear the "Waiting for LLM" line before showing tokens
+        if (isTTY) process.stdout.write('\r\x1b[K');
       }
       
       const elapsed = (Date.now() - operationStart) / 1000;
@@ -1327,7 +1338,7 @@ function createProgressHandler(totalSteps: number, isSubAgent: boolean = false, 
       } else {
         if (isTTY) process.stdout.write('\r\x1b[K');
         const toolCallsInfo = toolCallCount !== undefined ? ` | ${toolCallCount} tool call${toolCallCount !== 1 ? 's' : ''}` : '';
-        console.log(`   ✅ Complete${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s\n`);
+        console.log(`   ✅ Complete${toolCallsInfo} | ${(durationMs/1000).toFixed(1)}s`);
       }
     },
     workflowEnd: (stepCount: number, totalTokens?: number, totalDuration?: number, models?: string[], totalToolCalls?: number) => {
@@ -1361,8 +1372,12 @@ function buildAgentContext(agents: AgentBuilder[]): string {
 Available agents to help you:
 ${agentList}
 
-To delegate to an agent, respond with: USE [agent_name]: [specific task for that agent]
-When you have the final answer, respond with: DONE: [your final answer]
+Instructions:
+- Analyze the task and decide if you need help from an agent
+- To delegate: respond with "USE [agent_name]: [specific task]"
+- When you have the complete final answer: respond with "DONE: [your answer]"
+- Be efficient: delegate to the right specialists, but don't over-delegate
+- Once the task is fully complete, say DONE
 `;
 }
 
@@ -1456,7 +1471,8 @@ async function executePatternStep(
   out: StepResult[],
   contextHistory: StepResult[],
   opts: AgentOptions | undefined,
-  planned: any[]
+  planned: any[],
+  totalSteps: number
 ): Promise<{ wasPattern: boolean; results: StepResult[] }> {
   if ((raw as any).__parallel) {
     const hooks = (raw as any).__hooks;
@@ -1545,8 +1561,8 @@ async function executePatternStep(
     const hooks = (raw as any).__hooks;
     safeExecuteHook(hooks?.pre, 'Pre-runAgent');
     
-    // Pass parent's context to subagent
-    const subResults = await executeRunAgent(subAgent, out.length, planned.length, contextHistory);
+    // Pass parent's context and total step count to subagent
+    const subResults = await executeRunAgent(subAgent, out.length, totalSteps, contextHistory);
     out.push(...subResults);
     contextHistory.push(...subResults);
     
@@ -1903,7 +1919,7 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
       r.llmOutput = "No agents available or agents missing name/description.";
     } else {
       const agentContext = buildAgentContext(availableAgents);
-      const maxIterations = (s as any).maxAgentIterations ?? defaultMaxToolIterations;
+      const maxIterations = 20;  // Safety limit to prevent infinite loops
       let workingPrompt = (stepInstructions ? stepInstructions + "\n\n" : "") + promptWithHistory + agentContext;
       const agentCalls: Array<{ name: string; task: string; result: string }> = [];
       let totalTokens = 0;
@@ -1913,11 +1929,13 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
         // Show coordinator thinking
         if (progress) {
           if (i === 0) {
-            process.stdout.write('\n🧠 Coordinator selecting agents...\n');
-            process.stdout.write("   ⏳ Waiting for LLM..");
+            console.log('');  // Single blank line before first coordinator message
+            process.stdout.write('🧠 Coordinator selecting agents...');
+            process.stdout.write('\n   ⏳ Waiting for LLM..');
           } else {
-            process.stdout.write('🧠 Coordinator deciding next step...\n');
-            process.stdout.write("   ⏳ Waiting for LLM..");
+            console.log('');  // Single blank line before subsequent coordinator messages
+            process.stdout.write('🧠 Coordinator deciding next step...');
+            process.stdout.write('\n   ⏳ Waiting for LLM..');
           }
           progress.startLlmOperation();
         }
@@ -1933,6 +1951,11 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
             for await (const token of usedLlm.genStream(workingPrompt)) {
               tokens.push(token);
               coordTokenCount++;
+              // On first token, clear the coordinator message and waiting line
+              if (coordTokenCount === 1) {
+                process.stdout.write('\r\x1b[K');  // Clear waiting line
+                process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator message
+              }
               progress.llmToken(coordTokenCount, getLLMProviderId(usedLlm), 0);  // Coordinator has 0 tool calls
             }
             coordinatorResponse = tokens.join('');
@@ -1960,14 +1983,10 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           modelsUsed.add(getLLMProviderId(usedLlm));
           if (progress) {
           const coordTime = (Date.now() - llmStart) / 1000;
-          // Clear token line and coordinator status line, then print decision
-          process.stdout.write('\r\x1b[K');  // Clear token line
-          process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
-          if (i === 0) {
-            process.stdout.write('🧠 Coordinator: Final answer ready\n');
-          } else {
-            process.stdout.write('🧠 Coordinator: Final answer ready\n');
-          }
+          // Clear both lines (waiting message + coordinator message)
+          process.stdout.write('\r\x1b[K');  // Clear current line
+          process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear previous line
+          process.stdout.write('🧠 Coordinator: Final answer ready\n');
           process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | 0 tool calls | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
         }
           r.llmOutput = decision.answer;
@@ -1977,14 +1996,10 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           modelsUsed.add(getLLMProviderId(usedLlm));
           if (progress) {
           const coordTime = (Date.now() - llmStart) / 1000;
-          // Clear token line and coordinator status line, then print decision
-          process.stdout.write('\r\x1b[K');  // Clear token line
-          process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear coordinator status line
-          if (i === 0) {
-            process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
-          } else {
-            process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
-          }
+          // Clear both lines (waiting message + coordinator message)
+          process.stdout.write('\r\x1b[K');  // Clear current line  
+          process.stdout.write('\x1b[1A\r\x1b[K');  // Move up and clear previous line
+          process.stdout.write(`🧠 Coordinator decision: USE ${decision.agentName}\n`);
           process.stdout.write(`   ✅ Complete | ${coordTokenCount} tokens | 0 tool calls | ${coordTime.toFixed(1)}s | ${getLLMProviderId(usedLlm)}\n`);
         }
           const selectedAgent = availableAgents.find(a => a.name === decision.agentName);
@@ -2002,11 +2017,16 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
           try {
             // Pass onToken to agent for progress tracking AND token preview
             const agentStep: any = { prompt: decision.task };
+            let currentProvider: string | undefined;
             if (progress) {
-              agentStep.onToken = () => {
+              agentStep.onToken = (token: string, meta?: any) => {
                 agentTokenCount++;
                 const toolCallsInAgent = agentResult?.reduce((sum, step) => sum + (step.toolCalls?.length || 0), 0) || 0;
-                progress.agentToken(agentTokenCount, decision.agentName, toolCallsInAgent);
+                // Use provider from token metadata if available, otherwise fallback
+                if (meta?.provider && !currentProvider) {
+                  currentProvider = meta.provider;
+                }
+                progress.agentToken(agentTokenCount, currentProvider || getLLMProviderId(usedLlm), toolCallsInAgent);
               };
             }
             // Mark delegated agent as sub-agent to suppress its progress banner
@@ -2023,6 +2043,11 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
             }
             
             agentResult = await delegatedAgent.run();
+            
+            // Get provider from actual results if we don't have it yet
+            if (!currentProvider && agentResult.length > 0) {
+              currentProvider = (agentResult[0] as any).__provider;
+            }
           } catch (e) {
             workingPrompt += `\n\nAgent '${decision.agentName}' failed: ${(e as Error).message}`;
             continue;
@@ -2174,6 +2199,41 @@ async function executeStepCore(ctx: StepExecutionContext): Promise<StepResult> {
 }
 
 /**
+ * Recursively count the total number of steps that will be executed,
+ * including steps within sub-agents called via .runAgent()
+ */
+function countTotalSteps(steps: Array<any>): number {
+  let total = 0;
+  
+  for (const step of steps) {
+    if ((step as any).__runAgent) {
+      // This is a runAgent step - recursively count its sub-agent's steps
+      const subAgent = (step as any).__runAgent.subAgent;
+      const subSteps = (subAgent as any)._getSteps?.() || [];
+      total += countTotalSteps(subSteps);
+    } else if ((step as any).__parallel) {
+      // Parallel steps count as 1 in the display
+      total += 1;
+    } else if ((step as any).__branch || (step as any).__switch) {
+      // Branch/switch counts as 1 (we don't know which branch yet)
+      total += 1;
+    } else if ((step as any).__forEach) {
+      // forEach counts as number of items
+      const items = (step as any).__forEach.items || [];
+      total += items.length;
+    } else if ((step as any).__while || (step as any).__retryUntil) {
+      // Loops/retry count as 1 (unknown iterations)
+      total += 1;
+    } else if (!(step as any).__reset) {
+      // Regular step
+      total += 1;
+    }
+  }
+  
+  return total;
+}
+
+/**
  * Create an AI agent that chains LLM reasoning with MCP tool calls.
  * 
  * @param opts - Optional configuration including LLM provider, instructions, timeout, retry policy, and observability
@@ -2225,6 +2285,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
   const builder: AgentBuilder = {
     name: agentName,
     description: agentDescription,
+    _getSteps() { return steps; },  // Internal helper for recursive step counting
     resetHistory() { steps.push({ __reset: true }); return builder; },
     then(s: Step | StepFactory) { steps.push(s); return builder; },
     
@@ -2282,7 +2343,10 @@ export function agent(opts?: AgentOptions): AgentBuilder {
       const parentStepIndex = (builder as any).__parentStepIndex;
       const parentTotalSteps = (builder as any).__parentTotalSteps;
       const parentAgentName = (builder as any).__parentAgentName;
-      const progress = showProgress ? createProgressHandler(steps.length, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
+      
+      // Recursively count total steps (including sub-agent steps)
+      const totalSteps = countTotalSteps(steps);
+      const progress = showProgress ? createProgressHandler(totalSteps, isSubAgent, isExplicitSubAgent, parentStepIndex, parentTotalSteps) : null;
       
       // Record agent execution (always, even for anonymous agents)
       if (telemetry) {
@@ -2310,7 +2374,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           if ((raw as any).__reset) { contextHistory = []; continue; }
           
           // Handle advanced pattern steps using shared function
-          const patternResult = await executePatternStep(raw, out, contextHistory, opts, planned);
+          const patternResult = await executePatternStep(raw, out, contextHistory, opts, planned, totalSteps);
           if (patternResult.wasPattern) {
             patternResult.results.forEach((r, i) => {
               log?.(r, out.length - patternResult.results.length + i);
@@ -2383,7 +2447,7 @@ export function agent(opts?: AgentOptions): AgentBuilder {
           telemetry?.recordMetric('agent.duration', totalDuration, { steps: out.length });
           telemetry?.recordMetric('workflow.steps', out.length, { agent_name: agentName || 'anonymous' });
         }
-        return enhanceResults(out);
+        return enhanceResults(out, opts?.hideProgress || false);
       } catch (error) {
         // End agent span with error
         telemetry?.endSpan(agentSpan, undefined, error);

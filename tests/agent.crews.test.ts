@@ -235,7 +235,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
     expect(results[0].llmOutput).toBe('Complete.');
   });
 
-  it('respects maxAgentIterations limit', async () => {
+  it('stops when coordinator says DONE (safety limit 20)', async () => {
     let iterations = 0;
     
     const coordinatorLLM: LLMHandle = {
@@ -267,7 +267,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       .then({
         prompt: 'Test',
         agents: [researcher],
-        maxAgentIterations: 2  // Limit iterations
+        // Coordinator decides when done (safety limit: 20)
       })
       .run();
 

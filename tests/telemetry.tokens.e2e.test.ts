@@ -276,7 +276,6 @@ describe('Telemetry - Token Tracking (E2E)', () => {
       .then({
         prompt: 'Test',
         agents: [researcher, writer],
-        maxAgentIterations: 2
       })
       .run();
     

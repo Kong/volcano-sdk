@@ -41,7 +41,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_agent_executions_total)",
+        "expr": "sum(volcano_agent_execution_total)",
         "refId": "A"
       }],
       "title": "Active Workflows/min",
@@ -75,7 +75,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "(1 - (sum(volcano_errors_total) or vector(0)) / (sum(volcano_llm_calls_total) or vector(1))) * 100",
+        "expr": "(1 - (sum(volcano_error_total) or vector(0)) / (sum(volcano_llm_call_total) or vector(1))) * 100",
         "refId": "A"
       }],
       "title": "Success Rate (5m)",
@@ -171,7 +171,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_errors_total)",
+        "expr": "sum(volcano_error_total)",
         "refId": "A"
       }],
       "title": "Total Errors (24h)",
@@ -205,7 +205,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "((sum(volcano_errors_total) or vector(0)) / (sum(volcano_llm_calls_total) or vector(1))) * 100",
+        "expr": "((sum(volcano_error_total) or vector(0)) / (sum(volcano_llm_call_total) or vector(1))) * 100",
         "refId": "A"
       }],
       "title": "Error Rate %",
@@ -237,7 +237,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "topk(10, sum(volcano_agent_executions_total) by (agent_name))",
+        "expr": "topk(10, sum(volcano_agent_execution_total) by (agent_name))",
         "legendFormat": "{{agent_name}}",
         "refId": "A"
       }],
@@ -290,7 +290,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_agent_subagent_calls_total) by (parent_agent_name, agent_name)",
+        "expr": "sum(volcano_agent_subagent_call_total) by (parent_agent_name, agent_name)",
         "format": "table",
         "instant": true,
         "refId": "A"
@@ -344,7 +344,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_agent_executions_total) by (agent_name)",
+        "expr": "rate(volcano_agent_execution_total[1m]) * 60",
         "legendFormat": "{{agent_name}}",
         "refId": "A"
       }],
@@ -600,7 +600,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_llm_calls_total) by (provider)",
+        "expr": "rate(volcano_llm_call_total[1m]) * 60",
         "legendFormat": "{{provider}}",
         "refId": "A"
       }],
@@ -693,7 +693,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_mcp_calls_total) by (server)",
+        "expr": "sum(volcano_mcp_call_total) by (server)",
         "legendFormat": "{{server}}",
         "refId": "A"
       }],
@@ -729,7 +729,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "topk(20, sum(volcano_mcp_calls_total) by (server))",
+        "expr": "topk(20, sum(volcano_mcp_call_total) by (server))",
         "format": "table",
         "instant": true,
         "refId": "A"
@@ -789,7 +789,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_errors_total) by (error_type)",
+        "expr": "sum(volcano_error_total) by (error_type)",
         "legendFormat": "{{error_type}}",
         "refId": "A"
       }],
@@ -817,7 +817,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_errors_total) by (error_type)",
+        "expr": "sum(volcano_error_total) by (error_type)",
         "legendFormat": "{{error_type}}",
         "refId": "A"
       }],
@@ -897,7 +897,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "count(volcano_step_duration_milliseconds_count) / count(volcano_agent_executions_total)",
+        "expr": "sum(volcano_workflow_steps_sum) / sum(volcano_workflow_steps_count)",
         "refId": "A"
       }],
       "title": "Average Steps per Workflow",
@@ -931,7 +931,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(volcano_agent_executions_total) by (agent_name)",
+          "expr": "sum(volcano_agent_execution_total) by (agent_name)",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1278,7 +1278,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(volcano_agent_executions_total) by (agent_name)",
+          "expr": "sum(volcano_agent_execution_total) by (agent_name)",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1468,7 +1468,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(volcano_agent_subagent_calls_total) by (parent_agent_name, agent_name)",
+        "expr": "sum(volcano_agent_subagent_call_total) by (parent_agent_name, agent_name)",
         "format": "table",
         "instant": true,
         "refId": "A"
