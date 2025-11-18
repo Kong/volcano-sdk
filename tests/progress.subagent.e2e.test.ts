@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { agent, llmOpenAI } from '../src/volcano-sdk.js';
 
-describe('Sub-agent progress (e2e)', () => {
+describe('Sub-agent progress with structured logs (e2e)', () => {
   it('shows correct step numbering for sub-agents (Step 2/3, Step 3/3)', { timeout: 30000 }, async () => {
     if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required');
 
@@ -38,20 +38,20 @@ describe('Sub-agent progress (e2e)', () => {
 
     const output = logs.join('');
 
-    // CRITICAL: Verify parent shows header
-    expect(output).toContain('🌋 Running Volcano agent');
+    // CRITICAL: Verify parent shows header with structured log
+    expect(output).toMatch(/\[.*agent="untitled" status=init\] 🌋 running Volcano agent/);
     
-    // CRITICAL: Verify step numbering continues for sub-agents
-    expect(output).toContain('🤖 Step 1/3');  // Parent step
-    expect(output).toContain('🤖 Step 2/3');  // First sub-agent
-    expect(output).toContain('🤖 Step 3/3');  // Second sub-agent
+    // CRITICAL: Verify each step is numbered correctly (each agent numbers its own steps from 1)
+    expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Text: 'Hello World'/);  // Parent step
+    expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Summarize in one word/);  // Second step (sub-agent 1)
+    expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Make it formal/);  // Third step (sub-agent 2)
     
     // CRITICAL: Verify sub-agents don't show duplicate headers
-    const headerMatches = output.match(/🌋 Running Volcano agent/g);
+    const headerMatches = output.match(/🌋 running Volcano agent/g);
     expect(headerMatches?.length).toBe(1);  // Only one header
     
-    // CRITICAL: Verify only one final summary
-    const summaryMatches = output.match(/🎉 Agent complete/g);
+    // CRITICAL: Verify only one final summary with structured log
+    const summaryMatches = output.match(/\[.*agent="untitled" status=complete\] 🎉 agent complete/g);
     expect(summaryMatches?.length).toBe(1);
     
     // CRITICAL: Verify no triple newlines

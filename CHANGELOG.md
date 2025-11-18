@@ -89,7 +89,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     .then({
       prompt: 'Write a blog post about AI',
       agents: [researcher, writer],
-      maxAgentIterations: 5
     })
     .run();
   ```

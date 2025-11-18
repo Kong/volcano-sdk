@@ -133,14 +133,23 @@ export async function executeRunAgent(
   parentContext?: StepResult[]
 ): Promise<StepResult[]> {
   // Suppress progress header/footer but keep step progress for explicit composition
-  (subAgent as any).__isSubAgent = true;
-  (subAgent as any).__isExplicitSubAgent = true;
-  (subAgent as any).__parentStepIndex = parentStepIndex;
-  (subAgent as any).__parentTotalSteps = parentTotalSteps;
+  interface AgentBuilderInternal {
+    __isSubAgent?: boolean;
+    __isExplicitSubAgent?: boolean;
+    __parentStepIndex?: number;
+    __parentTotalSteps?: number;
+    __parentContext?: any[];
+  }
+  
+  const subAgentInternal = subAgent as unknown as AgentBuilderInternal;
+  subAgentInternal.__isSubAgent = true;
+  subAgentInternal.__isExplicitSubAgent = true;
+  subAgentInternal.__parentStepIndex = parentStepIndex;
+  subAgentInternal.__parentTotalSteps = parentTotalSteps;
   
   // Pass parent's context so subagent has access to previous steps
   if (parentContext && parentContext.length > 0) {
-    (subAgent as any).__parentContext = parentContext;
+    subAgentInternal.__parentContext = parentContext;
   }
   
   return await subAgent.run();

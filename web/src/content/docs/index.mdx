@@ -10,53 +10,41 @@ A TypeScript SDK for building AI agents that combine LLM reasoning with real-wor
 
 ## Key Features
 
-### Chainable API
-
-Chain steps with `.then()` and `.run()`. Promise-like syntax for building multi-step workflows.
-
 ### Automatic Tool Selection
 
-LLM automatically selects and calls appropriate MCP tools based on the prompt. No manual routing required.
+LLM automatically picks which MCP tools to call based on your prompt. No manual routing needed.
+
+### Multi-Agent Crews
+
+Define specialized agents and let the coordinator autonomously delegate tasks. Like automatic tool selection, but for agents.
+
+### Conversational Results
+
+Ask questions about what your agent did. Use `.summary()` or `.ask()` instead of parsing JSON.
 
 ### 100s of Models
 
-OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-step or use globally.
-
-### Autonomous Multi-Agent Crews
-
-Define specialized agents with roles and let the LLM coordinator automatically route work to the right agent. Like automatic tool selection, but for agents—no manual orchestration needed!
+OpenAI, Anthropic, Mistral, Bedrock, Vertex, Azure. Switch providers per-step or globally.
 
 ### Advanced Patterns
 
-Parallel execution, conditional branching, loops, and sub-agent composition for complex workflows.
+Parallel execution, branching, loops, sub-agent composition. Enterprise-grade workflow control.
 
-### Retries & Timeouts
+### Streaming
 
-Three retry strategies: immediate, delayed, and exponential backoff. Per-step timeout configuration.
-
-### Streaming Workflows
-
-Use `onStep` and `onToken` callbacks to get real-time updates as steps complete and tokens stream. Perfect for real-time UIs and long-running tasks.
-
-### MCP Integration
-
-Native Model Context Protocol support with connection pooling, tool discovery, and authentication.
+Stream tokens in real-time as LLMs generate them. Perfect for chat UIs and SSE endpoints.
 
 ### TypeScript-First
 
-Full TypeScript support with type inference and IntelliSense for all APIs.
+Full type safety with IntelliSense. Catch errors before runtime.
 
-### OpenTelemetry Observability
+### Observability
 
-Production-ready distributed tracing and metrics. Monitor performance, debug failures. Export to Jaeger, Prometheus, DataDog, NewRelic.
+OpenTelemetry traces and metrics. Export to Jaeger, Prometheus, DataDog, or any OTLP backend.
 
-### MCP OAuth Authentication
+### Production-Ready
 
-OAuth 2.1 and Bearer token authentication per MCP specification. Agent-level or handle-level configuration with automatic token refresh.
-
-### Performance Optimized
-
-Intelligent connection pooling for MCP servers, tool discovery caching with TTL, and JSON schema validation for reliability.
+Built-in retries, timeouts, error handling, and connection pooling. Battle-tested at scale.
 
 ## Installation
 

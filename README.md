@@ -16,20 +16,20 @@ Build agents that chain LLM reasoning with MCP tools. Mix OpenAI, Claude, Mistra
 <tr>
 <td width="33%">
 
-### ⚡️ Chainable API
-Chain steps with `.then()` and `.run()`. Promise-like syntax for building multi-step workflows.
+### 🤖 Automatic Tool Selection
+LLM automatically picks which MCP tools to call based on your prompt. No manual routing needed.
 
 </td>
 <td width="33%">
 
-### ✨ Automatic Tool Selection
-LLM automatically selects and calls appropriate MCP tools based on the prompt. No manual routing required.
+### 🧩 Multi-Agent Crews
+Define specialized agents and let the coordinator autonomously delegate tasks. Like automatic tool selection, but for agents.
 
 </td>
 <td width="33%">
 
-### 🔧 100s of Models
-OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-step or use globally.
+### 💬 Conversational Results
+Ask questions about what your agent did. Use `.summary()` or `.ask()` instead of parsing JSON.
 
 </td>
 </tr>
@@ -37,77 +37,41 @@ OpenAI, Anthropic, Mistral, Llama, Bedrock, Vertex, Azure. Switch providers per-
 <tr>
 <td width="33%">
 
-### 🧩 Multi-Agent Crews
-Define specialized agents that autonomously coordinate based on descriptions. LLM automatically selects the right agent for each task - like automatic tool selection, but for agents.
+### 🔧 100s of Models
+OpenAI, Anthropic, Mistral, Bedrock, Vertex, Azure. Switch providers per-step or globally.
 
 </td>
 <td width="33%">
 
 ### 🔄 Advanced Patterns
-Parallel execution, conditional branching, loops, and sub-agent composition for complex workflows.
+Parallel execution, branching, loops, sub-agent composition. Enterprise-grade workflow control.
 
 </td>
 <td width="33%">
 
-### ⏱️ Retries & Timeouts
-Three retry strategies: immediate, delayed, and exponential backoff. Per-step timeout configuration.
+### 📡 Streaming
+Stream tokens in real-time as LLMs generate them. Perfect for chat UIs and SSE endpoints.
 
 </td>
 </tr>
 
 <tr>
-<td width="33%">
-
-### 📡 Streaming Workflows
-Stream step results as they complete, or stream individual tokens in real-time with metadata. Perfect for SSE, real-time chat UIs, and long-running tasks.
-
-</td>
-<td width="33%">
-
-### 🎯 MCP Integration
-Native Model Context Protocol support with connection pooling, tool discovery, and authentication.
-
-</td>
 <td width="33%">
 
 ### 🛡️ TypeScript-First
-Full TypeScript support with type inference and IntelliSense for all APIs.
-
-</td>
-</tr>
-
-<tr>
-<td width="33%">
-
-### 📊 OpenTelemetry Observability
-Production-ready distributed tracing and metrics. Monitor performance, debug failures. Export to Jaeger, Prometheus, DataDog, NewRelic.
+Full type safety with IntelliSense. Catch errors before runtime.
 
 </td>
 <td width="33%">
 
-### 🔐 MCP OAuth Authentication
-OAuth 2.1 and Bearer token authentication per MCP specification. Agent-level or handle-level configuration with automatic token refresh.
+### 📊 Observability
+OpenTelemetry traces and metrics. Export to Jaeger, Prometheus, DataDog, or any OTLP backend.
 
 </td>
 <td width="33%">
 
-### ⚡ Performance Optimized
-Intelligent connection pooling for MCP servers, tool discovery caching with TTL, and JSON schema validation for reliability.
-
-</td>
-</tr>
-
-<tr>
-<td width="33%">
-
-### 💬 Conversational Results
-Ask questions about agent execution in natural language. Use an LLM to analyze results, explain what happened, and extract insights.
-
-</td>
-<td width="33%">
-
-</td>
-<td width="33%">
+### ⚡ Production-Ready
+Built-in retries, timeouts, error handling, and connection pooling. Battle-tested at scale.
 
 </td>
 </tr>
@@ -127,7 +91,7 @@ That's it! Includes MCP support and all common LLM providers (OpenAI, Anthropic,
 
 **[View installation guide →](https://volcano.dev/docs#installation)**
 
-### Hello World
+### Hello World with Automatic Tool Selection
 
 ```ts
 import { agent, llmOpenAI, mcp } from "volcano-sdk";
@@ -137,37 +101,48 @@ const llm = llmOpenAI({
   model: "gpt-4o-mini" 
 });
 
-const astro = mcp("http://localhost:3211/mcp");
+const weather = mcp("http://localhost:8001/mcp");
+const tasks = mcp("http://localhost:8002/mcp");
 
+// Agent automatically picks the right tools
 const results = await agent({ llm })
   .then({ 
-    prompt: "Find the astrological sign for birthdate 1993-07-11",
-    mcps: [astro]  // Automatic tool selection
-  })
-  .then({ 
-    prompt: "Write a one-line fortune for that sign" 
+    prompt: "What's the weather in Seattle? If it will rain, create a task to bring an umbrella",
+    mcps: [weather, tasks]  // LLM chooses which tools to call
   })
   .run();
 
-console.log(results[1].llmOutput);
-// Output: "Fortune based on the astrological sign"
+// Ask questions about what happened
+const summary = await results.summary(llm);
+console.log(summary);
 ```
 
-### Multi-Provider Workflow
+### Multi-Agent Coordinator
 
 ```ts
-import { agent, llmOpenAI, llmAnthropic, llmMistral } from "volcano-sdk";
+import { agent, llmOpenAI } from "volcano-sdk";
 
-const gpt = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-const claude = llmAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-const mistral = llmMistral({ apiKey: process.env.MISTRAL_API_KEY! });
+const llm = llmOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Use different LLMs for different steps
-await agent()
-  .then({ llm: gpt, prompt: "Extract data from report" })
-  .then({ llm: claude, prompt: "Analyze for patterns" })
-  .then({ llm: mistral, prompt: "Write creative summary" })
+// Define specialized agents
+const researcher = agent({ llm, name: 'researcher', description: 'Finds facts and data' })
+  .then({ prompt: "Research the topic." })
+  .then({ prompt: "Summarize the research." });
+
+const writer = agent({ llm, name: 'writer', description: 'Creates content' })
+  .then({ prompt: "Write content." });
+
+// Coordinator autonomously delegates to specialists
+const results = await agent({ llm })
+  .then({
+    prompt: "Write a blog post about quantum computing",
+    agents: [researcher, writer]  // Coordinator decides when done
+  })
   .run();
+
+// Ask what happened
+const post = await results.ask(llm, "Show me the final blog post");
+console.log(post);
 ```
 
 **[View more examples →](https://volcano.dev/docs/examples)**

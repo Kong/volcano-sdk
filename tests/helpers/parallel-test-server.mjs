@@ -74,6 +74,21 @@ app.post('/mcp', async (req, res) => {
   const sessionId = req.headers['mcp-session-id'] || 'default';
   let transport = transports.get(sessionId);
   
+  // Check if this is an initialization request
+  const body = req.body;
+  const isInitRequest = body && body.method === 'initialize';
+  
+  // If initialization request and transport exists, clear it first
+  if (isInitRequest && transport) {
+    try {
+      await transport.close();
+    } catch (e) {
+      // Ignore close errors
+    }
+    transports.delete(sessionId);
+    transport = null;
+  }
+  
   if (!transport) {
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => sessionId,

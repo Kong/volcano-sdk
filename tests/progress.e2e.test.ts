@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { agent, llmOpenAI } from '../src/volcano-sdk.js';
 
-describe('Progress output e2e (live APIs)', () => {
+describe('Progress output e2e with structured logs (live APIs)', () => {
   it('validates default progress works for basic LLM steps', async () => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY required');
@@ -40,19 +40,19 @@ describe('Progress output e2e (live APIs)', () => {
       // Verify progress elements appeared
       const output = logs.join('');
       
-      // Check for header
-      expect(output).toContain('🌋 Running Volcano agent');
+      // Check for header with structured log format
+      expect(output).toMatch(/\[.*agent="untitled" status=init\] 🌋 running Volcano agent/);
       expect(output).toContain('volcano-sdk v');
       expect(output).toContain('https://volcano.dev');
       
-      // Check for step indicator
-      expect(output).toContain('🤖 Step 1/1');
+      // Check for step indicator with structured log
+      expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Say 'Hello World' exactly/);
       
-      // Check for completion
-      expect(output).toContain('✅ Complete');
+      // Check for completion with structured log
+      expect(output).toMatch(/\[.*status=complete\] ✔ Complete/);
       
-      // Check for workflow summary
-      expect(output).toContain('🎉 Agent complete');
+      // Check for workflow summary with structured log
+      expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🎉 agent complete/);
       
     } finally {
       console.log = originalLog;
@@ -96,22 +96,24 @@ describe('Progress output e2e (live APIs)', () => {
 
       const output = logs.join('');
       
-      // CRITICAL: Verify both steps shown
-      expect(output).toContain('🤖 Step 1/2');
-      expect(output).toContain('🤖 Step 2/2');
+      // CRITICAL: Verify both steps shown with structured logs
+      expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Say 'Step 1' exactly/);
+      expect(output).toMatch(/\[.*agent="untitled" step=2 status=init\] Say 'Step 2' exactly/);
       
       // Token progress shows for longer responses (>10 tokens)
       // Short responses may not trigger display
       
-      // CRITICAL: Verify both completions appear
-      const completeMatches = output.match(/✅ Complete \| .*s/g);
-      expect((completeMatches?.length ?? 0)).toBeGreaterThanOrEqual(2);
+      // CRITICAL: Verify both step completions appear
+      // Check for step 1 completion
+      expect(output).toMatch(/\[.*agent="untitled" step=1 status=complete\] ✔ Complete/);
+      // Check for step 2 completion  
+      expect(output).toMatch(/\[.*agent="untitled" step=2 status=complete\] ✔ Complete/);
       
       // CRITICAL: Verify no triple newlines
       expect(output).not.toMatch(/\n\n\n/);
       
-      // CRITICAL: Verify workflow summary
-      expect(output).toContain('🎉 Agent complete');
+      // CRITICAL: Verify workflow summary with structured log
+      expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🎉 agent complete/);
       
     } finally {
       console.log = originalLog;
@@ -164,39 +166,35 @@ describe('Progress output e2e (live APIs)', () => {
 
       const output = logs.join('');
       
-      // Verify header
-      expect(output).toContain('🌋 Running Volcano agent');
+      // Verify header with structured log
+      expect(output).toMatch(/\[.*agent="untitled" status=init\] 🌋 running Volcano agent/);
       expect(output).toContain('volcano-sdk v');
       expect(output).toContain('https://volcano.dev');
       
-      // Verify step shown
-      expect(output).toContain('🤖 Step 1/1');
+      // Verify step shown with structured log
+      expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Summarize the word "AI"/);
       
-      // CRITICAL: Verify coordinator thinking (no indentation)
-      expect(output).toContain('🧠 Coordinator selecting agents');
+      // CRITICAL: Verify coordinator thinking with structured log
+      expect(output).toMatch(/\[.*agent="untitled" status=init\] 🧠 selecting agents/);
       
-      // CRITICAL: Verify coordinator decision (new format: decision on one line, stats on Complete line)
-      expect(output).toMatch(/🧠 Coordinator decision: USE \w+/);
+      // CRITICAL: Verify coordinator completion with agent selection
+      expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🧠 use "summarizer" agent/);
       
-      // CRITICAL: Verify agent was invoked with progress (no indentation)
-      expect(output).toContain('⚡ summarizer');
+      // CRITICAL: Verify agent was invoked (no steps for delegated agents)
+      // Delegated agents created for crews don't have pre-defined steps
       
       // Token progress shows for longer responses
       // (Short responses complete before 10-token threshold)
       
-      // CRITICAL: Verify agent completion shows time + tokens
-      expect(output).toMatch(/✅ Complete \| \d+ tokens \| \d+ tool calls \| \d+\.\d+s \| /);
-      
-      // CRITICAL: Verify coordinator decision followed by Complete line
-      expect(output).toMatch(/🧠 Coordinator decision: USE \w+\n\s+✅ Complete/);
+      // CRITICAL: Verify agent completion with structured log
+      expect(output).toMatch(/\[.*agent="summarizer".*status=complete\] ✔ Complete \| \d+ tokens \| \d+ tool calls \| \d+\.\d+s/);
       
       // CRITICAL: Verify no triple newlines
       expect(output).not.toMatch(/\n\n\n/);
       
-      // Verify final completion with totals
-      expect(output).toContain('✅ Complete');
-      expect(output).toContain('🎉 Agent complete');
-      expect(output).toMatch(/🎉 Agent complete \| \d+ tokens \| \d+ tool calls \| \d+\.\d+s \| /);
+      // Verify final completion with totals and structured log
+      expect(output).toMatch(/\[.*agent="untitled" step=1 status=complete\] ✔ Complete/);
+      expect(output).toMatch(/\[.*agent="untitled" status=complete\] 🎉 agent complete \| \d+ tokens \| \d+ tool calls \| \d+\.\d+s/);
       
     } finally {
       console.log = originalLog;
@@ -250,12 +248,12 @@ describe('Progress output e2e (live APIs)', () => {
 
     const output = logs.join('');
     
-    // Even with errors/timeouts, progress should have shown
-    expect(output).toContain('🌋 Running Volcano agent');
-    expect(output).toContain('🤖 Step 1/1');
+    // Even with errors/timeouts, progress should have shown with structured logs
+    expect(output).toMatch(/\[.*agent="untitled" status=init\] 🌋 running Volcano agent/);
+    expect(output).toMatch(/\[.*agent="untitled" step=1 status=init\] Count to 100 slowly/);
     
     // Should have attempted multiple times (retries)
-    const stepMatches = output.match(/🤖 Step 1\/1/g);
+    const stepMatches = output.match(/\[.*step=1 status=init\]/g);
     expect(stepMatches?.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -286,9 +284,9 @@ describe('Progress output e2e (live APIs)', () => {
 
       const output = logs.join('');
       
-      // Progress should work (even if not TTY in test environment)
-      expect(output).toContain('🌋 Running Volcano agent');
-      expect(output).toContain('✅ Complete');
+      // Progress should work (even if not TTY in test environment) with structured logs
+      expect(output).toMatch(/\[.*agent="untitled" status=init\] 🌋 running Volcano agent/);
+      expect(output).toMatch(/\[.*status=complete\] ✔ Complete/);
       
     } finally {
       console.log = originalLog;
@@ -332,10 +330,10 @@ describe('Progress output e2e (live APIs)', () => {
       const output = logs.join('');
       
       // CRITICAL: Progress elements should NOT appear when hideProgress: true
-      expect(output).not.toContain('🌋 Running Volcano agent');
-      expect(output).not.toContain('🤖 Step');
-      expect(output).not.toContain('✅ Complete');
-      expect(output).not.toContain('🎉 Agent complete');
+      expect(output).not.toContain('🌋 running Volcano agent');
+      expect(output).not.toMatch(/\[.*step=\d+ status=/);
+      expect(output).not.toContain('✔ Complete');
+      expect(output).not.toContain('🎉 agent complete');
       expect(output).not.toContain('━━━');
       // Note: Skip checking '💭' due to potential cross-test contamination in parallel runs
       

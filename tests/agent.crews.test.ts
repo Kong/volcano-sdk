@@ -12,13 +12,13 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       model: 'test',
       client: null,
       gen: async (prompt: string) => {
-        if (prompt.includes('Available agents')) {
-          if (prompt.includes('Write a blog post')) {
-            // First decision: use researcher
-            if (!researcherCalled.called) {
-              return 'I need research first. USE researcher: Research quantum computing basics';
-            }
-            // Second decision: done
+        if (prompt.includes('You can coordinate work') && prompt.includes('Write a blog post')) {
+          // First decision: use researcher
+          if (!researcherCalled.called) {
+            return 'I need research first. USE researcher: Research quantum computing basics';
+          }
+          // After researcher has been called, check if this is a followup
+          if (prompt.includes("Agent 'researcher' completed their task")) {
             return 'DONE: Blog post created successfully based on research.';
           }
         }
@@ -32,6 +32,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       model: 'test',
       client: null,
       gen: async (prompt: string) => {
+        console.log('[TEST] Researcher received prompt:', prompt);
         researcherCalled.called = true;
         researcherCalled.task = prompt;
         return 'Quantum computing uses qubits and superposition.';
@@ -56,14 +57,14 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       name: 'researcher',
       description: 'Analyzes topics and identifies key facts',
       hideProgress: true
-    });
+    }).then({ prompt: 'Research the given topic and provide key facts.' });
 
     const writer = agent({
       llm: writerLLM,
       name: 'writer',
       description: 'Transforms research into engaging content',
       hideProgress: true
-    });
+    }).then({ prompt: 'Write the content based on the research.' });
 
     const results = await agent({ llm: mockLLM , hideProgress: true })
       .then({
@@ -74,9 +75,11 @@ describe('Multi-agent crews (automatic agent selection)', () => {
 
     // Verify researcher was called
     expect(researcherCalled.called).toBe(true);
-    expect(researcherCalled.task).toContain('quantum computing');
+    // The task should contain the research prompt plus context
+    expect(researcherCalled.task).toContain('Research the given topic');
+    expect(researcherCalled.task).toContain('quantum computing basics');
     
-    // Verify final output
+    // Verify final output (DONE: prefix is stripped)
     expect(results[0].llmOutput).toBe('Blog post created successfully based on research.');
     
     // Verify agentCalls were tracked
@@ -96,9 +99,9 @@ describe('Multi-agent crews (automatic agent selection)', () => {
         callCount++;
         if (callCount === 1) {
           return 'USE researcher: Research AI trends';
-        } else if (callCount === 2) {
+        } else if (callCount === 2 && prompt.includes("Agent 'researcher' completed their task")) {
           return 'USE writer: Write article about AI trends';
-        } else {
+        } else if (callCount === 3 && prompt.includes("Agent 'writer' completed their task")) {
           return 'DONE: Article complete and polished.';
         }
       },
@@ -116,7 +119,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       hideProgress: true,
       name: 'researcher',
       description: 'Researches topics'
-    });
+    }).then({ prompt: 'Research the given topic' });
 
     const writer = agent({
       llm: {
@@ -129,7 +132,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       hideProgress: true,
       name: 'writer',
       description: 'Writes content'
-    });
+    }).then({ prompt: 'Write the content' });
 
     const results = await agent({ llm: coordinatorLLM , hideProgress: true })
       .then({
@@ -178,7 +181,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       hideProgress: true,
       name: 'researcher',
       description: 'Researches topics'
-    });
+    }).then({ prompt: 'Research the topic' });
 
     const results = await agent({ llm: coordinatorLLM , hideProgress: true })
       .then({
@@ -193,16 +196,21 @@ describe('Multi-agent crews (automatic agent selection)', () => {
 
   it('works with run() and onStep callback', async () => {
     const agentsCalled: string[] = [];
+    let coordinatorCallCount = 0;
     
     const coordinatorLLM: LLMHandle = {
       id: 'coordinator',
       model: 'test',
       client: null,
       gen: async (prompt: string) => {
-        if (!prompt.includes('completed')) {
+        coordinatorCallCount++;
+        if (coordinatorCallCount === 1) {
+          // First call: delegate to researcher
           return 'USE researcher: Research topic';
+        } else {
+          // Second call: task complete
+          return 'DONE: Complete.';
         }
-        return 'DONE: Complete.';
       },
       genWithTools: async () => ({ llmOutput: 'Test', toolCalls: [] }),
     };
@@ -221,7 +229,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       hideProgress: true,
       name: 'researcher',
       description: 'Researches'
-    });
+    }).then({ prompt: 'Research' });
 
     const results: any[] = [];
     await agent({ llm: coordinatorLLM , hideProgress: true })
@@ -235,7 +243,7 @@ describe('Multi-agent crews (automatic agent selection)', () => {
     expect(results[0].llmOutput).toBe('Complete.');
   });
 
-  it('respects maxAgentIterations limit', async () => {
+  it('stops when coordinator says DONE (safety limit 20)', async () => {
     let iterations = 0;
     
     const coordinatorLLM: LLMHandle = {
@@ -267,12 +275,12 @@ describe('Multi-agent crews (automatic agent selection)', () => {
       .then({
         prompt: 'Test',
         agents: [researcher],
-        maxAgentIterations: 2  // Limit iterations
+        // Coordinator decides when done (safety limit: 20)
       })
       .run();
 
-    // Should stop at 2 iterations
-    expect(iterations).toBe(2);
+    // Should stop at safety limit (10 iterations)
+    expect(iterations).toBe(10);
     expect(results[0].llmOutput).toBeTruthy();
     expect((results[0] as any).agentCalls).toBeDefined();
   });

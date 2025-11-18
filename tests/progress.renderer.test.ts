@@ -53,7 +53,7 @@ function renderAnsi(input: string): string {
   return lines.join('\n');
 }
 
-describe('ANSI renderer sanity', () => {
+describe('ANSI renderer for structured logs', () => {
   const ESC = '\x1b';
   it('clears waiting line and replaces with tokens', () => {
     const parts = [
