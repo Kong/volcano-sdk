@@ -14,6 +14,7 @@ Volcano SDK supports 100s of models from 7 providers with function calling and M
 | **Anthropic**            | ✅ Full          | ✅ Native (tool_use)         | ✅ Native | ✅ Complete     |
 | **Mistral**              | ✅ Full          | ✅ Native                    | ✅ Native | ✅ Complete     |
 | **Llama**                | ✅ Full          | ✅ Via Ollama                | ✅ Native | ✅ Complete     |
+| **Together AI**          | ✅ Full          | ✅ Native                    | ✅ Native | ✅ Complete     |
 | **AWS Bedrock**          | ✅ Full          | ✅ Native (Converse API)     | ✅ Native | ✅ Complete     |
 | **Google Vertex Studio** | ✅ Full          | ✅ Native (Function calling) | ✅ Native | ✅ Complete     |
 | **Azure AI**             | ✅ Full          | ✅ Native (Responses API)    | ✅ Native | ✅ Complete     |
@@ -316,6 +317,53 @@ const llama = llmLlama({
 | `repeat_penalty` | number               | Penalize repetitions (Ollama-specific, default: 1.1) |
 | `seed`           | number               | For deterministic outputs                            |
 | `num_predict`    | number               | Number of tokens to predict (Ollama-specific)        |
+
+## Together AI Provider
+
+Serverless inference for open-source models (Llama, Mistral, Falcon, etc.) with full OpenAI compatibility.
+
+```typescript
+import { llmTogether } from "volcano-sdk";
+
+const together = llmTogether({
+  apiKey: process.env.TOGETHER_API_KEY!,
+  model: "meta-llama/Llama-3-70b-chat-hf",
+  options: {
+    temperature: 0.7,
+    max_tokens: 2000,
+    top_p: 0.9,
+    top_k: 40,
+    repetition_penalty: 1.1,
+  },
+});
+```
+
+### Authentication
+
+| Method    | Required     | Description                                               |
+| --------- | ------------ | --------------------------------------------------------- |
+| `apiKey`  | **Required** | Together API key from api.together.xyz                    |
+| `baseURL` | _Optional_   | Custom API endpoint (default: https://api.together.xyz/v1) |
+
+### Configuration
+
+| Parameter | Required     | Description                                            |
+| --------- | ------------ | ------------------------------------------------------ |
+| `model`   | **Required** | Model identifier (e.g., meta-llama/Llama-3-70b-chat-hf)|
+| `apiKey`  | **Required** | Together API key                                       |
+| `baseURL` | _Optional_   | Custom API endpoint                                    |
+| `options` | _Optional_   | Model-specific parameters                              |
+
+### Options Parameters
+
+| Parameter            | Type                 | Description                |
+| -------------------- | -------------------- | -------------------------- |
+| `temperature`        | 0-1                  | Controls randomness        |
+| `max_tokens`         | number               | Maximum tokens to generate |
+| `top_p`              | 0-1                  | Nucleus sampling           |
+| `top_k`              | number               | Sample from top K options  |
+| `repetition_penalty` | number               | Penalize repetitions       |
+| `stop`               | string \| string\[\] | Stop sequences             |
 
 ## AWS Bedrock Provider
 
