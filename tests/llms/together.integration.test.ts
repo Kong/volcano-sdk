@@ -80,7 +80,7 @@ describe('Together provider (integration)', () => {
             expect(result.toolCalls[0].name).toContain('get_current_weather');
         } else {
             // If it didn't call a tool, it should have some content
-            expect(result.textContent).toBeTruthy();
+            expect(result.content).toBeTruthy();
             console.warn('Model did not call tool as expected, but returned text.');
         }
     }, 60000);
